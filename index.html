@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Chinbilig Хөгжлийн Дэвтэр</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+input[type=email],input[type=password]{width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:42px}
+body.locked .icon-btn{display:none}
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --sunk:#f5f7fa; --ink:#131922; --muted:#5b6574; --line:#d8dee6;
+  --accent:#1d4f9c; --accent-ink:#ffffff; --accent-soft:#e2eaf6;
+  --ok:#23704a; --ok-soft:#e0f0e7; --warn:#9a5a0c; --warn-soft:#f8ecd8; --bad:#b3261e; --bad-soft:#f8e1df;
+  --p-bjj:#1d4f9c; --p-body:#2f8a4c; --p-mind:#6b3fa0; --p-school:#d06a17; --p-biz:#7a4d2a;
+  --heat0:#e3e8ee; --heat1:#c3d6ee; --heat2:#8fb2e0; --heat3:#4f82d0; --heat4:#1d4f9c;
+  --display:"Oswald","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0e1218; --surface:#161c25; --sunk:#1b222d; --ink:#e6eaf0; --muted:#98a2b0; --line:#2a3340;
+    --accent:#7fa8e8; --accent-ink:#0e1218; --accent-soft:#1c2a40;
+    --ok:#6fcf97; --ok-soft:#173226; --warn:#f0b86a; --warn-soft:#3a2c14; --bad:#f28b82; --bad-soft:#3d1c1a;
+    --p-bjj:#7fa8e8; --p-body:#6fcf97; --p-mind:#b596e6; --p-school:#f0a35e; --p-biz:#c99a74;
+    --heat0:#222a35; --heat1:#233a5c; --heat2:#2f5690; --heat3:#4f82d0; --heat4:#8fb6f0;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1218; --surface:#161c25; --sunk:#1b222d; --ink:#e6eaf0; --muted:#98a2b0; --line:#2a3340;
+  --accent:#7fa8e8; --accent-ink:#0e1218; --accent-soft:#1c2a40;
+  --ok:#6fcf97; --ok-soft:#173226; --warn:#f0b86a; --warn-soft:#3a2c14; --bad:#f28b82; --bad-soft:#3d1c1a;
+  --p-bjj:#7fa8e8; --p-body:#6fcf97; --p-mind:#b596e6; --p-school:#f0a35e; --p-biz:#c99a74;
+  --heat0:#222a35; --heat1:#233a5c; --heat2:#2f5690; --heat3:#4f82d0; --heat4:#8fb6f0;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:0 96px}
+.wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15;text-wrap:balance}
+h2{font-size:1.25rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+h3{font-size:1.02rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.muted{color:var(--muted)}
+.small{font-size:.84rem}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+header.top{display:flex;flex-direction:column;gap:10px;padding-block:18px 4px}
+.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.who{display:flex;flex-direction:column;gap:6px;min-width:0}
+.who h1{font-size:1.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.belt{display:flex;height:14px;width:200px;max-width:60vw;border-radius:2px;overflow:hidden;border:1px solid var(--line)}
+.belt .b-main{flex:1}
+.belt .b-bar{width:34%;display:flex;gap:4px;align-items:stretch;justify-content:flex-end;padding:0 6px}
+.belt .b-bar i{width:4px;background:#fff}
+.sync{font-size:.78rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.sync.ok .dot{background:var(--ok)} .sync.saving .dot{background:var(--warn)} .sync.err .dot{background:var(--bad)}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:.88rem;font-weight:600}
+
+/* nav */
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
+nav.tabs .in{max-width:760px;margin:0 auto;display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+nav.tabs button{border:0;background:none;padding:6px 0;border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.7rem;white-space:nowrap;font-weight:600;color:var(--muted)}
+nav.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+nav.tabs button[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.datebar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.datebar .d{font-family:var(--display);font-size:1.3rem;font-weight:600;text-align:center}
+.datebar .d small{display:block;font-family:var(--body);font-size:.78rem;color:var(--muted);font-weight:500}
+.stepper{border:1px solid var(--line);background:var(--surface);border-radius:8px;width:42px;height:42px;font-size:1.2rem}
+
+.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.summary.four{grid-template-columns:repeat(4,1fr)}
+.summary.four .stat b{font-size:1.4rem}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--display);font-size:1.7rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:.8rem;color:var(--muted)}
+.bar{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+
+.list{display:flex;flex-direction:column}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.check{flex:none;width:26px;height:26px;border-radius:6px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0}
+.check svg{width:16px;height:16px;stroke:var(--accent-ink);stroke-width:3;fill:none;opacity:0}
+.check.on{background:var(--accent);border-color:var(--accent)}
+.check.on svg{opacity:1}
+.row .txt{flex:1;min-width:0}
+.row.done .txt{color:var(--muted);text-decoration:line-through}
+.pdot{flex:none;width:9px;height:9px;border-radius:50%}
+.time{font-variant-numeric:tabular-nums;font-weight:600;min-width:46px}
+.group-label{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-top:6px;display:flex;align-items:center;gap:6px}
+
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.lbl{font-size:.8rem;font-weight:600;color:var(--muted)}
+input[type=text],input[type=number],input[type=date],input:not([type]),select,textarea{width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:42px}
+textarea{min-height:64px;resize:vertical}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:480px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.scale{display:flex;gap:6px}
+.scale button{flex:1;min-width:0;height:40px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);font-weight:600;font-variant-numeric:tabular-nums}
+.scale button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.scale-ends{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font-size:.84rem;font-weight:500}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);border-radius:8px;padding:10px 16px;font-weight:600;min-height:42px}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.x{border:0;background:none;color:var(--muted);font-size:.8rem;padding:6px 8px;border-radius:6px}
+.x.confirm{color:var(--bad);background:var(--bad-soft);font-weight:600}
+.meal{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)}
+.meal:first-of-type{border-top:0}
+.tip{background:var(--accent-soft);border-radius:8px;padding:10px 12px;font-size:.86rem}
+.src{font-size:.74rem;color:var(--muted)}
+
+.guards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.guard:last-child:nth-child(odd){grid-column:1 / -1}
+@media (max-width:480px){.guards{grid-template-columns:1fr}}
+.guard{border:1px solid var(--line);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;background:var(--surface)}
+.guard .gh{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.guard b{font-size:.9rem}
+.guard .val{font-family:var(--display);font-size:1.3rem;font-weight:600;font-variant-numeric:tabular-nums}
+.pill{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.na{background:var(--sunk);color:var(--muted)}
+.flags{background:var(--bad-soft);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.flags b{color:var(--bad)}
+.flags ul{margin:0;padding-left:1.1em;display:grid;gap:4px}
+.allgood{background:var(--ok-soft);color:var(--ok);border-radius:8px;padding:10px 14px;font-weight:600;font-size:.9rem}
+
+.bars{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;align-items:end;height:140px}
+.bars .b{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
+.bars .b i{display:block;width:100%;max-width:34px;background:var(--heat2);border-radius:3px 3px 0 0;min-height:2px}
+.bars .b.cur i{background:var(--accent)}
+.bars .b span{font-size:.7rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bars-x{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;font-size:.68rem;color:var(--muted);text-align:center}
+
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:340px}
+.heat .c{aspect-ratio:1;border-radius:4px;background:var(--heat0);max-width:100%;display:grid;place-items:center;font-size:.62rem;color:var(--muted)}
+.heat .l1{background:var(--heat1)} .heat .l2{background:var(--heat2)} .heat .l3{background:var(--heat3);color:#fff} .heat .l4{background:var(--heat4);color:#fff}
+.heat .future{background:transparent;border:1px dashed var(--line)}
+.heat-h{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:340px;font-size:.68rem;color:var(--muted);text-align:center}
+
+.jars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.jar{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;background:var(--sunk)}
+.jar b{font-family:var(--display);font-size:1.2rem;font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.jar span{font-size:.76rem;color:var(--muted)}
+.amt-in{color:var(--ok);font-weight:600} .amt-out{color:var(--bad);font-weight:600}
+.sess{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+.sess:first-child{border-top:0}
+.sess .sh{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.tag{font-size:.74rem;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent)}
+details summary{cursor:pointer;font-weight:600;font-size:.9rem;color:var(--accent)}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:.84rem}
+.sched-day{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-top:1px solid var(--line)}
+.sched-day:first-of-type{border-top:0}
+.sched-item{display:grid;grid-template-columns:78px 1fr 110px auto;gap:6px;align-items:center}
+@media (max-width:520px){.sched-item{grid-template-columns:70px 1fr auto}.sched-item .pp{grid-column:1 / 3}}
+.hab-item{display:grid;grid-template-columns:1fr 130px auto;gap:6px;align-items:center}
+@media (max-width:480px){.hab-item{grid-template-columns:1fr auto}.hab-item select{grid-column:1}}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.wd{border:1px solid transparent;background:none;border-radius:10px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.wd span{font-size:.7rem;color:var(--muted);font-weight:600}
+.wd b{font-family:var(--display);font-size:1.1rem;font-weight:600;font-variant-numeric:tabular-nums}
+.wd i{width:8px;height:8px;border-radius:50%;background:var(--heat0)}
+.wd i.lv1{background:var(--heat2)} .wd i.lv2{background:var(--heat3)} .wd i.lv3{background:var(--ok)} .wd i.lvf{background:transparent;border:1px dashed var(--line)}
+.wd.now b{color:var(--accent)}
+.wd.sel{background:var(--accent-soft);border-color:var(--accent)}
+.streak{font-size:.86rem;color:var(--ok);background:var(--ok-soft);border-radius:8px;padding:8px 12px}
+.focus{background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:12px 16px;display:flex;flex-direction:column;gap:2px}
+details.fold{gap:0}
+details.fold>summary{list-style:none;display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--ink)}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{flex:1}
+details.fold .chev{width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px}
+details.fold[open] .chev{transform:rotate(-135deg);margin-bottom:-4px}
+details.fold .fold-body{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.meter{display:flex;flex-direction:column;gap:4px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;z-index:20;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.lib{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.lib:first-child{border-top:0}
+.lib-h{display:flex;gap:10px;align-items:flex-start}
+.lib-h .pdot{margin-top:8px}
+.lib-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+.lib-t a{color:var(--ink);font-weight:600;text-decoration-color:var(--line);text-underline-offset:3px}
+.lib-t a:hover{color:var(--accent)}
+.lib.seen .lib-t a,.lib.seen .lib-t>span:first-child{color:var(--muted)}
+.lib-a{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.star{border:0;background:none;font-size:1.3rem;line-height:1;color:var(--line);padding:4px}
+.star.on{color:#e2b41a}
+.filelink{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--sunk);color:var(--ink);text-decoration:none;font-size:.84rem;overflow-wrap:anywhere}
+.filelink img{width:56px;height:56px;object-fit:cover;border-radius:6px;flex:none}
+input[type=url],input[type=file]{width:100%;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:42px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+.seg button{border:0;background:none;border-radius:7px;padding:8px;font-weight:600;color:var(--muted)}
+.seg button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.ov-nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ov-nums div{display:flex;flex-direction:column;gap:0;min-width:0}
+.ov-nums b{font-family:var(--display);font-size:1.5rem;font-weight:600;line-height:1.1}
+.ov-nums span{font-size:.72rem;color:var(--muted);line-height:1.25}
+.ov-rows{display:flex;flex-direction:column;gap:8px}
+.ov-row{display:grid;grid-template-columns:auto 72px 1fr 40px;gap:8px;align-items:center;font-size:.84rem}
+.ov-p{text-align:right;font-weight:600}
+button.pill{border:0;cursor:pointer;font-size:.76rem;padding:4px 10px}
+.cal-h{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:.7rem;color:var(--muted);text-align:center;font-weight:600}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cd{aspect-ratio:1/1.1;max-width:100%;border:1px solid transparent;border-radius:8px;background:var(--heat0);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:5px 2px 6px;min-width:0}
+.cd b{font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums}
+.cd.h1{background:var(--heat1)} .cd.h2{background:var(--heat2)} .cd.h3{background:var(--heat3);color:#fff} .cd.hf{background:var(--sunk)}
+.cd.out{opacity:.35}
+.cd.now{border-color:var(--ink);border-width:2px}
+.mks{display:flex;gap:3px;min-height:7px}
+.mk{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none}
+.mk.tr{background:var(--p-bjj);box-shadow:0 0 0 1.5px var(--surface)} .mk.tr.comp{background:#e2b41a} .mk.tk{background:var(--p-school);box-shadow:0 0 0 1.5px var(--surface)} .mk.sc{background:var(--bad);box-shadow:0 0 0 1.5px var(--surface)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.76rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:4px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px}
+.sw.h1{background:var(--heat1)} .sw.h2{background:var(--heat2)} .sw.h3{background:var(--heat3)}
+button.row.agenda{width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;font:inherit;color:inherit}
+@media (max-width:420px){.ov-row{grid-template-columns:auto 66px 1fr 36px}.ov-nums b{font-size:1.25rem}}
+@media (max-width:400px){.summary.four .stat b{font-size:1.2rem}.summary.four .stat span{font-size:.72rem}}
+@media (prefers-reduced-motion:no-preference){.toast{transition:opacity .2s,transform .2s}.bar i,.check{transition:background .15s,width .25s}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="top-row">
+      <div class="who">
+        <h1 id="who-name">Тамирчин</h1>
+        <div class="belt" id="belt" aria-label="Бүс"></div>
+      </div>
+      <button class="icon-btn" data-act="tab" data-v="settings">Тохиргоо</button>
+    </div>
+    <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Холбогдож байна…</span></div>
+  </header>
+  <main id="main" class="wrap" style="max-width:none"></main>
+</div>
+
+<nav class="tabs" aria-label="Хэсгүүд"><div class="in" id="tabs"></div></nav>
+
+<script src="config.js"></script>
+<script>
+(function(){
+"use strict";
+/* ---------- constants ---------- */
+const PILLARS={
+  bjj:{t:"BJJ",s:"BJJ",c:"var(--p-bjj)"},
+  body:{t:"Бие бялдар",s:"Бие",c:"var(--p-body)"},
+  mind:{t:"Сэтгэл, зан чанар",s:"Сэтгэл",c:"var(--p-mind)"},
+  school:{t:"Сургууль",s:"Сургууль",c:"var(--p-school)"},
+  biz:{t:"Бизнес, мөнгө",s:"Бизнес",c:"var(--p-biz)"}
+};
+const BELTS=[["white","Цагаан","#f4f4f4"],["grey","Саарал","#8d939b"],["yellow","Шар","#e2b41a"],["orange","Улбар шар","#e0741f"],["green","Ногоон","#2f8a4c"],["blue","Цэнхэр","#1d4f9c"],["purple","Нил ягаан","#6b3fa0"],["brown","Бор","#6e4526"],["black","Хар","#111111"]];
+const SESS={gi:"BJJ Gi",nogi:"BJJ No-gi",open:"Чөлөөт барилдаан",wrestle:"Бөх / Жүдо",strength:"Хүч чадал",sport:"Өөр спорт",comp:"Тэмцээн"};
+const DOW=["Ням","Даваа","Мягмар","Лхагва","Пүрэв","Баасан","Бямба"];
+const DOW_ORDER=[1,2,3,4,5,6,0];
+const MEALS=[["b","Өглөөний цай"],["l","Өдрийн хоол"],["d","Оройн хоол"],["s","Зууш"]];
+const PARTS=[["prot","Уураг"],["carb","Нүүрс ус"],["veg","Ногоо / жимс"],["dairy","Сүү / кальци"]];
+const TABS=[
+  ["today","Өнөөдөр",'<path d="M4 6h16v14H4zM4 10h16M9 3v4M15 3v4"/>'],
+  ["train","Бэлтгэл",'<path d="M6 12h12M3 9v6M21 9v6M6 7v10M18 7v10"/>'],
+  ["goals","Зорилго",'<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/>'],
+  ["biz","Бизнес",'<path d="M4 8h16v11H4zM9 8V5h6v3M4 13h16"/>'],
+  ["lib","Сан",'<path d="M5 4h5v16H5zM10 4h4v16h-4zM14.5 5l4-1 3 15-4 1z"/>'],
+  ["review","Тойм",'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>']
+];
+const SUGGEST=[
+  ["bjj","Тэмцээн бүрт 3 процессын зорилго тавих (жишээ нь: гардаа оруулах, унагах оролдлого хийх)"],
+  ["bjj","Дасгалжуулагчаасаа долоо хоног бүр нэг асуулт асуух"],
+  ["bjj","Өөрийн тоглолтыг бичлэгээр үзэж, 1 алдаа, 1 сайн зүйл тэмдэглэх"],
+  ["body","3 сар тутам өндөр, жингээ хэмжиж бичих"],
+  ["body","Хүч чадлын дасгалыг техник зөв хийж сурах (дасгалжуулагчтай)"],
+  ["mind","5C-ээс нэгийг сонгож долоо хоног ажиллах: тууштай, харилцаа, төвлөрөл, хяналт, итгэл"],
+  ["mind","BJJ-ээс гадуур нэг хобби, найзуудтайгаа цаг гаргах"],
+  ["school","Улирлын дүнгийн зорилго тавьж, сар бүр шалгах"],
+  ["biz","Энэ жил нэг жижиг бизнес туршиж, ашиг алдагдлаа тооцох"],
+  ["biz","Өөрийн нэр дээр хадгаламжийн данс нээх"],
+  ["biz","Бизнес эрхэлдэг нэг зөвлөгчтэй сард нэг уулзах"]
+];
+const DEF_SET={
+  profile:{name:"",age:"",belt:"white",stripes:0,beltSince:"",gym:"",coach:""},
+  currency:"₮",
+  jars:{save:50,spend:40,give:10},
+  habits:[
+    {id:"h1",t:"Техникээ 10 мин давтсан эсвэл бичлэг үзсэн",p:"bjj"},
+    {id:"h2",t:"Сунгалт, хөдөлгөөн 10 мин",p:"body"},
+    {id:"h3",t:"6+ аяга ус уусан",p:"body"},
+    {id:"h4",t:"Жимс, ногоо 5 удаа идсэн",p:"body"},
+    {id:"h5",t:"Бэлтгэлийн дараа шүршүүрт орж, арьсаа шалгасан",p:"body"},
+    {id:"h6",t:"20 мин ном уншсан",p:"mind"},
+    {id:"h7",t:"Унтахаас 1 цагийн өмнө дэлгэцгүй",p:"mind"},
+    {id:"h8",t:"Гэрийн ажилд тусалсан",p:"mind"},
+    {id:"h9",t:"Гэрийн даалгавраа хийсэн",p:"school"},
+    {id:"h10",t:"Мөнгөө бүртгэсэн эсвэл бизнестээ 15 мин",p:"biz"}
+  ],
+  schedule:{
+    "1":[{t:"17:00",x:"BJJ бэлтгэл (Gi)",p:"bjj"}],
+    "2":[{t:"17:00",x:"Хүч чадлын бэлтгэл, дасгалжуулагчтай",p:"body"}],
+    "3":[{t:"17:00",x:"BJJ бэлтгэл (No-gi)",p:"bjj"}],
+    "4":[{t:"17:00",x:"Хүч чадлын бэлтгэл, дасгалжуулагчтай",p:"body"}],
+    "5":[{t:"17:00",x:"BJJ бэлтгэл (Gi)",p:"bjj"}],
+    "6":[{t:"10:00",x:"Бөх, жүдо эсвэл өөр спорт",p:"body"},{t:"15:00",x:"Бизнесийн ажил, 1 цаг",p:"biz"}],
+    "0":[{t:"",x:"Амралтын өдөр, гэр бүлийн цаг",p:"mind"},{t:"19:00",x:"Долоо хоногийн тойм бөглөх",p:"mind"}]
+  }
+};
+const LIBKIND={video:"Видео",article:"Нийтлэл",book:"Ном",file:"Файл",other:"Бусад"};
+const LIB_SUGGEST=[
+  {t:"Хөгжлийн төлөвлөгөө (судалгаанд суурилсан)",url:"https://claude.ai/artifact/1ufzc67E6mrUVJpwsiyf9T",p:"mind",kind:"article"},
+  {t:"IBJJF бүсний шаардлага, насны доод хязгаар",url:"https://ibjjf.com/news/ibjjf-minimum-graduation-period-update",p:"bjj",kind:"article"},
+  {t:"Хүүхэд, өсвөрийн 24 цагийн хөдөлгөөн, нойр, дэлгэцийн зөвлөмж",url:"https://csepguidelines.ca/",p:"body",kind:"article"}
+];
+const SCREEN_MAX=120;
+const DEF_BIZ={entries:[],venture:{name:"",what:"",who:"",price:"",cost:"",next:"",sold:"",notsold:"",change:""}};
+
+/* ---------- utils ---------- */
+const clone=o=>JSON.parse(JSON.stringify(o));
+const pad=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const todayIso=()=>iso(new Date());
+const parse=s=>{const a=s.split("-").map(Number);return new Date(a[0],a[1]-1,a[2]);};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return iso(d);};
+const mondayOf=s=>{const d=parse(s);d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d);};
+const range=(start,n)=>Array.from({length:n},(_,i)=>addDays(start,i));
+const fmtDate=s=>{const d=parse(s);return (d.getMonth()+1)+"-р сарын "+d.getDate();};
+const fmtShort=s=>{const d=parse(s);return pad(d.getMonth()+1)+"/"+pad(d.getDate());};
+const esc=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const money=n=>Math.round(n||0).toLocaleString("en-US")+" "+(S.settings.currency||"");
+const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
+function setPath(o,p,v){const k=p.split(".");let t=o;for(let i=0;i<k.length-1;i++){if(t[k[i]]==null||typeof t[k[i]]!=="object")t[k[i]]={};t=t[k[i]];}t[k[k.length-1]]=v;}
+function getPath(o,p){return p.split(".").reduce((t,k)=>t==null?undefined:t[k],o);}
+function sleepTarget(){const a=+S.settings.profile.age;if(!a)return[9,12,"нас оруулаагүй тул 9+ цаг"];if(a<=5)return[10,13,"3–5 нас"];if(a<=12)return[9,12,"6–12 нас"];if(a<=18)return[8,10,"13–18 нас"];return[7,9,"насанд хүрэгч"];}
+
+/* ---------- state ---------- */
+let S={settings:clone(DEF_SET),biz:clone(DEF_BIZ),days:{},tasks:{},reviews:{},library:{}};
+const UI={tab:"today",date:todayIso(),filter:"all",libFilter:"all",etype:"in",wk:0,confirm:null,sfType:"gi",open:{},view:"day",calMonth:todayIso().slice(0,7)};
+try{const t=localStorage.getItem("cb-tab");if(t)UI.tab=t;const vw=localStorage.getItem("cb-view");if(vw==="cal")UI.view="cal";UI.open=JSON.parse(localStorage.getItem("cb-open")||"{}")||{};}catch(e){}
+let assetsApi=null,downloadsApi=null;
+const hashTab=(location.hash||"").slice(1);if(["today","train","goals","biz","lib","review","settings"].includes(hashTab))UI.tab=hashTab;
+
+function normSettings(d){
+  const s=Object.assign(clone(DEF_SET),d||{});
+  s.profile=Object.assign(clone(DEF_SET.profile),(d&&d.profile)||{});
+  s.jars=Object.assign(clone(DEF_SET.jars),(d&&d.jars)||{});
+  if(!Array.isArray(s.habits))s.habits=clone(DEF_SET.habits);
+  if(!s.schedule||typeof s.schedule!=="object")s.schedule=clone(DEF_SET.schedule);
+  return s;
+}
+function normBiz(d){const b=Object.assign(clone(DEF_BIZ),d||{});b.venture=Object.assign(clone(DEF_BIZ.venture),(d&&d.venture)||{});if(!Array.isArray(b.entries))b.entries=[];return b;}
+function blankDay(date){return{date,habits:{},sched:{},sleep:"",srec:"",sstudy:"",energy:0,mood:0,soreness:0,pain:"",weight:"",meals:{},journal:{win:"",learned:"",focus:"",thanks:""},sessions:[]};}
+function getDay(date){return S.days[date]||blankDay(date);}
+function ensureDay(date){if(!S.days[date])S.days[date]=blankDay(date);const d=S.days[date];d.habits=d.habits||{};d.sched=d.sched||{};d.meals=d.meals||{};d.journal=d.journal||{};d.sessions=d.sessions||[];return d;}
+function weekStart(){return addDays(mondayOf(todayIso()),UI.wk*7);}
+function ensureReview(id){if(!S.reviews[id])S.reviews[id]={week:id.slice(1),good:"",hard:"",change:"",parent:""};return S.reviews[id];}
+
+/* ---------- storage ---------- */
+let mode="pending", db=null, readyResolve;
+const ready=new Promise(r=>readyResolve=r);
+const LKEY="chinbilig-tracker-v1";
+const dirty={},timers={},chains={};
+function docFor(path){
+  const [c,id]=path.split("/");
+  if(path==="app/settings")return S.settings;
+  if(path==="app/business")return S.biz;
+  if(c==="days")return S.days[id];
+  if(c==="tasks")return S.tasks[id];
+  if(c==="reviews")return S.reviews[id];
+  if(c==="library")return S.library[id];
+}
+function localSaveAll(){try{localStorage.setItem(LKEY,JSON.stringify(S));}catch(e){}}
+function save(path){
+  dirty[path]=(dirty[path]||0)+1;setSync("saving");
+  clearTimeout(timers[path]);timers[path]=setTimeout(()=>flush(path),600);
+}
+function flush(path){
+  const gen=dirty[path];
+  chains[path]=(chains[path]||Promise.resolve()).then(()=>ready).then(async()=>{
+    const data=docFor(path);
+    if(mode==="cloud"){ if(data) await SB.set(path,clone(data)); else await SB.del(path); }
+    else localSaveAll();
+  }).then(()=>{if(dirty[path]===gen)delete dirty[path];syncIdle();})
+    .catch(e=>{delete dirty[path];if(e&&e.message==="noauth"){showLogin("Дахин нэвтэрнэ үү.");return;}setSync("err","Хадгалж чадсангүй. Интернэтээ шалгана уу.");});
+}
+function remove(path){save(path);}
+function syncIdle(){if(Object.keys(dirty).length)return;setSync(mode==="cloud"?"ok":"local");}
+function setSync(k,msg){
+  const el=document.getElementById("sync");el.className="sync "+(k==="local"?"saving":k);
+  document.getElementById("sync-t").textContent=msg||({ok:"Бүх өөрчлөлт хадгалагдсан",saving:"Хадгалж байна…",local:"Зөвхөн энэ төхөөрөмжид хадгалагдаж байна",err:"Алдаа"}[k]);
+}
+function applySnap(path,data,exists){
+  if(dirty[path])return;
+  const [c,id]=path.split("/");
+  if(path==="app/settings"){S.settings=normSettings(exists?clone(data):null);}
+  else if(path==="app/business"){S.biz=normBiz(exists?clone(data):null);}
+  else{const coll=S[c];if(!coll)return;if(exists)coll[id]=clone(data);else delete coll[id];}
+  requestRender();
+}
+/* ---------- Supabase backend (plain REST, no SDK) ---------- */
+const CFG=window.APP_CONFIG||{};
+const SB={
+  url:(CFG.supabaseUrl||"").replace(/\/$/,""),key:CFG.supabaseAnonKey||"",session:null,
+  configured(){return !!(this.url&&this.key);},
+  loadSession(){try{this.session=JSON.parse(localStorage.getItem("cb-sb-session")||"null");}catch(e){this.session=null;}},
+  storeSession(s){this.session=s;try{s?localStorage.setItem("cb-sb-session",JSON.stringify(s)):localStorage.removeItem("cb-sb-session");}catch(e){}},
+  async auth(body,grant){
+    const r=await fetch(this.url+"/auth/v1/token?grant_type="+grant,{method:"POST",headers:{apikey:this.key,"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_description||j.msg||"auth");
+    this.storeSession({access:j.access_token,refresh:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000,email:j.user&&j.user.email});return this.session;
+  },
+  login(email,password){return this.auth({email,password},"password");},
+  async token(){
+    if(!this.session)throw new Error("noauth");
+    if(Date.now()>this.session.exp-60000){try{await this.auth({refresh_token:this.session.refresh},"refresh_token");}catch(e){this.storeSession(null);throw new Error("noauth");}}
+    return this.session.access;
+  },
+  async req(path,opt){
+    opt=opt||{};const t=await this.token();
+    const r=await fetch(this.url+path,Object.assign({},opt,{headers:Object.assign({apikey:this.key,Authorization:"Bearer "+t},opt.headers||{})}));
+    if(r.status===401){this.storeSession(null);throw new Error("noauth");}
+    if(!r.ok)throw new Error("http "+r.status);return r;
+  },
+  async loadAll(){
+    const out=[];let from=0;
+    for(;;){const r=await this.req("/rest/v1/docs?select=path,data&order=path",{headers:{Range:from+"-"+(from+999),"Range-Unit":"items"}});const rows=await r.json();out.push(...rows);if(rows.length<1000)break;from+=1000;}
+    return out;
+  },
+  set(path,data){return this.req("/rest/v1/docs",{method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({path,data,updated_at:new Date().toISOString()})});},
+  del(path){return this.req("/rest/v1/docs?path=eq."+encodeURIComponent(path),{method:"DELETE"});},
+  async upload(file,opt){
+    const safe=file.name.replace(/[^A-Za-z0-9._-]+/g,"_").slice(-80)||"file";
+    const id="f/"+uid()+"-"+safe;const type=(opt&&opt.type)||file.type||"application/octet-stream";
+    await this.req("/storage/v1/object/library/"+id,{method:"POST",headers:{"Content-Type":type,"x-upsert":"false"},body:file});
+    return{id,contentType:type,sizeBytes:file.size};
+  },
+  delete(id){return this.req("/storage/v1/object/library/"+id,{method:"DELETE"});},
+  signed:{},
+  fileUrl(id){
+    const c=this.signed[id];if(c&&c.exp>Date.now())return c.url;
+    if(!c||!c.pending){this.signed[id]={pending:true,exp:0,url:""};
+      this.req("/storage/v1/object/sign/library/"+id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({expiresIn:3600})}).then(r=>r.json()).then(j=>{this.signed[id]={url:this.url+"/storage/v1"+j.signedURL,exp:Date.now()+3500*1000};requestRender();}).catch(()=>{delete this.signed[id];});}
+    return "";
+  }
+};
+const DL={save({filename,data}){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);return Promise.resolve();}};
+function showLogin(msg){
+  document.body.classList.add("locked");
+  const m=document.getElementById("main");
+  document.getElementById("tabs").innerHTML="";
+  m.innerHTML='<form class="card" id="login" style="max-width:420px;margin:24px auto;width:100%"><h2>Нэвтрэх</h2><p class="small muted">Энэ хуудас хувийн мэдээлэлтэй тул зөвхөн гэр бүлийн гишүүд нэвтэрнэ.</p><div class="field"><label for="lg-e">И-мэйл</label><input id="lg-e" type="email" autocomplete="username" required></div><div class="field"><label for="lg-p">Нууц үг</label><input id="lg-p" type="password" autocomplete="current-password" required></div>'+(msg?'<p class="small" style="color:var(--bad)">'+esc(msg)+"</p>":"")+'<button class="btn" type="submit">Нэвтрэх</button></form>';
+  setSync("local","Нэвтрээгүй");
+  document.getElementById("login").addEventListener("submit",async e=>{e.preventDefault();const b=e.target.querySelector("button");b.disabled=true;b.textContent="Нэвтэрч байна…";
+    try{await SB.login(document.getElementById("lg-e").value.trim(),document.getElementById("lg-p").value);startCloud();}catch(err){showLogin("И-мэйл эсвэл нууц үг буруу байна.");}});
+}
+let pollTimer=null;
+async function refreshAll(){
+  const rows=await SB.loadAll();const seen=new Set();
+  rows.forEach(r=>{seen.add(r.path);applySnap(r.path,r.data,true);});
+  ["days","tasks","reviews","library"].forEach(c=>Object.keys(S[c]).forEach(id=>{const p=c+"/"+id;if(!seen.has(p)&&!dirty[p])delete S[c][id];}));
+  requestRender();
+}
+async function startCloud(){
+  setSync("saving","Ачаалж байна…");
+  try{await refreshAll();}catch(e){if(e.message==="noauth")return showLogin();setSync("err","Сервертэй холбогдож чадсангүй");return;}
+  document.body.classList.remove("locked");mode="cloud";db=true;assetsApi=SB;downloadsApi=DL;readyResolve();setSync("ok");render();
+  clearInterval(pollTimer);pollTimer=setInterval(()=>{if(!document.hidden&&!Object.keys(dirty).length)refreshAll().catch(()=>{});},60000);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!Object.keys(dirty).length)refreshAll().catch(()=>{});});
+}
+async function importBackup(file){
+  const o=JSON.parse(await file.text());const docs=[["app/settings",o.settings],["app/business",o.biz]];
+  ["days","tasks","reviews","library"].forEach(c=>Object.entries(o[c]||{}).forEach(([id,d])=>docs.push([c+"/"+id,d])));
+  let n=0;for(const [p,d] of docs){if(!d)continue;await SB.set(p,d);n++;}
+  await refreshAll();return n;
+}
+
+function fileHref(id){return (id||"").startsWith("f/")?(SB.fileUrl(id)||"#"):"#";}
+async function initStoreArtifact(){
+  let d=null;
+  try{d=window.claude&&window.claude.use?await window.claude.use("db"):null;}catch(e){d=null;}
+  if(d){
+    db=d;mode="cloud";readyResolve();setSync("ok");
+    Promise.all([window.claude.use("assets").catch(()=>null),window.claude.use("downloads").catch(()=>null)]).then(([a,dl])=>{assetsApi=a;downloadsApi=dl;requestRender();});
+    const err=e=>setSync("err",e&&e.code==="revoked"?"Хандах эрх хаагдсан":"Холболт тасарлаа. Хуудсаа дахин ачаална уу.");
+    db.doc("app/settings").onSnapshot(s=>applySnap("app/settings",s.data(),s.exists),err);
+    db.doc("app/business").onSnapshot(s=>applySnap("app/business",s.data(),s.exists),err);
+    const coll=(name,q)=>q.onSnapshot(snap=>{snap.docChanges().forEach(ch=>applySnap(name+"/"+ch.doc.id,ch.doc.data(),ch.type!=="removed"));},err);
+    coll("days",db.collection("days").where("date",">=",addDays(todayIso(),-180)));
+    coll("tasks",db.collection("tasks"));
+    coll("reviews",db.collection("reviews"));
+    coll("library",db.collection("library"));
+  }else{
+    mode="local";
+    try{const raw=localStorage.getItem(LKEY);if(raw){const o=JSON.parse(raw);S={settings:normSettings(o.settings),biz:normBiz(o.biz),days:o.days||{},tasks:o.tasks||{},reviews:o.reviews||{},library:o.library||{}};}}catch(e){}
+    readyResolve();setSync("local");render();
+  }
+}
+
+/* ---------- rendering ---------- */
+let pendingRender=false;
+function requestRender(){
+  const a=document.activeElement;
+  if(a&&a.closest&&a.closest("#main")&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)){pendingRender=true;return;}
+  render();
+}
+document.addEventListener("focusout",()=>{setTimeout(()=>{if(pendingRender){pendingRender=false;requestRender();}},0);});
+
+function renderHeader(){
+  const p=S.settings.profile;
+  document.getElementById("who-name").textContent=p.name||"Тамирчин";
+  const b=BELTS.find(x=>x[0]===p.belt)||BELTS[0];
+  const barColor=p.belt==="black"?"#c62828":"#111";
+  const stripes=Math.max(0,Math.min(4,+p.stripes||0));
+  document.getElementById("belt").innerHTML='<span class="b-main" style="background:'+b[2]+'"></span><span class="b-bar" style="background:'+barColor+'">'+"<i></i>".repeat(stripes)+"</span>";
+  document.getElementById("belt").setAttribute("aria-label",b[1]+" бүс, "+stripes+" судал");
+  document.getElementById("tabs").innerHTML=TABS.map(t=>'<button data-act="tab" data-v="'+t[0]+'"'+(UI.tab===t[0]?' aria-current="page"':"")+'><svg viewBox="0 0 24 24">'+t[2]+"</svg>"+t[1]+"</button>").join("");
+}
+function render(){
+  renderHeader();
+  const m=document.getElementById("main");
+  const v={today:vToday,train:vTrain,goals:vGoals,biz:vBiz,review:vReview,settings:vSettings,lib:vLib}[UI.tab]||vToday;
+  m.innerHTML=v();
+}
+const pdot=p=>'<span class="pdot" style="background:'+(PILLARS[p]||PILLARS.mind).c+'"></span>';
+const pillarSelect=(path,val)=>'<select data-path="'+path+'">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'"'+(k===val?" selected":"")+">"+PILLARS[k].t+"</option>").join("")+"</select>";
+function scale(field,val,lo,hi,label){
+  return '<div class="field"><span class="lbl">'+label+'</span><div class="scale">'+[1,2,3,4,5].map(n=>'<button data-act="scale" data-f="'+field+'" data-v="'+n+'" class="'+(val==n?"on":"")+'" aria-pressed="'+(val==n)+'">'+n+"</button>").join("")+'</div><div class="scale-ends"><span>'+lo+"</span><span>"+hi+"</span></div></div>";
+}
+function delBtn(key,act,attrs){const on=UI.confirm===key;return '<button class="x'+(on?" confirm":"")+'" data-act="'+act+'" data-key="'+key+'" '+(attrs||"")+">"+(on?"Устгах уу?":"Устгах")+"</button>";}
+
+/* ----- stats ----- */
+function statsFor(dates){
+  const today=todayIso(),hs=S.settings.habits;let hDone=0,hTot=0,min=0,load=0,n=0,rest=0,days=0,soreHigh=0,pain=0;const sl=[],mood=[],en=[],enj=[],w=[],scr=[];
+  for(const ds of dates){
+    if(ds>today)continue;days++;hTot+=hs.length;const d=S.days[ds];
+    if(!d){rest++;continue;}
+    hDone+=hs.filter(h=>d.habits&&d.habits[h.id]).length;
+    const ss=d.sessions||[];if(!ss.length)rest++;
+    ss.forEach(s=>{const m=+s.min||0;min+=m;load+=m*(+s.rpe||0);n++;if(+s.enj)enj.push(+s.enj);});
+    if(+d.sleep)sl.push(+d.sleep);if(d.srec!==""&&d.srec!=null)scr.push(+d.srec||0);if(+d.mood)mood.push(+d.mood);if(+d.energy)en.push(+d.energy);
+    if(+d.soreness>=4)soreHigh++;if((d.pain||"").trim())pain++;if(+d.weight)w.push([ds,+d.weight]);
+  }
+  return{days,habitPct:hTot?hDone/hTot:0,min,load,n,rest,sleep:avg(sl),mood:avg(mood),energy:avg(en),enjoy:avg(enj),soreHigh,pain,weights:w,screen:avg(scr)};
+}
+function dayPct(ds){const d=S.days[ds],hs=S.settings.habits;if(!d||!hs.length)return 0;return hs.filter(h=>d.habits&&d.habits[h.id]).length/hs.length;}
+function guardCards(dates,prevLoads){
+  const st=statsFor(dates),age=+S.settings.profile.age,hrs=st.min/60,[smin]=sleepTarget();
+  const g=[];
+  g.push({t:"Зохион байгуулалттай бэлтгэл",v:hrs.toFixed(1)+" цаг",s:!age?"na":hrs<=age?"ok":"bad",d:age?"Долоо хоногт "+age+" цагаас (насаараа) ихгүй":"Тохиргоонд насаа оруулна уу",src:"Jayanthi 2015"});
+  g.push({t:"Амралтын өдөр",v:st.rest+" өдөр",s:st.days<7?"na":st.rest>=2?"ok":st.rest===1?"warn":"bad",d:"Долоо хоногт 1–2 өдөр бүрэн амрах",src:"AAP 2016"});
+  g.push({t:"Дундаж нойр",v:st.sleep==null?"–":st.sleep.toFixed(1)+" цаг",s:st.sleep==null?"na":st.sleep>=smin?"ok":st.sleep>=smin-1?"warn":"bad",d:"Зорилт "+sleepTarget()[0]+"–"+sleepTarget()[1]+" цаг ("+sleepTarget()[2]+")",src:"Milewski 2014, AASM 2016"});
+  const pa=avg(prevLoads.filter(x=>x>0));const ratio=pa?st.load/pa:null;
+  g.push({t:"Ачааллын өсөлт",v:ratio==null?"–":"×"+ratio.toFixed(2),s:ratio==null?"na":ratio<=1.3?"ok":ratio<=1.5?"warn":"bad",d:"Өмнөх 3 долоо хоногийн дунджаас 1.5 дахин огцом бүү өсгө (мин × RPE)",src:"Foster 2001, Gabbett 2016"});
+  g.push({t:"Дэлгэц (зугаа цэнгэл)",v:st.screen==null?"–":Math.round(st.screen)+" мин/өдөр",s:st.screen==null?"na":st.screen<=SCREEN_MAX?"ok":st.screen<=180?"warn":"bad",d:"Хичээлээс гадуурх дэлгэц өдөрт 2 цагаас ихгүй",src:"Canadian 24-Hour Guidelines 2016, AAP"});
+  const lbl={ok:"Хэвийн",warn:"Анхаар",bad:"Хэтэрсэн",na:"Мэдээлэл дутуу"};
+  return '<div class="guards">'+g.map(x=>'<div class="guard"><div class="gh"><b>'+x.t+'</b><span class="pill '+x.s+'">'+lbl[x.s]+'</span></div><span class="val">'+x.v+'</span><span class="small muted">'+x.d+'</span><span class="src">'+x.src+"</span></div>").join("")+"</div>";
+}
+function weekLoad(mon){return statsFor(range(mon,7)).load;}
+
+/* ----- OVERVIEW + CALENDAR ----- */
+const MONTHS=["1-р сар","2-р сар","3-р сар","4-р сар","5-р сар","6-р сар","7-р сар","8-р сар","9-р сар","10-р сар","11-р сар","12-р сар"];
+function segCtl(){return '<div class="seg" role="tablist"><button role="tab" data-act="view" data-v="day" aria-selected="'+(UI.view==="day")+'">Өдөр</button><button role="tab" data-act="view" data-v="cal" aria-selected="'+(UI.view==="cal")+'">Календарь</button></div>';}
+function overview(){
+  const t=todayIso(),mon=mondayOf(t),dates=range(mon,7).filter(x=>x<=t),hs=S.settings.habits,st=statsFor(dates);
+  const rows=Object.keys(PILLARS).map(p=>{const items=hs.filter(h=>h.p===p);if(!items.length)return "";let dn=0;dates.forEach(ds=>{const d=S.days[ds];if(d&&d.habits)dn+=items.filter(h=>d.habits[h.id]).length;});const pc=Math.round(dn/(items.length*dates.length)*100);return '<div class="ov-row">'+pdot(p)+'<span class="ov-n">'+PILLARS[p].s+'</span><div class="bar"><i style="width:'+pc+"%;background:"+PILLARS[p].c+'"></i></div><span class="num ov-p">'+pc+"%</span></div>";}).join("");
+  const due=Object.values(S.tasks).filter(x=>!x.done&&x.due&&x.due<=addDays(t,7)).length;
+  const age=+S.settings.profile.age,[smin]=sleepTarget();
+  let warn=0;if(age&&st.min/60>age)warn++;if(st.sleep!=null&&st.sleep<smin)warn++;if(st.screen!=null&&st.screen>SCREEN_MAX)warn++;if(st.enjoy!=null&&st.enjoy<=2.5)warn++;if(st.soreHigh>=3)warn++;
+  return '<div class="card ov"><div class="card-head"><h2>Энэ долоо хоног</h2><button class="pill '+(warn?"warn":"ok")+'" data-act="tab" data-v="review">'+(warn?warn+" анхааруулга":"Бүх зүйл хэвийн")+"</button></div>"+
+  '<div class="ov-nums"><div><b class="num">'+st.n+'</b><span>бэлтгэл · '+(st.min/60).toFixed(1)+' ц</span></div><div><b class="num">'+(st.sleep==null?"–":st.sleep.toFixed(1))+'</b><span>нойр, дундаж</span></div><div><b class="num"'+(st.screen>SCREEN_MAX?' style="color:var(--bad)"':"")+">"+(st.screen==null?"–":Math.round(st.screen))+'</b><span>дэлгэц, мин</span></div><div><b class="num">'+due+'</b><span>ойрын даалгавар</span></div></div>'+
+  '<div class="ov-rows">'+rows+"</div></div>";
+}
+function vCal(){
+  const t=todayIso();const [y,m]=UI.calMonth.split("-").map(Number);
+  const first=y+"-"+pad(m)+"-01",dim=new Date(y,m,0).getDate(),start=mondayOf(first);
+  const nweeks=Math.ceil((((parse(first).getDay()+6)%7)+dim)/7);
+  const cells=range(start,nweeks*7);
+  const taskBy={};Object.values(S.tasks).forEach(x=>{if(x.due&&!x.done)(taskBy[x.due]=taskBy[x.due]||[]).push(x);});
+  let h='<div class="card"><div class="datebar"><button class="stepper" data-act="mprev" aria-label="Өмнөх сар">‹</button><div class="d">'+MONTHS[m-1]+"<small>"+y+'</small></div><button class="stepper" data-act="mnext" aria-label="Дараагийн сар">›</button></div>';
+  h+='<div class="cal-h">'+DOW_ORDER.map(i=>"<span>"+DOW[i].slice(0,2)+"</span>").join("")+'</div><div class="cal">'+cells.map(ds=>{
+    const inM=ds.slice(0,7)===UI.calMonth,d=S.days[ds],p=ds>t?-1:dayPct(ds),l=p<0?"f":p===0?0:p<.5?1:p<.8?2:3;
+    const ss=d?(d.sessions||[]):[],comp=ss.some(s=>s.type==="comp");
+    const scr=d&&d.srec!==""&&d.srec!=null&&+d.srec>SCREEN_MAX;
+    const marks=(ss.length?'<i class="mk tr'+(comp?" comp":"")+'"></i>':"")+(taskBy[ds]?'<i class="mk tk"></i>':"")+(scr?'<i class="mk sc"></i>':"");
+    return '<button class="cd h'+l+(inM?"":" out")+(ds===t?" now":"")+'" data-act="calday" data-v="'+ds+'" aria-label="'+fmtDate(ds)+'"><b>'+parse(ds).getDate()+'</b><span class="mks">'+marks+"</span></button>";
+  }).join("")+"</div>";
+  h+='<div class="legend"><span><i class="sw h1"></i><i class="sw h2"></i><i class="sw h3"></i> Зуршил</span><span><i class="mk tr"></i> Бэлтгэл</span><span><i class="mk tr comp"></i> Тэмцээн</span><span><i class="mk tk"></i> Даалгавар</span><span><i class="mk sc"></i> Дэлгэц 2ц+</span></div><p class="small muted">Өдөр дээр дарж тухайн өдрөө нээнэ.</p></div>';
+  const md=cells.filter(ds=>ds.slice(0,7)===UI.calMonth);const st=statsFor(md);
+  h+='<div class="card"><h2>Сарын дүн</h2><div class="summary four"><div class="stat"><b>'+Math.round(st.habitPct*100)+'%</b><span>Зуршил</span></div><div class="stat"><b>'+st.n+'</b><span>Бэлтгэл</span></div><div class="stat"><b>'+(st.min/60).toFixed(1)+'</b><span>Цаг</span></div><div class="stat"><b>'+(st.sleep==null?"–":st.sleep.toFixed(1))+'</b><span>Нойр</span></div></div></div>';
+  const ag=[];md.forEach(ds=>{const d=S.days[ds];(d?d.sessions||[]:[]).forEach(s=>ag.push([ds,"tr",(SESS[s.type]||s.type)+" · "+s.min+" мин",s.type==="comp"]));(taskBy[ds]||[]).forEach(x=>ag.push([ds,"tk",x.t,false]));});
+  h+='<div class="card"><h2>Энэ сарын үйл явдал</h2>'+(ag.length?'<div class="list">'+ag.map(a=>'<button class="row agenda" data-act="calday" data-v="'+a[0]+'"><span class="time">'+fmtShort(a[0])+'</span><i class="mk '+a[1]+(a[3]?" comp":"")+'"></i><span class="txt">'+esc(a[2])+"</span></button>").join("")+"</div>":'<p class="muted small">Энэ сард бэлтгэл, хугацаатай даалгавар алга.</p>')+"</div>";
+  return h;
+}
+
+/* ----- TODAY ----- */
+function streak(){let n=0,ds=todayIso();if(dayPct(ds)<0.8)ds=addDays(ds,-1);while(dayPct(ds)>=0.8&&n<999){n++;ds=addDays(ds,-1);}return n;}
+function fold(key,title,meta,body,defOpen){
+  const open=UI.open[key]!=null?UI.open[key]:defOpen;
+  return '<details class="card fold" data-fold="'+key+'"'+(open?" open":"")+'><summary><h2>'+title+'</h2><span class="small muted num">'+meta+'</span><span class="chev" aria-hidden="true"></span></summary><div class="fold-body">'+body+"</div></details>";
+}
+function vToday(){
+  if(UI.view==="cal")return segCtl()+vCal();
+  const ds=UI.date,d=getDay(ds),hs=S.settings.habits,dow=parse(ds).getDay();
+  const done=hs.filter(h=>d.habits[h.id]).length,pct=hs.length?Math.round(done/hs.length*100):0;
+  const tmin=(d.sessions||[]).reduce((a,s)=>a+(+s.min||0),0);
+  const sch=(S.settings.schedule[dow]||[]).slice().sort((a,b)=>(a.t||"99").localeCompare(b.t||"99"));
+  const t=todayIso(),isToday=ds===t,mon=mondayOf(ds);
+  const rec=d.srec===""||d.srec==null?null:+d.srec;
+  let h=segCtl()+(isToday?overview():"")+'<div class="card"><div class="datebar"><button class="stepper" data-act="dprev" aria-label="Өмнөх өдөр">‹</button><div class="d">'+(isToday?"Өнөөдөр":DOW[dow])+"<small>"+fmtDate(ds)+", "+DOW[dow]+'</small></div><button class="stepper" data-act="dnext" aria-label="Дараагийн өдөр">›</button></div>';
+  h+='<div class="week">'+range(mon,7).map(x=>{const p=x>t?-1:dayPct(x);const l=p<0?"f":p===0?0:p<.5?1:p<.8?2:3;return '<button class="wd'+(x===ds?" sel":"")+(x===t?" now":"")+'" data-act="dset" data-v="'+x+'" aria-label="'+fmtDate(x)+'"><span>'+DOW[parse(x).getDay()].slice(0,2)+"</span><b>"+parse(x).getDate()+'</b><i class="lv'+l+'"></i></button>';}).join("")+"</div>";
+  if(!isToday)h+='<button class="btn ghost" data-act="dtoday">Өнөөдөр рүү буцах</button>';
+  h+='<div class="summary four"><div class="stat"><b>'+pct+'%</b><span>Зуршил</span></div><div class="stat"><b>'+(d.sleep||"–")+'</b><span>Нойр, ц</span></div><div class="stat"><b style="'+(rec!=null&&rec>SCREEN_MAX?"color:var(--bad)":"")+'">'+(rec==null?"–":rec)+'</b><span>Дэлгэц, мин</span></div><div class="stat"><b>'+tmin+'</b><span>Бэлтгэл, мин</span></div></div><div class="bar"><i style="width:'+pct+'%"></i></div>';
+  const sk=streak();
+  if(sk>0)h+='<p class="streak"><b class="num">'+sk+" өдөр</b> дараалан зуршлынхаа 80%-ийг биелүүлсэн</p>";
+  h+="</div>";
+
+  const lastRev=S.reviews["w"+addDays(mondayOf(t),-7)];
+  if(isToday&&lastRev&&(lastRev.change||"").trim())h+='<div class="focus"><span class="lbl">Энэ долоо хоногийн гол анхаарал</span><p>'+esc(lastRev.change)+"</p></div>";
+
+  const schDone=sch.filter(s=>d.sched[s.t+"|"+s.x]).length;
+  h+=fold("sched","Хуваарь",schDone+"/"+sch.length,(!sch.length?'<p class="muted small">Энэ өдөр хуваарь алга.</p>':'<div class="list">'+sch.map(s=>{const on=!!d.sched[s.t+"|"+s.x];return '<div class="row'+(on?" done":"")+'"><button class="check'+(on?" on":"")+'" data-act="sched" data-k="'+esc(s.t+"|"+s.x)+'" aria-label="Хийсэн">'+CHECK+'</button><span class="time">'+esc(s.t||"—")+"</span>"+pdot(s.p)+'<span class="txt">'+esc(s.x)+"</span></div>";}).join("")+"</div>")+'<button class="x" style="align-self:flex-start;color:var(--accent)" data-act="tab" data-v="settings">Хуваарь засах</button>',true);
+
+  let hb="";
+  for(const p of Object.keys(PILLARS)){
+    const items=hs.filter(x=>x.p===p);if(!items.length)continue;
+    hb+='<div class="group-label" style="color:'+PILLARS[p].c+'">'+pdot(p)+PILLARS[p].t+'</div><div class="list">'+items.map(x=>{const on=!!d.habits[x.id];return '<div class="row'+(on?" done":"")+'"><button class="check'+(on?" on":"")+'" data-act="habit" data-id="'+esc(x.id)+'" aria-label="Хийсэн">'+CHECK+'</button><span class="txt">'+esc(x.t)+"</span></div>";}).join("")+"</div>";
+  }
+  h+=fold("habits","Өдөр тутмын зуршил",done+"/"+hs.length,hb,true);
+
+  const [a,b]=sleepTarget();
+  const screenBody='<div class="grid2"><div class="field"><label for="f-srec">Зугаа цэнгэл (мин)</label><input id="f-srec" type="number" min="0" step="5" inputmode="numeric" data-path="day:srec" value="'+esc(d.srec)+'"></div><div class="field"><label for="f-sstudy">Хичээл, суралцах (мин)</label><input id="f-sstudy" type="number" min="0" step="5" inputmode="numeric" data-path="day:sstudy" value="'+esc(d.sstudy)+'"></div></div>'+
+    '<div class="chips"><span class="lbl" style="align-self:center">Зугаа цэнгэлд нэмэх:</span>'+[15,30,60].map(n=>'<button class="chip" data-act="addscreen" data-v="'+n+'">+'+n+" мин</button>").join("")+"</div>"+
+    '<div class="meter"><div class="bar"><i style="width:'+Math.min(100,Math.round((rec||0)/SCREEN_MAX*100))+"%;background:"+(rec>SCREEN_MAX?"var(--bad)":"var(--accent)")+'"></i></div><span class="small '+(rec>SCREEN_MAX?"":"muted")+'" style="'+(rec>SCREEN_MAX?"color:var(--bad);font-weight:600":"")+'">'+(rec||0)+" / "+SCREEN_MAX+" мин"+(rec>SCREEN_MAX?", хязгаараас "+(rec-SCREEN_MAX)+" мин илүү":"")+'</span></div><p class="src">5–17 насныханд хичээлээс гадуурх дэлгэц өдөрт 2 цагаас ихгүй (Canadian 24-Hour Guidelines 2016). Утсаа унтлагын өрөөнөөс гадна байлгах нь нойрыг сайжруулна.</p>';
+  h+=fold("screen","Дэлгэцийн цаг",rec==null?"бүртгээгүй":rec+" мин",screenBody,true);
+
+  const bodyBody='<div class="grid2"><div class="field"><label for="f-sleep">Нойр (цаг, зорилт '+a+"–"+b+')</label><input id="f-sleep" type="number" step="0.5" min="0" max="16" inputmode="decimal" data-path="day:sleep" value="'+esc(d.sleep)+'"></div><div class="field"><label for="f-weight">Жин (кг, заавал биш)</label><input id="f-weight" type="number" step="0.1" min="0" inputmode="decimal" data-path="day:weight" value="'+esc(d.weight)+'"></div></div>'+
+  scale("energy",d.energy,"Ядарсан","Эрч хүчтэй","Эрч хүч")+scale("mood",d.mood,"Муу","Маш сайн","Сэтгэл санаа")+scale("soreness",d.soreness,"Бага","Их","Булчин өвдөлт, ядаргаа")+
+  '<div class="field"><label for="f-pain">Өвдөлт, гэмтэл байвал хаана?</label><input id="f-pain" type="text" data-path="day:pain" placeholder="жишээ нь: баруун тохой" value="'+esc(d.pain)+'"></div>'+
+  '<p class="src">Өвдөлт 1 долоо хоногоос удаан үргэлжилбэл эсвэл хөдөлгөөнийг өөрчилбөл ачааллаа бууруулж эмчид үзүүл.</p>';
+  h+=fold("body","Нойр ба бие",d.sleep?d.sleep+" цаг":"бүртгээгүй",bodyBody,true);
+
+  let mb='<div class="tip">Тавагны тэн хагас нь ногоо, жимс; дөрөвний нэг уураг (мах, өндөг, сүү, буурцаг); дөрөвний нэг нь нүүрс ус (будаа, гурил, төмс). Бэлтгэлээс 2–3 цагийн өмнө хооллож, дараа нь 1 цагийн дотор уураг ба нүүрс ус ид. 18 наснаас доош жин хасах дэглэм барихгүй.</div>';
+  let mealsDone=0;
+  for(const [k,label] of MEALS){
+    const ml=d.meals[k]||{};const parts=ml.parts||[];if((ml.x||"").trim()||parts.length)mealsDone++;
+    mb+='<div class="meal"><div class="field"><label for="f-meal-'+k+'">'+label+'</label><input id="f-meal-'+k+'" type="text" data-path="day:meals.'+k+'.x" placeholder="Юу идсэн бэ?" value="'+esc(ml.x||"")+'"></div><div class="chips">'+PARTS.map(p=>'<button class="chip'+(parts.includes(p[0])?" on":"")+'" data-act="mealpart" data-m="'+k+'" data-p="'+p[0]+'" aria-pressed="'+parts.includes(p[0])+'">'+p[1]+"</button>").join("")+"</div></div>";
+  }
+  mb+='<p class="src">IOC REDs зөвлөмж 2023: өсөлт ба бэлтгэлд хангалттай энерги авах нь гэмтлээс хамгаална.</p>';
+  h+=fold("meals","Хооллолт",mealsDone+"/4",mb,false);
+
+  const j=d.journal;const jf=[["win","Өнөөдрийн ялалт","Юу сайн болсон бэ?"],["learned","Сурсан зүйл","Шинэ техник, санаа, алдаанаас сурсан зүйл"],["focus","Маргаашийн нэг зорилго","Нэг л зүйл"],["thanks","Талархал","Хэнд, юунд талархаж байна вэ?"]];
+  h+=fold("journal","Өдрийн тэмдэглэл",jf.filter(x=>(j[x[0]]||"").trim()).length+"/4",jf.map(x=>'<div class="field"><label for="f-j-'+x[0]+'">'+x[1]+'</label><textarea id="f-j-'+x[0]+'" data-path="day:journal.'+x[0]+'" placeholder="'+x[2]+'">'+esc(j[x[0]]||"")+"</textarea></div>").join(""),false);
+  h+='<button class="btn" data-act="tab" data-v="train">+ Бэлтгэл бүртгэх</button>';
+  return h;
+}
+
+/* ----- TRAINING ----- */
+function vTrain(){
+  const t=todayIso(),last7=range(addDays(t,-6),7);
+  const prev=[1,2,3].map(k=>statsFor(range(addDays(t,-6-7*k),7)).load);
+  let h='<div class="card"><div class="card-head"><h2>Сүүлийн 7 хоног</h2><span class="small muted">Судалгааны хязгаарууд</span></div>'+guardCards(last7,prev)+"</div>";
+
+  const sf=UI.sfType;
+  h+='<div class="card"><h2>Бэлтгэл нэмэх</h2><div class="field"><span class="lbl">Төрөл</span><div class="chips">'+Object.keys(SESS).map(k=>'<button class="chip'+(sf===k?" on":"")+'" data-act="sftype" data-v="'+k+'" aria-pressed="'+(sf===k)+'">'+SESS[k]+"</button>").join("")+'</div></div>'+
+  '<div class="grid3"><div class="field"><label for="sf-date">Огноо</label><input id="sf-date" type="date" value="'+UI.date+'" max="'+t+'"></div><div class="field"><label for="sf-min">Хугацаа (мин)</label><input id="sf-min" type="number" min="0" inputmode="numeric" value="60"></div><div class="field"><label for="sf-rpe">Хүндрэл (RPE 1–10)</label><select id="sf-rpe">'+[1,2,3,4,5,6,7,8,9,10].map(n=>"<option"+(n===6?" selected":"")+">"+n+"</option>").join("")+'</select></div></div>'+
+  '<div class="field"><label for="sf-enj">Хэр таалагдсан бэ? (1–5)</label><select id="sf-enj"><option value="5">5 · Маш их</option><option value="4" selected>4 · Сайн</option><option value="3">3 · Дунд</option><option value="2">2 · Бага</option><option value="1">1 · Огт үгүй</option></select></div>'+
+  '<div class="field"><label for="sf-tech">Сурсан техник (мөр бүрт нэг)</label><textarea id="sf-tech" placeholder="жишээ нь: Scissor sweep&#10;Armbar from guard"></textarea></div>'+
+  '<div class="grid2"><div class="field"><label for="sf-work">Юу сайн болсон бэ?</label><textarea id="sf-work"></textarea></div><div class="field"><label for="sf-q">Дасгалжуулагчаас асуух асуулт</label><textarea id="sf-q"></textarea></div></div>'+
+  (sf==="comp"?'<div class="field"><label for="sf-res">Тэмцээний үр дүн ба процессын зорилго</label><textarea id="sf-res" placeholder="Зорилго: гардаа оруулах. Үр дүн: 2 ялалт, 1 ялагдал"></textarea></div>':"")+
+  '<button class="btn" data-act="addsess">Хадгалах</button><p class="src">RPE: 1 маш хөнгөн, 10 хамгийн хүнд. Ачаалал = минут × RPE (Foster 2001).</p></div>';
+
+  const mon=mondayOf(t);const wks=[7,6,5,4,3,2,1,0].map(k=>addDays(mon,-7*k));
+  const mins=wks.map(w=>statsFor(range(w,7)).min);const mx=Math.max(60,...mins);
+  h+='<div class="card"><div class="card-head"><h2>8 долоо хоногийн бэлтгэл</h2><span class="small muted">цагаар</span></div><div class="bars">'+mins.map((m,i)=>'<div class="b'+(i===7?" cur":"")+'"><span>'+(m/60).toFixed(1)+'</span><i style="height:'+Math.round(m/mx*100)+'%"></i></div>').join("")+'</div><div class="bars-x">'+wks.map(w=>"<span>"+fmtShort(w)+"</span>").join("")+"</div></div>";
+
+  const recent=Object.values(S.days).filter(d=>(d.sessions||[]).length).sort((a,b)=>b.date.localeCompare(a.date));
+  h+='<div class="card"><h2>Сүүлийн бэлтгэлүүд</h2>';
+  const rs=[];recent.forEach(d=>d.sessions.forEach((s,i)=>rs.push([d.date,i,s])));
+  if(!rs.length)h+='<p class="muted small">Одоогоор бүртгэл алга. Дээрх маягтаар эхний бэлтгэлээ нэмээрэй.</p>';
+  else h+='<div class="list">'+rs.slice(0,20).map(([ds,i,s])=>{const key="s"+ds+"_"+i;return '<div class="sess"><div class="sh"><span><span class="tag">'+esc(SESS[s.type]||s.type)+'</span> <span class="small muted">'+fmtDate(ds)+", "+DOW[parse(ds).getDay()]+'</span></span><span class="small num">'+esc(s.min)+" мин · RPE "+esc(s.rpe)+" · таалагдсан "+esc(s.enj||"–")+"/5"+"</span></div>"+(s.tech?'<p class="small"><b>Техник:</b> '+esc(s.tech).replace(/\n/g,", ")+"</p>":"")+(s.work?'<p class="small"><b>Сайн:</b> '+esc(s.work)+"</p>":"")+(s.q?'<p class="small"><b>Асуулт:</b> '+esc(s.q)+"</p>":"")+(s.res?'<p class="small"><b>Тэмцээн:</b> '+esc(s.res)+"</p>":"")+'<div>'+delBtn(key,"delsess",'data-d="'+ds+'" data-i="'+i+'"')+"</div></div>";}).join("")+"</div>";
+  h+="</div>";
+
+  const tech=[];rs.forEach(([ds,,s])=>(s.tech||"").split("\n").map(x=>x.trim()).filter(Boolean).forEach(x=>tech.push([x,ds,s.type])));
+  h+='<div class="card"><div class="card-head"><h2>Техникийн сан</h2><span class="small muted num">'+tech.length+'</span></div>'+(tech.length?'<input id="tech-q" type="text" placeholder="Хайх…" aria-label="Техник хайх"><div class="list" id="tech-list">'+tech.map(x=>'<div class="row" data-q="'+esc(x[0].toLowerCase())+'"><span class="txt">'+esc(x[0])+'</span><span class="small muted">'+fmtShort(x[1])+"</span></div>").join("")+"</div>":'<p class="muted small">Бэлтгэл бүртгэхдээ техникээ бичвэл энд цуглана.</p>')+"</div>";
+  return h;
+}
+
+/* ----- GOALS ----- */
+function vGoals(){
+  const all=Object.values(S.tasks);const f=UI.filter;const t=todayIso();
+  const vis=all.filter(x=>f==="all"||x.p===f);
+  const act=vis.filter(x=>!x.done).sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999"));
+  const dn=vis.filter(x=>x.done).sort((a,b)=>(b.doneAt||"").localeCompare(a.doneAt||""));
+  let h='<div class="card"><h2>Шинэ зорилго, даалгавар</h2><div class="field"><label for="g-t">Юу хийх вэ?</label><input id="g-t" type="text" placeholder="жишээ нь: 11-р сарын тэмцээнд оролцох"></div><div class="grid3"><div class="field"><label for="g-p">Салбар</label><select id="g-p">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'"'+(k===(f==="all"?"bjj":f)?" selected":"")+">"+PILLARS[k].t+'</option>').join("")+'</select></div><div class="field"><label for="g-k">Төрөл</label><select id="g-k"><option value="task">Даалгавар</option><option value="goal">Урт хугацааны зорилго</option></select></div><div class="field"><label for="g-due">Хугацаа</label><input id="g-due" type="date"></div></div><button class="btn" data-act="addtask">Нэмэх</button></div>';
+  h+='<div class="chips"><button class="chip'+(f==="all"?" on":"")+'" data-act="filter" data-v="all">Бүгд</button>'+Object.keys(PILLARS).map(k=>'<button class="chip'+(f===k?" on":"")+'" data-act="filter" data-v="'+k+'">'+PILLARS[k].t+"</button>").join("")+"</div>";
+  const item=x=>{const over=!x.done&&x.due&&x.due<t;return '<div class="row'+(x.done?" done":"")+'"><button class="check'+(x.done?" on":"")+'" data-act="toggletask" data-id="'+esc(x.id)+'" aria-label="Дууссан">'+CHECK+"</button>"+pdot(x.p)+'<span class="txt">'+esc(x.t)+(x.kind==="goal"?' <span class="tag">Зорилго</span>':"")+(x.due?'<br><span class="small '+(over?"":"muted")+'" style="'+(over?"color:var(--bad);font-weight:600":"")+'">'+(over?"Хугацаа хэтэрсэн: ":"Хугацаа: ")+fmtDate(x.due)+"</span>":"")+"</span>"+delBtn("t"+x.id,"deltask",'data-id="'+esc(x.id)+'"')+"</div>";};
+  h+='<div class="card"><div class="card-head"><h2>Хийх зүйлс</h2><span class="small muted num">'+act.length+"</span></div>"+(act.length?'<div class="list">'+act.map(item).join("")+"</div>":'<p class="muted small">Идэвхтэй зорилго алга. Доорх жишээнээс сонгож эхэлж болно.</p>')+"</div>";
+  if(dn.length)h+='<div class="card"><details><summary>Дууссан ('+dn.length+')</summary><div class="list" style="margin-top:8px">'+dn.map(item).join("")+"</div></details></div>";
+  const have=new Set(all.map(x=>x.t));
+  const sug=SUGGEST.filter(s=>(f==="all"||s[0]===f)&&!have.has(s[1]));
+  if(sug.length)h+='<div class="card"><details'+(all.length?"":" open")+'><summary>Судалгаанд суурилсан жишээ зорилгууд</summary><div class="list" style="margin-top:8px">'+sug.map(s=>'<div class="row">'+pdot(s[0])+'<span class="txt small">'+esc(s[1])+'</span><button class="x" data-act="addsug" data-p="'+s[0]+'" data-t="'+esc(s[1])+'">+ Нэмэх</button></div>').join("")+'</div><p class="src" style="margin-top:8px">Процессын зорилго ба 5C: Harwood 2008. Бизнесийг бодитоор туршиж сурах: Huber 2014.</p></details></div>';
+  return h;
+}
+
+/* ----- BUSINESS ----- */
+function vBiz(){
+  const B=S.biz,J=S.settings.jars,e=B.entries;
+  const inc=e.filter(x=>x.type==="in").reduce((a,x)=>a+(+x.amt||0),0);
+  const jb=k=>inc*(+J[k]||0)/100-e.filter(x=>x.type==="out"&&x.jar===k).reduce((a,x)=>a+(+x.amt||0),0);
+  const mon=todayIso().slice(0,7);const me=e.filter(x=>(x.date||"").slice(0,7)===mon);
+  const mi=me.filter(x=>x.type==="in").reduce((a,x)=>a+(+x.amt||0),0),mo=me.filter(x=>x.type==="out").reduce((a,x)=>a+(+x.amt||0),0);
+  let h='<div class="card"><div class="card-head"><h2>Гурван сав</h2><button class="x" data-act="tab" data-v="settings">Хувь өөрчлөх</button></div><div class="jars">'+[["save","Хадгалах"],["spend","Зарцуулах"],["give","Хандивлах"]].map(([k,l])=>'<div class="jar"><span>'+l+" · "+(+J[k]||0)+'%</span><b>'+money(jb(k))+"</b></div>").join("")+'</div><p class="small muted">Орлого бүр хувиараа саванд хуваагдана. Зарлагыг аль савнаас гаргаснаа сонгоно.</p></div>';
+  h+='<div class="card"><h2>Энэ сар</h2><div class="summary"><div class="stat"><b class="num" style="font-size:1.2rem">'+money(mi)+'</b><span>Орлого</span></div><div class="stat"><b class="num" style="font-size:1.2rem">'+money(mo)+'</b><span>Зарлага</span></div><div class="stat"><b class="num" style="font-size:1.2rem;color:'+(mi-mo>=0?"var(--ok)":"var(--bad)")+'">'+money(mi-mo)+'</b><span>Ашиг</span></div></div></div>';
+  const et=UI.etype;
+  h+='<div class="card"><h2>Гүйлгээ нэмэх</h2><div class="chips"><button class="chip'+(et==="in"?" on":"")+'" data-act="etype" data-v="in">Орлого</button><button class="chip'+(et==="out"?" on":"")+'" data-act="etype" data-v="out">Зарлага</button></div><div class="grid3"><div class="field"><label for="e-amt">Дүн ('+esc(S.settings.currency)+')</label><input id="e-amt" type="number" min="0" inputmode="numeric"></div><div class="field"><label for="e-date">Огноо</label><input id="e-date" type="date" value="'+todayIso()+'"></div>'+(et==="out"?'<div class="field"><label for="e-jar">Аль савнаас</label><select id="e-jar"><option value="spend">Зарцуулах</option><option value="save">Хадгалах</option><option value="give">Хандивлах</option></select></div>':'<div class="field"><label for="e-src">Эх үүсвэр</label><select id="e-src"><option>Бизнес</option><option>Хөлс, ажил</option><option>Бэлэг</option><option>Шагнал</option><option>Бусад</option></select></div>')+'</div><div class="field"><label for="e-note">Тайлбар</label><input id="e-note" type="text" placeholder="'+(et==="in"?"жишээ нь: 5 ширхэг бугуйвч зарсан":"жишээ нь: материал худалдаж авсан")+'"></div><button class="btn" data-act="addentry">Нэмэх</button></div>';
+  const list=e.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  h+='<div class="card"><h2>Гүйлгээнүүд</h2>'+(list.length?'<div class="list">'+list.slice(0,40).map(x=>'<div class="row"><span class="txt"><span class="'+(x.type==="in"?"amt-in":"amt-out")+' num">'+(x.type==="in"?"+":"−")+money(x.amt)+'</span><br><span class="small muted">'+fmtDate(x.date)+(x.src?" · "+esc(x.src):"")+(x.note?" · "+esc(x.note):"")+"</span></span>"+delBtn("e"+x.id,"delentry",'data-id="'+esc(x.id)+'"')+"</div>").join("")+"</div>":'<p class="muted small">Одоогоор гүйлгээ алга.</p>')+"</div>";
+  const v=B.venture;const vf=(k,l,ph,ta)=>'<div class="field"><label for="v-'+k+'">'+l+"</label>"+(ta?'<textarea id="v-'+k+'" data-path="biz:venture.'+k+'" placeholder="'+ph+'">'+esc(v[k])+"</textarea>":'<input id="v-'+k+'" type="text" data-path="biz:venture.'+k+'" placeholder="'+ph+'" value="'+esc(v[k])+'">')+"</div>";
+  h+='<div class="card"><h2>Миний бизнес</h2><p class="small muted">Жилд нэг жижиг бодит бизнес туршиж, дараа нь дүгнэлт хийх нь лекцээс илүү үр дүнтэй (Huber 2014).</p>'+vf("name","Нэр","жишээ нь: BJJ бугуйвч")+vf("what","Юу зарах вэ?","Бүтээгдэхүүн эсвэл үйлчилгээ")+vf("who","Хэнд?","Хэн худалдаж авах вэ?")+'<div class="grid2">'+vf("price","Үнэ","")+vf("cost","Өртөг","")+"</div>"+vf("next","Дараагийн алхам","Энэ долоо хоногт хийх нэг зүйл")+'<h3 style="margin-top:6px">Дүгнэлт</h3>'+vf("sold","Юу зарагдсан бэ?","",1)+vf("notsold","Юу зарагдаагүй вэ?","",1)+vf("change","Дараа нь юуг өөрчлөх вэ?","",1)+"</div>";
+  return h;
+}
+
+/* ----- LIBRARY ----- */
+function hostOf(u){try{return new URL(u).hostname.replace(/^www\./,"");}catch(e){return "";}}
+function safeUrl(u){u=(u||"").trim();if(!u)return "";if(!/^https?:\/\//i.test(u))u="https://"+u;try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x.href:"";}catch(e){return "";}}
+function fmtSize(n){return n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";}
+function vLib(){
+  const all=Object.values(S.library).sort((a,b)=>(b.fav?1:0)-(a.fav?1:0)||(b.created||"").localeCompare(a.created||""));
+  const f=UI.libFilter;
+  const vis=all.filter(x=>f==="all"||(f==="fav"?x.fav:f==="todo"?!x.done:x.p===f));
+  let h='<div class="card"><h2>Материал нэмэх</h2><div class="field"><label for="l-url">Холбоос (YouTube, нийтлэл, Instagram…)</label><input id="l-url" type="url" inputmode="url" placeholder="https://"></div><div class="field"><label for="l-t">Гарчиг</label><input id="l-t" type="text" placeholder="жишээ нь: Guard retention дасгалууд"></div><div class="grid2"><div class="field"><label for="l-p">Салбар</label><select id="l-p">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'">'+PILLARS[k].t+"</option>").join("")+'</select></div><div class="field"><label for="l-k">Төрөл</label><select id="l-k">'+Object.keys(LIBKIND).map(k=>'<option value="'+k+'">'+LIBKIND[k]+"</option>").join("")+'</select></div></div><div class="field"><label for="l-n">Тэмдэглэл</label><input id="l-n" type="text" placeholder="Яагаад хэрэгтэй вэ? Хэзээ үзэх вэ?"></div>'+
+  (assetsApi?'<div class="field"><label for="l-file">Файл хавсаргах (PDF, зураг, видео, 20 MB хүртэл)</label><input id="l-file" type="file" accept="image/*,video/*,application/pdf,.txt,.md,.csv"></div>':"")+
+  '<button class="btn" data-act="addlib">Хадгалах</button></div>';
+  h+='<div class="chips"><button class="chip'+(f==="all"?" on":"")+'" data-act="libfilter" data-v="all">Бүгд '+all.length+'</button><button class="chip'+(f==="fav"?" on":"")+'" data-act="libfilter" data-v="fav">★ Дуртай</button><button class="chip'+(f==="todo"?" on":"")+'" data-act="libfilter" data-v="todo">Үзээгүй</button>'+Object.keys(PILLARS).map(k=>'<button class="chip'+(f===k?" on":"")+'" data-act="libfilter" data-v="'+k+'">'+PILLARS[k].t+"</button>").join("")+"</div>";
+  h+='<div class="card">'+(all.length>4?'<input id="lib-q" type="text" placeholder="Хайх…" aria-label="Материал хайх">':"");
+  if(!vis.length)h+='<p class="muted small">'+(all.length?"Энэ шүүлтүүрт материал алга.":"Хэрэгтэй бичлэг, нийтлэл, файлаа энд хадгалаарай. Доорх жишээнээс эхэлж болно.")+"</p>";
+  else h+='<div class="list" id="lib-list">'+vis.map(x=>{
+    const u=safeUrl(x.url);const host=hostOf(u);
+    const title=u?'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(x.t||host)+"</a>":esc(x.t);
+    const file=x.file?'<a class="filelink" href="'+esc(fileHref(x.file.id))+'" target="_blank" rel="noopener">'+(/^image\//.test(x.file.type||"")?'<img src="'+esc(fileHref(x.file.id))+'" alt="">':"")+'<span>'+esc(x.file.name||"Файл")+" · "+fmtSize(x.file.size||0)+"</span></a>":"";
+    return '<div class="lib'+(x.done?" seen":"")+'" data-q="'+esc(((x.t||"")+" "+(x.note||"")+" "+host).toLowerCase())+'"><div class="lib-h">'+pdot(x.p)+'<div class="lib-t">'+title+'<span class="small muted">'+LIBKIND[x.kind||"other"]+(host?" · "+esc(host):"")+" · "+fmtShort(x.created||todayIso())+"</span></div>"+'<button class="star'+(x.fav?" on":"")+'" data-act="libfav" data-id="'+esc(x.id)+'" aria-label="Дуртай" aria-pressed="'+!!x.fav+'">★</button></div>'+(x.note?'<p class="small">'+esc(x.note)+"</p>":"")+file+'<div class="lib-a"><button class="chip'+(x.done?" on":"")+'" data-act="libdone" data-id="'+esc(x.id)+'">'+(x.done?"✓ Үзсэн":"Үзсэн гэж тэмдэглэх")+"</button>"+delBtn("l"+x.id,"dellib",'data-id="'+esc(x.id)+'"')+"</div></div>";
+  }).join("")+"</div>";
+  h+="</div>";
+  const have=new Set(all.map(x=>x.url));
+  const sug=LIB_SUGGEST.filter(x=>!have.has(x.url));
+  if(sug.length)h+='<div class="card"><details'+(all.length?"":" open")+'><summary>Санал болгох материал</summary><div class="list" style="margin-top:8px">'+sug.map((x,i)=>'<div class="row">'+pdot(x.p)+'<span class="txt small">'+esc(x.t)+'</span><button class="x" data-act="addlibsug" data-i="'+LIB_SUGGEST.indexOf(x)+'">+ Нэмэх</button></div>').join("")+"</div></details></div>";
+  return h;
+}
+
+/* ----- REVIEW ----- */
+function vReview(){
+  const mon=weekStart(),dates=range(mon,7),st=statsFor(dates);
+  const prev=[1,2,3].map(k=>weekLoad(addDays(mon,-7*k)));
+  const rid="w"+mon;const r=S.reviews[rid]||{};
+  let h='<div class="card"><div class="datebar"><button class="stepper" data-act="wprev" aria-label="Өмнөх долоо хоног">‹</button><div class="d">'+(UI.wk===0?"Энэ долоо хоног":UI.wk===-1?"Өнгөрсөн долоо хоног":"Долоо хоног")+"<small>"+fmtDate(mon)+" – "+fmtDate(addDays(mon,6))+'</small></div><button class="stepper" data-act="wnext" aria-label="Дараагийн долоо хоног"'+(UI.wk>=0?" disabled":"")+">›</button></div>";
+  h+='<div class="summary"><div class="stat"><b>'+Math.round(st.habitPct*100)+'%</b><span>Зуршил</span></div><div class="stat"><b>'+st.n+'</b><span>Бэлтгэл</span></div><div class="stat"><b>'+(st.enjoy==null?"–":st.enjoy.toFixed(1))+'</b><span>Таалагдсан, /5</span></div></div><div class="summary"><div class="stat"><b>'+(st.mood==null?"–":st.mood.toFixed(1))+'</b><span>Сэтгэл санаа, /5</span></div><div class="stat"><b>'+(st.energy==null?"–":st.energy.toFixed(1))+'</b><span>Эрч хүч, /5</span></div><div class="stat"><b>'+(st.sleep==null?"–":st.sleep.toFixed(1))+'</b><span>Нойр, цаг</span></div></div><div class="summary"><div class="stat"><b>'+(st.screen==null?"–":Math.round(st.screen))+'</b><span>Дэлгэц, мин/өдөр</span></div><div class="stat"><b>'+(st.min/60).toFixed(1)+'</b><span>Бэлтгэл, цаг</span></div><div class="stat"><b>'+st.rest+'</b><span>Амралтын өдөр</span></div></div></div>';
+  h+='<div class="card"><h2>Хязгаарууд</h2>'+guardCards(dates,prev)+"</div>";
+  const flags=[];
+  if(st.enjoy!=null&&st.n>=2&&st.enjoy<=2.5)flags.push("Бэлтгэл бага таалагдаж байна. Шалтгааныг нь хамт ярилц, ачааллаа бууруулж хөгжилтэй болго.");
+  if(st.soreHigh>=3)flags.push("3+ өдөр хүчтэй өвдөлт, ядаргаатай байсан. Ачааллаа бууруул.");
+  if(st.pain>=5)flags.push("Өвдөлт бараг өдөр бүр бичигдсэн. Спортын эмчид үзүүл.");
+  if(st.screen!=null&&st.screen>180)flags.push("Зугаа цэнгэлийн дэлгэц өдөрт дунджаар "+Math.round(st.screen)+" мин. Унтахын өмнөх дэлгэцийг эхэлж хасаарай.");
+  if(st.mood!=null&&st.mood<=2.5)flags.push("Сэтгэл санаа доогуур байна. Сургууль, нойр, найзуудын талаар ярилц.");
+  const ws=statsFor(range(addDays(mon,-21),28)).weights;
+  if(ws.length>=2){const f=ws[0][1],l=ws[ws.length-1][1];if(l<f*0.98)flags.push("Жин 4 долоо хоногт "+(f-l).toFixed(1)+" кг буурсан. Өсч байгаа хүүхдэд энэ дохио. Хоол, энергийн хэрэгцээг шалга.");}
+  h+='<div class="card"><h2>Анхааруулах дохио</h2>'+(flags.length?'<div class="flags"><b>'+flags.length+' зүйл анхаарах</b><ul>'+flags.map(f=>"<li>"+f+"</li>").join("")+"</ul></div>":'<div class="allgood">Энэ долоо хоногт анхааруулах дохио илрээгүй.</div>')+'<p class="src">Хэт ачаалал ба уйтгарлын эрт шинж тэмдгүүд: AAP 2016, Brenner. Хүүхдүүд хөгжилтэй байх, сайн дасгалжуулагчийг хожлоос дээгүүр тавьдаг: Visek 2015.</p></div>';
+
+  const t=todayIso();const start=addDays(mondayOf(t),-21);const cells=range(start,28);
+  h+='<div class="card"><div class="card-head"><h2>4 долоо хоногийн зуршил</h2><span class="small muted">Өдөр бүрийн гүйцэтгэл</span></div><div class="heat-h">'+DOW_ORDER.map(i=>"<span>"+DOW[i].slice(0,2)+"</span>").join("")+'</div><div class="heat">'+cells.map(ds=>{if(ds>t)return '<div class="c future"></div>';const p=dayPct(ds);const l=p===0?0:p<.25?1:p<.5?2:p<.8?3:4;return '<div class="c l'+l+'" title="'+fmtDate(ds)+": "+Math.round(p*100)+'%">'+parse(ds).getDate()+"</div>";}).join("")+"</div></div>";
+
+  const rf=(k,l,ph)=>'<div class="field"><label for="r-'+k+'">'+l+'</label><textarea id="r-'+k+'" data-path="rev:'+k+'" placeholder="'+ph+'">'+esc(r[k]||"")+"</textarea></div>";
+  h+='<div class="card"><h2>Долоо хоногийн яриа</h2><p class="small muted">Хамтдаа 10 минут. Эхлээд “Хөгжилтэй байсан уу? Юу сурсан бэ?” гэж асуу, үр дүнг дараа нь.</p>'+rf("good","Юу сайн болсон бэ?","")+rf("hard","Юу хэцүү байсан бэ?","")+rf("change","Дараа долоо хоногт нэг өөрчлөлт","")+rf("parent","Эцэг эхийн тэмдэглэл","")+"</div>";
+
+  const p=S.settings.profile;
+  if(p.beltSince){const ms=(parse(t)-parse(p.beltSince))/(1000*60*60*24*30.44);const b=BELTS.find(x=>x[0]===p.belt)||BELTS[0];h+='<div class="card"><h2>Бүсний зам</h2><p>'+b[1]+" бүстэй болоод <b class=\"num\">"+Math.floor(ms)+" сар</b>, "+(+p.stripes||0)+' судалтай.</p><p class="src">IBJJF: хүүхдийн бүс 15 нас хүртэл, цэнхэр бүс 16 наснаас, хар бүс 19 наснаас.</p></div>';}
+  return h;
+}
+
+/* ----- SETTINGS ----- */
+function vSettings(){
+  const s=S.settings,p=s.profile;
+  let h='<div class="card"><div class="card-head"><h2>Тохиргоо</h2><button class="x" data-act="tab" data-v="today">Хаах</button></div>';
+  h+='<div class="grid2"><div class="field"><label for="p-name">Нэр</label><input id="p-name" type="text" data-path="set:profile.name" value="'+esc(p.name)+'"></div><div class="field"><label for="p-age">Нас</label><input id="p-age" type="number" min="3" max="40" inputmode="numeric" data-path="set:profile.age" value="'+esc(p.age)+'"></div>'+
+  '<div class="field"><label for="p-belt">Бүс</label><select id="p-belt" data-path="set:profile.belt">'+BELTS.map(b=>'<option value="'+b[0]+'"'+(b[0]===p.belt?" selected":"")+">"+b[1]+"</option>").join("")+'</select></div><div class="field"><label for="p-str">Судал</label><select id="p-str" data-path="set:profile.stripes">'+[0,1,2,3,4].map(n=>"<option"+(+p.stripes===n?" selected":"")+">"+n+"</option>").join("")+'</select></div>'+
+  '<div class="field"><label for="p-since">Энэ бүсийг авсан огноо</label><input id="p-since" type="date" data-path="set:profile.beltSince" value="'+esc(p.beltSince)+'"></div><div class="field"><label for="p-cur">Мөнгөн тэмдэгт</label><input id="p-cur" type="text" data-path="set:currency" value="'+esc(s.currency)+'"></div>'+
+  '<div class="field"><label for="p-gym">Клуб</label><input id="p-gym" type="text" data-path="set:profile.gym" value="'+esc(p.gym)+'"></div><div class="field"><label for="p-coach">Дасгалжуулагч</label><input id="p-coach" type="text" data-path="set:profile.coach" value="'+esc(p.coach)+'"></div></div>';
+  h+='<p class="small muted">Нас оруулснаар нойрны зорилт болон долоо хоногийн бэлтгэлийн дээд хязгаар автоматаар тохирно.</p></div>';
+
+  h+='<div class="card"><h2>Зуршлууд</h2><div class="list">'+s.habits.map((x,i)=>'<div class="row"><div class="hab-item" style="flex:1"><input type="text" id="hb-'+esc(x.id)+'" aria-label="Зуршил" data-path="set:habits.'+i+'.t" value="'+esc(x.t)+'">'+pillarSelect("set:habits."+i+".p",x.p)+delBtn("h"+x.id,"delhabit",'data-i="'+i+'"')+"</div></div>").join("")+'</div><div class="hab-item"><input id="nh-t" type="text" placeholder="Шинэ зуршил" aria-label="Шинэ зуршил"><select id="nh-p" aria-label="Салбар">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'">'+PILLARS[k].t+"</option>").join("")+'</select><button class="btn" data-act="addhabit">Нэмэх</button></div></div>';
+
+  h+='<div class="card"><h2>Долоо хоногийн хуваарь</h2><p class="small muted">Эхний хувилбар нь жишээ. Бодит хуваариараа солиорой.</p>';
+  for(const dw of DOW_ORDER){
+    const items=s.schedule[dw]||[];
+    h+='<div class="sched-day"><h3>'+DOW[dw]+"</h3>"+items.map((it,i)=>'<div class="sched-item"><input type="text" aria-label="Цаг" placeholder="17:00" data-path="set:schedule.'+dw+"."+i+'.t" value="'+esc(it.t)+'"><input type="text" aria-label="Үйл ажиллагаа" data-path="set:schedule.'+dw+"."+i+'.x" value="'+esc(it.x)+'"><span class="pp">'+pillarSelect("set:schedule."+dw+"."+i+".p",it.p)+"</span>"+delBtn("sc"+dw+"_"+i,"delsched",'data-dw="'+dw+'" data-i="'+i+'"')+"</div>").join("")+'<button class="x" style="align-self:flex-start;color:var(--accent)" data-act="addsched" data-dw="'+dw+'">+ Нэмэх</button></div>';
+  }
+  h+="</div>";
+
+  const J=s.jars;
+  h+='<div class="card"><h2>Мөнгөний сав</h2><div class="grid3">'+[["save","Хадгалах"],["spend","Зарцуулах"],["give","Хандивлах"]].map(([k,l])=>'<div class="field"><label for="j-'+k+'">'+l+' %</label><input id="j-'+k+'" type="number" min="0" max="100" data-path="set:jars.'+k+'" value="'+esc(J[k])+'"></div>').join("")+'</div><p class="small '+((+J.save+ +J.spend+ +J.give)===100?"muted":"")+'" style="'+((+J.save+ +J.spend+ +J.give)===100?"":"color:var(--bad)")+'">Нийлбэр: '+(+J.save+ +J.spend+ +J.give)+'% (100% байх ёстой)</p></div>';
+
+  h+='<div class="card"><h2>Хадгалалт</h2><p class="small">'+(mode==="cloud"?"Өгөгдөл онлайн хадгалагдаж, энэ хуудсыг нээсэн бүх төхөөрөмжид ижил харагдана.":"Энэ төхөөрөмжийн хөтөч дээр л хадгалагдаж байна. claude.ai дотор нээвэл онлайн хадгалагдана.")+"</p>"+(downloadsApi?'<button class="btn ghost" data-act="backup">Нөөц хуулбар татах (JSON)</button>':"")+(mode==="cloud"?'<div class="field"><label for="imp-file">Нөөц хуулбараас сэргээх (JSON)</label><input id="imp-file" type="file" accept="application/json,.json"></div><p class="small muted">Нэвтэрсэн: '+esc((SB.session&&SB.session.email)||"")+'</p><button class="btn ghost" data-act="logout">Гарах</button>':"")+"</div>";
+  return h;
+}
+
+/* ---------- events ---------- */
+function targetOf(kind){
+  if(kind==="day")return[ensureDay(UI.date),"days/"+UI.date];
+  if(kind==="biz")return[S.biz,"app/business"];
+  if(kind==="set")return[S.settings,"app/settings"];
+  if(kind==="rev"){const id="w"+weekStart();return[ensureReview(id),"reviews/"+id];}
+}
+function onInput(e){
+  const el=e.target;
+  if(el.id==="lib-q"){const q=el.value.toLowerCase().trim();document.querySelectorAll("#lib-list .lib").forEach(r=>{r.hidden=!!q&&!r.dataset.q.includes(q);});return;}
+  if(el.id==="tech-q"){const q=el.value.toLowerCase().trim();document.querySelectorAll("#tech-list .row").forEach(r=>{r.hidden=!!q&&!r.dataset.q.includes(q);});return;}
+  const p=el.dataset&&el.dataset.path;if(!p)return;
+  const i=p.indexOf(":");const [obj,path]=targetOf(p.slice(0,i));
+  let v=el.value;if(el.type==="number")v=v===""?"":Number(v);
+  if(p==="set:profile.stripes")v=Number(v);
+  setPath(obj,p.slice(i+1),v);save(path);
+  if(p.startsWith("set:profile.")||p==="set:currency")renderHeader();
+}
+document.addEventListener("input",onInput);
+document.addEventListener("change",async e=>{if(e.target.id!=="imp-file"||!e.target.files[0])return;toast("Сэргээж байна…");try{const n=await importBackup(e.target.files[0]);toast(n+" бичлэг сэргээгдлээ");}catch(err){toast("Файлыг уншиж чадсангүй");}});
+document.addEventListener("change",e=>{const p=e.target.dataset&&e.target.dataset.path;if(p&&e.target.tagName==="SELECT")onInput(e);});
+
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const a=b.dataset.act,ds=b.dataset;
+  const needsConfirm=a.startsWith("del");
+  if(needsConfirm&&UI.confirm!==ds.key){UI.confirm=ds.key;render();return;}
+  UI.confirm=null;
+  const val=id=>{const el=document.getElementById(id);return el?el.value:"";};
+  switch(a){
+    case "tab":UI.tab=ds.v;try{localStorage.setItem("cb-tab",ds.v);}catch(err){}render();window.scrollTo(0,0);return;
+    case "dprev":UI.date=addDays(UI.date,-1);break;
+    case "dnext":UI.date=addDays(UI.date,1);break;
+    case "dtoday":UI.date=todayIso();break;
+    case "dset":UI.date=ds.v;break;
+    case "view":UI.view=ds.v;if(ds.v==="cal")UI.calMonth=UI.date.slice(0,7);try{localStorage.setItem("cb-view",ds.v);}catch(err){}break;
+    case "calday":UI.date=ds.v;UI.view="day";try{localStorage.setItem("cb-view","day");}catch(err){}render();window.scrollTo(0,0);return;
+    case "mprev":case "mnext":{const [yy,mm]=UI.calMonth.split("-").map(Number);const dd=new Date(yy,mm-1+(a==="mnext"?1:-1),1);UI.calMonth=dd.getFullYear()+"-"+pad(dd.getMonth()+1);break;}
+    case "addscreen":{const d=ensureDay(UI.date);d.srec=(+d.srec||0)+(+ds.v);save("days/"+UI.date);toast("+"+ds.v+" мин нэмэгдлээ");break;}
+    case "libfilter":UI.libFilter=ds.v;break;
+    case "addlib":addLib(b);return;
+    case "addlibsug":{const x=LIB_SUGGEST[+ds.i];if(x){const id=uid();S.library[id]={id,t:x.t,url:x.url,p:x.p,kind:x.kind,note:"",fav:false,done:false,created:todayIso()};save("library/"+id);}break;}
+    case "libfav":{const x=S.library[ds.id];if(x){x.fav=!x.fav;save("library/"+ds.id);}break;}
+    case "libdone":{const x=S.library[ds.id];if(x){x.done=!x.done;save("library/"+ds.id);}break;}
+    case "dellib":{const x=S.library[ds.id];if(x&&x.file&&assetsApi){assetsApi.delete(x.file.id).catch(()=>{});}delete S.library[ds.id];remove("library/"+ds.id);toast("Устгагдлаа");break;}
+    case "logout":SB.storeSession(null);location.reload();return;
+    case "backup":{if(!downloadsApi)return;downloadsApi.save({filename:"chinbilig-backup-"+todayIso()+".json",data:JSON.stringify(S,null,2)}).catch(e=>{if(e&&e.code!=="declined")toast("Татаж чадсангүй");});return;}
+    case "wprev":UI.wk--;break;
+    case "wnext":if(UI.wk<0)UI.wk++;break;
+    case "habit":{const d=ensureDay(UI.date);d.habits[ds.id]=!d.habits[ds.id];if(!d.habits[ds.id])delete d.habits[ds.id];save("days/"+UI.date);break;}
+    case "sched":{const d=ensureDay(UI.date);if(d.sched[ds.k])delete d.sched[ds.k];else d.sched[ds.k]=true;save("days/"+UI.date);break;}
+    case "scale":{const d=ensureDay(UI.date);const n=+ds.v;d[ds.f]=d[ds.f]===n?0:n;save("days/"+UI.date);break;}
+    case "mealpart":{const d=ensureDay(UI.date);const m=d.meals[ds.m]=d.meals[ds.m]||{x:"",parts:[]};m.parts=m.parts||[];const k=m.parts.indexOf(ds.p);if(k>=0)m.parts.splice(k,1);else m.parts.push(ds.p);save("days/"+UI.date);break;}
+    case "sftype":UI.sfType=ds.v;break;
+    case "addsess":{toast("Бэлтгэл хадгалагдлаа");
+      const date=val("sf-date")||UI.date;if(date>todayIso())return;
+      const min=+val("sf-min");if(!min){document.getElementById("sf-min").focus();return;}
+      const d=ensureDay(date);
+      d.sessions.push({type:UI.sfType,min,rpe:+val("sf-rpe"),enj:+val("sf-enj"),tech:val("sf-tech").trim(),work:val("sf-work").trim(),q:val("sf-q").trim(),res:val("sf-res").trim()});
+      save("days/"+date);break;}
+    case "delsess":{const d=S.days[ds.d];if(d){d.sessions.splice(+ds.i,1);save("days/"+ds.d);}break;}
+    case "filter":UI.filter=ds.v;break;
+    case "addtask":{const t=val("g-t").trim();if(!t){document.getElementById("g-t").focus();return;}toast("Нэмэгдлээ");const id=uid();S.tasks[id]={id,t,p:val("g-p"),kind:val("g-k"),due:val("g-due"),done:false,created:todayIso()};save("tasks/"+id);break;}
+    case "addsug":{const id=uid();S.tasks[id]={id,t:ds.t,p:ds.p,kind:"goal",due:"",done:false,created:todayIso()};save("tasks/"+id);break;}
+    case "toggletask":{const x=S.tasks[ds.id];if(x){x.done=!x.done;x.doneAt=x.done?todayIso():"";save("tasks/"+ds.id);}break;}
+    case "deltask":delete S.tasks[ds.id];remove("tasks/"+ds.id);break;
+    case "etype":UI.etype=ds.v;break;
+    case "addentry":{const amt=+val("e-amt");if(!amt){document.getElementById("e-amt").focus();return;}toast("Гүйлгээ нэмэгдлээ");const en={id:uid(),type:UI.etype,amt,date:val("e-date")||todayIso(),note:val("e-note").trim()};if(UI.etype==="out")en.jar=val("e-jar");else en.src=val("e-src");S.biz.entries.push(en);save("app/business");break;}
+    case "delentry":S.biz.entries=S.biz.entries.filter(x=>x.id!==ds.id);save("app/business");break;
+    case "addhabit":{const t=val("nh-t").trim();if(!t)return;S.settings.habits.push({id:"h"+uid(),t,p:val("nh-p")});save("app/settings");break;}
+    case "delhabit":S.settings.habits.splice(+ds.i,1);save("app/settings");break;
+    case "addsched":{const k=ds.dw;(S.settings.schedule[k]=S.settings.schedule[k]||[]).push({t:"",x:"",p:"bjj"});save("app/settings");break;}
+    case "delsched":S.settings.schedule[ds.dw].splice(+ds.i,1);save("app/settings");break;
+  }
+  render();
+});
+
+document.addEventListener("toggle",e=>{const el=e.target;if(el.matches&&el.matches("details.fold")){UI.open[el.dataset.fold]=el.open;try{localStorage.setItem("cb-open",JSON.stringify(UI.open));}catch(err){}}},true);
+let toastTimer;
+function toast(msg){let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.className="toast";t.setAttribute("role","status");document.body.appendChild(t);}t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove("show"),1800);}
+async function addLib(btn){
+  const val=id=>{const el=document.getElementById(id);return el?el.value:"";};
+  const url=safeUrl(val("l-url"));let t=val("l-t").trim();const fi=document.getElementById("l-file");const file=fi&&fi.files&&fi.files[0];
+  if(val("l-url").trim()&&!url){toast("Холбоос буруу байна");return;}
+  if(!url&&!t&&!file){document.getElementById("l-url").focus();toast("Холбоос, гарчиг эсвэл файл оруулна уу");return;}
+  let kind=val("l-k");if(kind==="other"&&/youtu\.?be|vimeo|tiktok|instagram/.test(url))kind="video";if(file&&kind==="other")kind="file";
+  const item={id:uid(),t:t||(file?file.name:hostOf(url)),url,p:val("l-p"),kind,note:val("l-n").trim(),fav:false,done:false,created:todayIso()};
+  if(file){
+    if(!assetsApi){toast("Файл хадгалах боломжгүй байна");return;}
+    if(file.size>20*1024*1024){toast("Файл 20 MB-аас их байна");return;}
+    btn.disabled=true;btn.textContent="Файл илгээж байна…";
+    try{const opt={};if(!file.type){const ext=(file.name.split(".").pop()||"").toLowerCase();opt.type={pdf:"application/pdf",md:"text/markdown",txt:"text/plain",csv:"text/csv"}[ext];}
+      const res=await assetsApi.upload(file,opt);item.file={id:res.id,name:file.name,type:res.contentType,size:res.sizeBytes};}
+    catch(e){btn.disabled=false;btn.textContent="Хадгалах";toast(e&&e.code==="quota_exceeded"?"Хадгалах зай дүүрсэн":"Файл илгээж чадсангүй. Төрөл эсвэл хэмжээг шалгана уу.");return;}
+  }
+  S.library[item.id]=item;save("library/"+item.id);toast("Хадгалагдлаа");render();
+}
+render();
+if(SB.configured()){SB.loadSession();if(SB.session)startCloud();else showLogin();}else initStoreArtifact();
+})();
+</script>
+
+</body>
+</html>
