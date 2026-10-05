@@ -586,7 +586,27 @@
     { id: 'half', of: n => (n === 0 ? null : n >= 19 ? 'H' : 'L'), cats: ['L', 'H'] },
     { id: 'dozen', of: n => (n === 0 ? null : String(Math.ceil(n / 12))), cats: ['1', '2', '3'] },
     { id: 'column', of: n => (n === 0 ? null : String(((n - 1) % 3) + 1)), cats: ['1', '2', '3'] },
+    { id: 'street', of: n => (n === 0 ? null : String(Math.ceil(n / 3))), cats: Array.from({ length: 12 }, (_, i) => String(i + 1)) },
   ];
+  // Where the crowd's money probably sits, from the documented habits with fixed strengths (no learning):
+  // the house-side view. The anti model learns one number: does the ball go against this crowd or with it?
+  const CROWD_HABIT = [1.0, 0.6, 0.6, 0.5, 0.7, 0.5, 0.8, 0.3]; // same order as PSYCH_FEATURES
+  function crowdScore(ctx) {
+    const F = ctx._psychF || (ctx._psychF = psychFeatures(ctx));
+    const sc = new Float64Array(N);
+    for (let j = 0; j < F.length; j++) for (let k = 0; k < N; k++) sc[k] += CROWD_HABIT[j] * F[j][k];
+    return sc;
+  }
+  function crowdEstimate(spins) {
+    const gaps = new Float64Array(N).fill(N), hist = [];
+    let prev = null, session = null;
+    spins.forEach(s => { if (s.session !== session) { hist.length = 0; prev = null; session = s.session; } for (let k = 0; k < N; k++) gaps[k]++; gaps[s.n] = 0; hist.push(s.n); if (hist.length > 120) hist.shift(); prev = s.n; });
+    const sc = crowdScore({ prev, gaps, hist });
+    const q = new Float64Array(N);
+    let mx = -Infinity; for (let k = 0; k < N; k++) mx = Math.max(mx, 0.5 * sc[k]);
+    for (let k = 0; k < N; k++) q[k] = Math.exp(0.5 * sc[k] - mx);
+    return { score: Array.from(sc), share: Array.from(normalize(q)) };
+  }
 
   // Group gap / run states: how long a column (dozen, colour, ...) has been absent, or how many times in a row it hit.
   const GAP_BUCKET = g => (g <= 5 ? g : g <= 7 ? 6 : g <= 10 ? 7 : g <= 15 ? 8 : g <= 25 ? 9 : 10);
@@ -622,6 +642,7 @@
   }
 
   const MODEL_INFO = {
+    anti: { label: 'Олны эсрэг, тооцоолсон', hint: 'Тоглогчдын зуршлаас олны мөнгө хаана байхыг тооцоолоод, бөмбөг түүний эсрэг (казинод ашигтай) буудаг эсэхийг нэг тоогоор сурна. Эерэг бол олны эсрэг, сөрөг бол олны талд.' },
     grunFast: { label: 'Бүлгийн завсар, богино', hint: 'Мөн адил, гэхдээ сүүлийн ~100 эргэлтээс сурна: цуваа “яг одоо” урт явж байгаа үеийг барина.' },
     grun: { label: 'Бүлгийн завсар', hint: 'Эгнээ, арван хоёр, өнгө зэрэг бүлэг хэдэн эргэлт буугаагүй эсвэл хэд дараалан буусан үед дараагийнхад хэр бууж байсныг сурна (“удаан буугаагүй бол удаан буухгүй” гэх мэт). Эгнээ тус бүрийн өөрийн цувааг өгөгдөл хангалттай болохоор тусад нь сурна.' },
     logit: { label: 'Шугаман суралцагч', hint: 'Дугуйн байрлал, өмнөх тооноос зай, удсан/халуун тоо, олны зуршил зэрэг 30 шинжийг нэг дор жинлэж сурна (онлайн логистик регресс).' },
@@ -679,6 +700,7 @@
     const hotRaw = new Float64Array(N); let hotSum = 0;
     const catBase = CAT_FAMILIES.map(f => { const b = {}; f.cats.forEach(c => { let n = 0; for (let k = 0; k < N; k++) if (f.of(k) === c) n++; b[c] = n / 36; }); return b; });
     const catPrior = cfg.catPrior || 20, grunPrior = cfg.grunPrior || 40;
+    let antiBeta = 0;
     const grBase = CAT_FAMILIES.map(f => catBaseRate(f, f.cats[0]));
     // Group gap/run learner. Shared table per family (all columns alike) plus a per-category table shrunk
     // towards it (column 3's own streaks). decayG sets the memory: the slow one learns the table, the fast one
@@ -937,6 +959,7 @@
           const p = new Float64Array(N).fill(1);
           if (!hist.length) return normalize(p);
           CAT_FAMILIES.forEach((f, fi) => {
+            if (f.cats.length > 3) return;
             const st = streakOf(hist, f.of);
             if (st.c == null) return;
             const row = catT[fi][st.c + Math.min(3, st.L)], base = catBase[fi];
@@ -949,6 +972,7 @@
           const hist = ctx.hist || [];
           if (!hist.length) return;
           CAT_FAMILIES.forEach((f, fi) => {
+            if (f.cats.length > 3) return;
             const st = streakOf(hist, f.of), yc = f.of(y);
             if (st.c == null || yc == null) return;
             const row = catT[fi][st.c + Math.min(3, st.L)];
@@ -956,6 +980,16 @@
             row[yc] += 1;
           });
         },
+      },
+      {
+        id: 'anti',
+        predict(ctx) { return softmaxNeg(standardize(crowdScore(ctx)), antiBeta); },
+        update(ctx, y) {
+          const z = standardize(crowdScore(ctx)), p = softmaxNeg(z, antiBeta);
+          let ez = 0; for (let k = 0; k < N; k++) ez += p[k] * z[k];
+          antiBeta = Math.max(-3, Math.min(3, antiBeta + lr * 0.5 * (ez - z[y])));
+        },
+        param: () => antiBeta,
       },
       grunModel('grun', decay, grunPrior, cfg.grunKCat || 200),
       grunModel('grunFast', cfg.fastDecay || 0.99, cfg.fastPrior || 40, 1e9),
@@ -1456,7 +1490,7 @@
     N, WHEEL, POS, colorOf, wheelDist, OUTSIDE, rng,
     chi2p, normSf, binomSf,
     parseSpins, spinsToCsv, spinsToText, parseMult, multToStr, parseTime, runTests,
-    MODEL_INFO, LOGIT_FEATURES, CAT_FAMILIES, GRUN_STATES, grunLabel, groupGapStats, DEFAULT_CFG, walkForward, nullRuns, train,
+    MODEL_INFO, LOGIT_FEATURES, CAT_FAMILIES, GRUN_STATES, grunLabel, groupGapStats, crowdEstimate, DEFAULT_CFG, walkForward, nullRuns, train,
     PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit, steerStats,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

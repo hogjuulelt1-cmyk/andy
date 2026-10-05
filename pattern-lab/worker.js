@@ -1,5 +1,5 @@
 // Runs training and forecasting off the main thread so the page stays responsive.
-importScripts('engine.js?v=22');
+importScripts('engine.js?v=23');
 self.onmessage = e => {
   const { id, type, spins, opts, cfg } = e.data;
   try {
