@@ -149,6 +149,15 @@ td.num, th.num { text-align: right; }
 .layout svg { width: 100%; max-width: 420px; height: auto; display: block; margin: 8px auto; }
 .layout text { font-weight: 600; font-size: 11px; }
 .gbars { margin: 6px 0 10px; }
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+.col { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 10px; }
+.col .k { color: var(--muted); font-size: 0.75rem; }
+.col .v { font-size: 1.375rem; font-weight: 700; line-height: 1.2; }
+.col .x { font-size: 0.875rem; color: var(--muted); }
+.col.up .x { color: var(--good); } .col.down .x { color: var(--bad); }
+.col .s { font-size: 0.75rem; margin-top: 4px; line-height: 1.3; }
+.col .s.muted { color: var(--muted); }
+td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); font-weight: 700; }
 .gbar { display: grid; grid-template-columns: 8.5em 1fr 3.6em 3em; gap: 8px; align-items: center; padding: 4px 0; font-size: 0.9375rem; }
 .gbar .track { position: relative; height: 12px; background: color-mix(in srgb, var(--rule) 60%, transparent); border-radius: 6px; }
 .gbar .fill { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent); border-radius: 6px; }
@@ -348,6 +357,7 @@ td.num, th.num { text-align: right; }
           <option value="machine">Автомат машин (2 чиглэлд ээлжлэн шиднэ)</option>
           <option value="dealer">Дилерийн гар (тогтмол зай алгасна)</option>
           <option value="house" selected>Казино зарим сесст удирдана</option>
+          <option value="avoid">Буугаагүй эгнээнээс зайлсхийнэ (5+ эргэлт)</option>
         </select></div>
       <div><label for="simSpins">Эргэлтийн тоо</label><input id="simSpins" type="number" inputmode="numeric" min="200" max="50000" value="4000"></div>
       <div><label for="simSessions">Сессийн тоо</label><input id="simSessions" type="number" inputmode="numeric" min="1" max="500" value="30"></div>
@@ -409,7 +419,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 20</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 21</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -427,8 +437,8 @@ td.num, th.num { text-align: right; }
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=20"></script>
-<script src="ocr.js?v=20"></script>
+<script src="engine.js?v=21"></script>
+<script src="ocr.js?v=21"></script>
 <script>
 (function () {
   'use strict';
@@ -638,7 +648,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=20');
+    const r = await fetch('digits.json?v=21');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -803,7 +813,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=20'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=21'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1171,15 +1181,37 @@ td.num, th.num { text-align: right; }
     return h + '</tbody></table></div></details>';
   }
   let lastSummary = null;
+  const stateText = now => (!now || now.gap == null ? '—' : now.gap === 0 ? `${now.run} дараалан буусан` : `${now.gap} эргэлт буугаагүй`);
+  const shortLabel = l => l.replace(/\s*\(.*\)$/, '');
+  // Column (or dozen) panel: forecast per group next to how long it has been absent or how many times in a row it
+  // hit, and what happened from that same state in the learning window.
+  function groupPanel(p, familyId, items, title) {
+    const now = PL.groupGapStats(state.spins, familyId).now;
+    const win = state.window ? state.spins.slice(-state.window) : state.spins;
+    const emp = PL.groupGapStats(win, familyId);
+    const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
+    let h = `<p class="muted">Хувь = загварын таамаг, санамсаргүй ${pct(emp.base)}. Доор нь одоогийн байдал ба ийм байдлаас түүхэнд хэр бууж байсан.</p><div class="cols">` + items.map((it, i) => {
+      const q = sum(it.has), ratio = q / (it.count / 37), nw = now[i];
+      const e = nw && nw.state ? emp.states.find(x => x.state === nw.state) : null;
+      const hist = e && e.tries >= 10 ? `түүхэнд ийм үед ${pct(e.rate)} (${num(e.tries)} удаа)` : 'ийм үеийн түүх цөөн';
+      return `<div class="col ${ratio > 1.03 ? 'up' : ratio < 0.97 ? 'down' : ''}"><div class="k">${shortLabel(it.label)}</div><div class="v">${(q * 100).toFixed(1)}%</div><div class="x">×${ratio.toFixed(2)}</div><div class="s">${stateText(nw)}</div><div class="s muted">${hist}</div></div>`;
+    }).join('') + '</div>';
+    const rows = emp.states.filter(x => x.tries > 0).map(x => `<tr><td>${x.label}</td><td class="num">${num(x.hits)} / ${num(x.tries)}</td><td class="num ${x.tries >= 20 && x.rate > emp.base * 1.15 ? 'good' : x.tries >= 20 && x.rate < emp.base * 0.85 ? 'bad' : ''}">${pct(x.rate)}</td><td class="num muted">×${(x.rate / emp.base).toFixed(2)}</td></tr>`).join('');
+    h += `<details><summary>${title}: завсрын түүх (${state.window ? 'сүүлийн ' + num(win.length) : 'бүх ' + num(win.length)} эргэлт)</summary><p class="muted">Бүлэг тухайн байдалд байхад дараагийн эргэлтэд хэр бууж байсан бэ. Санамсаргүй бол ${pct(emp.base)}. 20-оос дээш тохиолдолтой, ×1.15-аас дээш эсвэл ×0.85-аас доош мөр л анхаарал татна; загвар үүнийг “Бүлгийн завсар” хэв маягаар өөрөө сурдаг.</p><div class="scroll"><table><thead><tr><th>Байдал</th><th class="num">буусан / нийт</th><th class="num">хувь</th><th class="num">×</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+    return h;
+  }
   // The best bet in every family, as the summary cards and the floating overlay both show them.
   function summaryRows(p) {
     const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
     const best = items => items.map(it => { const q = sum(it.has); return { it, q, ratio: q / (it.count / 37) }; }).sort((a, b) => b.ratio - a.ratio)[0];
     const G = GROUPS, row = (k, items) => { const b = best(items); return { k, label: b.it.label, q: b.q, ratio: b.ratio }; };
     const w = bestWindows(p, 2, 1)[0];
+    const colItems = G[1].items.slice(3, 6), colRow = row('Эгнээ 2:1', colItems);
+    const colNow = PL.groupGapStats(state.spins, 'column').now[colItems.findIndex(it => it.label === colRow.label)];
+    colRow.label = shortLabel(colRow.label).replace(' 2:1', '') + ' · ' + stateText(colNow).replace(' эргэлт', '').replace(' буусан', '');
     return [
+      colRow, row('Арван хоёр', G[1].items.slice(0, 3)),
       row('Өнгө', G[0].items.slice(0, 2)), row('Тэгш / сондгой', G[0].items.slice(3, 5)), row('Бага / их', G[0].items.slice(5, 7)),
-      row('Арван хоёр', G[1].items.slice(0, 3)), row('Эгнээ 2:1', G[1].items.slice(3, 6)),
       row('Хосолсон', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items)),
       { k: 'Дугуйн бүс', label: w.nums.join(' '), q: w.q, ratio: w.ratio },
     ];
@@ -1229,7 +1261,7 @@ td.num, th.num { text-align: right; }
     let y = 160;
     S.rows.forEach(r => {
       font(14); c.fillStyle = dim; c.textAlign = 'left'; c.fillText(r.k, 16, y);
-      font(18, true); c.fillStyle = fg; c.fillText(r.label.replace(/\s*\(.*\)$/, ''), 16, y + 22);
+      const lab = r.label.replace(/\s*\(.*\)$/, ''); font(lab.length > 14 ? 15 : 18, true); c.fillStyle = fg; c.fillText(lab, 16, y + 22);
       font(15, true); c.textAlign = 'right'; c.fillStyle = r.ratio > 1.03 ? good : r.ratio < 0.97 ? bad : dim;
       c.fillText('×' + r.ratio.toFixed(2) + '  ' + (r.q * 100).toFixed(0) + '%', W - 16, y + 22);
       y += 40;
@@ -1331,13 +1363,14 @@ td.num, th.num { text-align: right; }
     lastSummary = { order: order.slice(0, 3), flat, rows: summaryRows(p), steerProb: state.next && state.next.next.steerProb };
     const why = pickReason(order[0].k);
     h += `<div class="c ${flat ? 'flat' : topLift > 1.03 ? 'up' : ''}"><div class="k">${flat ? 'Тоо: тодорхой дохио алга' : 'Тоо (эхний 3)'}</div><div class="v">${order.slice(0, 3).map(o => `<span class="n" style="background:${pocketColor(o.k)}">${o.k}</span>`).join('')}</div><div class="x">${flat ? `хамгийн өндөр нь ×${topLift.toFixed(2)}: санамсаргүйгээс ялгаагүй` : order.slice(0, 3).map(o => '×' + (o.v * 37).toFixed(2)).join(' · ') + (why ? ' · ' + why : '')}</div></div>`;
+    const colItems = G[1].items.slice(3, 6), bc = best(colItems), bcNow = PL.groupGapStats(state.spins, 'column').now[colItems.indexOf(bc.it)];
+    h += card('Эгнээ 2:1', `<div class="v">${shortLabel(bc.it.label)}</div><div class="x">${(bc.q * 100).toFixed(1)}% · ×${bc.ratio.toFixed(2)} · ${stateText(bcNow)}</div>`, bc.ratio);
     const w = bestWindows(p, 2, 1)[0];
     h += card('Дугуйн бүс (5 нүд)', `<div class="v"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span>${w.nums.join('·')}</div><div class="x">${(w.q * 100).toFixed(1)}% · ×${w.ratio.toFixed(2)}</div>`, w.ratio);
     h += simple('Өнгө', G[0].items.slice(0, 2));
     h += simple('Тэгш / сондгой', G[0].items.slice(3, 5));
     h += simple('Бага / их', G[0].items.slice(5, 7));
     h += simple('Арван хоёр', G[1].items.slice(0, 3));
-    h += simple('Эгнээ 2:1', G[1].items.slice(3, 6));
     h += simple('Хосолсон шилдэг', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items));
     h += simple('Дугуйн бүс (уламжлалт)', G[7].items.slice(0, 4));
     const sp = state.next && state.next.next.steerProb;
@@ -1362,7 +1395,9 @@ td.num, th.num { text-align: right; }
     let h = picks.length
       ? `<div class="advice">Загварын сонголт: <b>${picks.map(o => o.k).join(', ')}</b>. Хүлээгдэж буй өгөөж нэг нэгжид ${picks.map(o => (state.straightRet * o.v - 1 >= 0 ? '+' : '') + ((state.straightRet * o.v - 1) * 100).toFixed(0) + '%').join(', ')}. Давуу тал “Шинжилгээ” хэсэгт баталгаажаагүй бол бодит мөнгөөр бүү тавь.</div>`
       : `<div class="advice none">Нэг тоон дээр давуу тал алга: аль ч тоо босгыг (${state.straightRet} × магадлал − 1 > ${Math.round(margin * 100)}%) давахгүй. Шударга тоглоом дээр энэ хэвийн.</div>`;
-    h += `<div class="picks${order[0].v * 37 < 1.1 ? ' flat' : ''}">${order.slice(0, 5).map(o => `<span class="pick"><span class="n" style="background:${pocketColor(o.k)}">${o.k}</span><span>${(o.v * 100).toFixed(1)}%<br><small>×${(o.v * 37).toFixed(2)}</small></span></span>`).join('')}</div>`;
+    h += `<h3>Эгнээ 2:1</h3>` + groupPanel(p, 'column', GROUPS[1].items.slice(3, 6), 'Эгнээ');
+    h += `<details><summary>Арван хоёр: мөн адил</summary>${groupPanel(p, 'dozen', GROUPS[1].items.slice(0, 3), 'Арван хоёр')}</details>`;
+    h += `<h3>Тоо</h3><div class="picks${order[0].v * 37 < 1.1 ? ' flat' : ''}">${order.slice(0, 5).map(o => `<span class="pick"><span class="n" style="background:${pocketColor(o.k)}">${o.k}</span><span>${(o.v * 100).toFixed(1)}%<br><small>×${(o.v * 37).toFixed(2)}</small></span></span>`).join('')}</div>`;
     if (order[0].v * 37 < 1.1) h += `<p class="muted">Бүх тоо ×1.10-аас доош: загвар аль ч тоог ялгахгүй байна. Өгөгдөл цөөн үед сая буусан тоонууд жагсаалтын эхэнд гарах нь хэвийн, энэ нь таамаг биш. Доорх бүлгийн (өнгө, арван хоёр, эгнээ) таамаг болон хэв маяг бүрийн хүснэгтийг хар.</p>`;
     h += renderModels(r);
     h += `<p class="muted">Нүдний өнгө тод байх тусам тэр тоо буух магадлал өндөр. Баруун талд арван хоёрын, доор баганын нийлбэр.</p><div class="layout">${layoutHeat(p)}</div>`;

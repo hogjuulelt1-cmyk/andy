@@ -588,7 +588,36 @@
     { id: 'column', of: n => (n === 0 ? null : String(((n - 1) % 3) + 1)), cats: ['1', '2', '3'] },
   ];
 
+  // Group gap / run states: how long a column (dozen, colour, ...) has been absent, or how many times in a row it hit.
+  const GAP_BUCKET = g => (g <= 5 ? g : g <= 7 ? 6 : g <= 10 ? 7 : g <= 15 ? 8 : g <= 25 ? 9 : 10);
+  const GAP_LABEL = ['', '1', '2', '3', '4', '5', '6–7', '8–10', '11–15', '16–25', '26+'];
+  const grunState = (gap, run) => (gap === 0 ? 'r' + Math.min(run, 4) : 'g' + GAP_BUCKET(gap));
+  const GRUN_STATES = ['r1', 'r2', 'r3', 'r4', 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'g9', 'g10'];
+  const grunLabel = st => (st[0] === 'r' ? `${st.slice(1)}${st === 'r4' ? '+' : ''} дараалан буусан` : `${GAP_LABEL[+st.slice(1)]} эргэлт буугаагүй`);
+  function catBaseRate(f, c) { let n = 0; for (let k = 0; k < N; k++) if (f.of(k) === c) n++; return n / N; }
+  // Empirical version for the tables: over these spins, how often each category hit from each state.
+  function groupGapStats(spins, familyId) {
+    const f = CAT_FAMILIES.find(x => x.id === familyId);
+    if (!f) return null;
+    const gap = {}, run = {}, T = {};
+    f.cats.forEach(c => { gap[c] = null; run[c] = 0; });
+    GRUN_STATES.forEach(st => { T[st] = { hits: 0, tries: 0 }; });
+    spins.forEach(s => {
+      const yc = f.of(s.n);
+      f.cats.forEach(c => {
+        if (gap[c] == null) return;
+        const st = grunState(gap[c], run[c]);
+        T[st].tries++; if (yc === c) T[st].hits++;
+      });
+      f.cats.forEach(c => { if (yc === c) { gap[c] = 0; run[c]++; } else { if (gap[c] != null) gap[c]++; else if (yc != null) gap[c] = 1; run[c] = 0; } });
+    });
+    const base = catBaseRate(f, f.cats[0]);
+    const now = f.cats.map(c => ({ cat: c, gap: gap[c], run: run[c], state: gap[c] == null ? null : grunState(gap[c], run[c]) }));
+    return { family: familyId, base, now, states: GRUN_STATES.map(st => ({ state: st, label: grunLabel(st), hits: T[st].hits, tries: T[st].tries, rate: T[st].tries ? T[st].hits / T[st].tries : null })) };
+  }
+
   const MODEL_INFO = {
+    grun: { label: 'Бүлгийн завсар', hint: 'Эгнээ, арван хоёр, өнгө зэрэг бүлэг хэдэн эргэлт буугаагүй эсвэл хэд дараалан буусан үед дараагийнхад хэр бууж байсныг сурна (“удаан буугаагүй бол удаан буухгүй” гэх мэт).' },
     logit: { label: 'Шугаман суралцагч', hint: 'Дугуйн байрлал, өмнөх тооноос зай, удсан/халуун тоо, олны зуршил зэрэг 30 шинжийг нэг дор жинлэж сурна (онлайн логистик регресс).' },
     hot: { label: 'Халуун тоо', hint: 'Сүүлийн 30 орчим эргэлтийн давтамж: богино хугацааны хазайлт, машины “үе”.' },
     cat: { label: 'Бүлгийн дараалал', hint: 'Өнгө, тэгш/сондгой, бага/их, арван хоёр, эгнээний цуваа дараагийн бүлгийг хэрхэн тодорхойлдгийг сурна (казино цуваанд тавигчдын эсрэг буулгадаг эсэх).' },
@@ -643,7 +672,11 @@
     const lw = new Float64Array(LOGIT_FEATURES.length), lG = new Float64Array(LOGIT_FEATURES.length);
     const hotRaw = new Float64Array(N); let hotSum = 0;
     const catBase = CAT_FAMILIES.map(f => { const b = {}; f.cats.forEach(c => { let n = 0; for (let k = 0; k < N; k++) if (f.of(k) === c) n++; b[c] = n / 36; }); return b; });
-    const catPrior = cfg.catPrior || 20;
+    const catPrior = cfg.catPrior || 20, grunPrior = cfg.grunPrior || 40;
+    const grBase = CAT_FAMILIES.map(f => catBaseRate(f, f.cats[0]));
+    const grT = CAT_FAMILIES.map(() => { const t = {}; GRUN_STATES.forEach(st => { t[st] = { h: 0, n: 0 }; }); return t; });
+    const grGap = CAT_FAMILIES.map(f => { const g = {}; f.cats.forEach(c => { g[c] = null; }); return g; });
+    const grRun = CAT_FAMILIES.map(f => { const g = {}; f.cats.forEach(c => { g[c] = 0; }); return g; });
     const catT = CAT_FAMILIES.map((f, fi) => { const t = {}; f.cats.forEach(c => { for (let L = 1; L <= 3; L++) { const row = {}; f.cats.forEach(c2 => { row[c2] = catBase[fi][c2] * catPrior; }); t[c + L] = row; } }); return t; });
     return [
       { id: 'uniform', predict: () => uniformP(), update() {} },
@@ -881,6 +914,29 @@
         },
       },
       {
+        id: 'grun',
+        predict() {
+          const p = new Float64Array(N).fill(1);
+          CAT_FAMILIES.forEach((f, fi) => {
+            const q = {}; let tot = 0;
+            f.cats.forEach(c => { const g = grGap[fi][c]; if (g == null) { q[c] = grBase[fi]; } else { const t = grT[fi][grunState(g, grRun[fi][c])]; q[c] = (t.h + grBase[fi] * grunPrior) / (t.n + grunPrior); } tot += q[c]; });
+            f.cats.forEach(c => { const lift = Math.max(0.5, Math.min(2, (q[c] / tot) / (grBase[fi] / (grBase[fi] * f.cats.length)))); for (let k = 0; k < N; k++) if (f.of(k) === c) p[k] *= lift; });
+          });
+          return normalize(p);
+        },
+        update(ctx, y) {
+          CAT_FAMILIES.forEach((f, fi) => {
+            const yc = f.of(y);
+            f.cats.forEach(c => {
+              const g = grGap[fi][c];
+              if (g != null) { const t = grT[fi][grunState(g, grRun[fi][c])]; t.h = t.h * decay + (yc === c ? 1 : 0); t.n = t.n * decay + 1; }
+              if (yc === c) { grGap[fi][c] = 0; grRun[fi][c]++; } else { if (g != null) grGap[fi][c] = g + 1; else if (yc != null) grGap[fi][c] = 1; grRun[fi][c] = 0; }
+            });
+          });
+        },
+        param: () => CAT_FAMILIES.map((f, fi) => ({ family: f.id, base: grBase[fi], states: GRUN_STATES.map(st => ({ state: st, label: grunLabel(st), rate: (grT[fi][st].h + grBase[fi] * grunPrior) / (grT[fi][st].n + grunPrior), n: grT[fi][st].n })), now: f.cats.map(c => ({ cat: c, gap: grGap[fi][c], run: grRun[fi][c] })) })),
+      },
+      {
         id: 'overdue',
         predict(ctx) {
           const g = new Float64Array(N); for (let k = 0; k < N; k++) g[k] = -Math.log1p(ctx.gaps[k]);
@@ -898,7 +954,7 @@
   }
 
   // straightRet: total return per unit on a winning straight-up bet (36 = standard, 20 = lightning-style).
-  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3, gate: 0.02, logitLr: 0.1, psychStep: 0.02, catPrior: 60, markovK0: 200, hotPrior: 3 };
+  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3, gate: 0.02, logitLr: 0.1, psychStep: 0.02, catPrior: 60, markovK0: 200, hotPrior: 3, grunPrior: 40 };
 
   // Walk-forward: every spin is predicted before the model sees it. Nothing peeks at the future.
   // scoreFrom: spins before this index train the model but are not scored (holdout evaluation).
@@ -1162,6 +1218,13 @@
       let y;
       const pr = new Float64Array(N).fill(1);
       if (o.wheel === 'biased') biasPockets.forEach(k => { pr[k] *= 1 + o.bias * 4; });
+      if (o.wheel === 'avoid') {
+        // The house keeps away from a column the crowd starts calling "overdue": absent 5+ spins → much less likely.
+        for (let col = 1; col <= 3; col++) {
+          let g = 0; for (let i = history.length - 1; i >= 0 && history[i] !== 0 && (history[i] - 1) % 3 + 1 !== col; i--) g++;
+          if (history.length && g >= 5) for (let k = 1; k < N; k++) if ((k - 1) % 3 + 1 === col) pr[k] *= 1 - o.bias * 2.4;
+        }
+      }
       const dir = (t % per) % 2 ? 'B' : 'A';
       if ((o.wheel === 'dealer' || o.wheel === 'machine') && sameSession && r() < o.bias) {
         const base = o.wheel === 'machine' && dir === 'B' ? sigD2 : sigD;
@@ -1365,7 +1428,7 @@
     N, WHEEL, POS, colorOf, wheelDist, OUTSIDE, rng,
     chi2p, normSf, binomSf,
     parseSpins, spinsToCsv, spinsToText, parseMult, multToStr, parseTime, runTests,
-    MODEL_INFO, LOGIT_FEATURES, DEFAULT_CFG, walkForward, nullRuns, train,
+    MODEL_INFO, LOGIT_FEATURES, CAT_FAMILIES, GRUN_STATES, grunLabel, groupGapStats, DEFAULT_CFG, walkForward, nullRuns, train,
     PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit, steerStats,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
