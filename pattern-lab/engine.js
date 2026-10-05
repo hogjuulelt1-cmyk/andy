@@ -557,6 +557,7 @@
     crowd: { label: 'Олны эсрэг', hint: 'Их бооцоотой нүд буухгүй гэж таана (казино удирддаг бол).' },
     overdue: { label: '“Удсан тоо”', hint: 'Тоглогчдын итгэл: удаан буугаагүй тоо удахгүй бууна. Жин нь хасах бол эсрэгээрээ.' },
     psych: { label: 'Олны сэтгэл зүй', hint: 'Тоглогчид хаана их тавьж байгааг зуршлаас нь тооцоолж, үр дүн тэдний талд уу, эсрэг үү гэдгийг сурна.' },
+    payout: { label: 'Хожлын дүн', hint: 'Бүртгэсэн хожлын дүнгээс ямар тоо их төлдгийг сураад, казино бага төлөх тоо руу чиглүүлдэг эсэхийг шалгана. Хожлын дүн оруулаагүй бол идэвхгүй.' },
   };
 
   function makeModels(cfg) {
@@ -573,6 +574,9 @@
     const KERNEL = [1, 0.7, 0.4, 0.15];
     let rhoG = 0.02, rhoS = 0.02, gamma = 0;
     const pw = new Float64Array(PSYCH_FEATURES.length);
+    // Payout regression: log(won) ≈ pay0 + Σ payW·feature(outcome); learned only from spins with a won amount.
+    const payW = new Float64Array(PSYCH_FEATURES.length);
+    let pay0 = 0, payN = 0, payBeta = 0;
     const lr = cfg.lr;
     return [
       { id: 'uniform', predict: () => uniformP(), update() {} },
@@ -689,6 +693,35 @@
         param: () => Array.from(pw),
       },
       {
+        id: 'payout',
+        predict(ctx) {
+          if (payN < 20) return uniformP();
+          const F = ctx._psychF || (ctx._psychF = psychFeatures(ctx));
+          const P = new Float64Array(N);
+          for (let k = 0; k < N; k++) { let v = pay0; for (let j = 0; j < F.length; j++) v += payW[j] * F[j][k]; P[k] = v; }
+          return softmaxNeg(standardize(P), payBeta);
+        },
+        update(ctx, y) {
+          // Multiplier wins inflate the payout for reasons unrelated to the crowd; skip them.
+          if (ctx.won == null || ctx.lightHit) return;
+          const F = ctx._psychF || (ctx._psychF = psychFeatures(ctx));
+          const target = Math.log1p(Math.max(0, ctx.won));
+          let pred = pay0; for (let j = 0; j < F.length; j++) pred += payW[j] * F[j][y];
+          const err = target - pred, step = Math.max(0.005, 0.05 / Math.sqrt(1 + payN / 50));
+          pay0 += step * err;
+          for (let j = 0; j < F.length; j++) payW[j] = Math.max(-3, Math.min(3, payW[j] + step * err * F[j][y]));
+          payN++;
+          if (payN < 20) return;
+          const P = new Float64Array(N);
+          for (let k = 0; k < N; k++) { let v = pay0; for (let j = 0; j < F.length; j++) v += payW[j] * F[j][k]; P[k] = v; }
+          const z = standardize(P), p = softmaxNeg(z, payBeta);
+          let ez = 0; for (let k = 0; k < N; k++) ez += p[k] * z[k];
+          // Positive beta = the ball favours numbers the regression expects to pay little.
+          payBeta = Math.max(-3, Math.min(3, payBeta + lr * (ez - z[y])));
+        },
+        param: () => ({ beta: payBeta, n: payN, w: Array.from(payW) }),
+      },
+      {
         id: 'overdue',
         predict(ctx) {
           const g = new Float64Array(N); for (let k = 0; k < N; k++) g[k] = -Math.log1p(ctx.gaps[k]);
@@ -729,7 +762,7 @@
     for (let t = 0; t < spins.length; t++) {
       const s = spins[t];
       if (s.session !== prevSession) { prev = null; hist = []; }
-      const ctx = { prev, liab: s.liab, gaps, step: t, dir: dirs[t], hist, newSession: s.session !== prevSession };
+      const ctx = { prev, liab: s.liab, gaps, step: t, dir: dirs[t], hist, newSession: s.session !== prevSession, won: s.won, lightHit: !!lightHit(s) };
       const preds = models.map(m => m.predict(ctx));
       const p = new Float64Array(N);
       for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
