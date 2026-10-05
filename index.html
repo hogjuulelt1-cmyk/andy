@@ -289,6 +289,64 @@ button.row.agenda{width:100%;background:none;border-left:0;border-right:0;border
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .toast button{color:#0060df}}
 @media (prefers-reduced-transparency: reduce){nav.tabs{background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media (prefers-reduced-motion: reduce){#main.enter,#main.enter-l,#main.enter-r{animation:fade .2s ease}}
+/* ---- minimal pass: plain headings, one add button, bottom sheet ---- */
+h2{font-family:var(--body);font-size:1.08rem;font-weight:700;text-transform:none;letter-spacing:-.01em}
+h3{font-family:var(--body);font-size:.95rem;font-weight:600;text-transform:none;letter-spacing:0}
+.group-label{text-transform:none;letter-spacing:0;font-size:.84rem}
+.card{border-radius:20px;padding:18px}
+.src{opacity:.8}
+body{padding-block:0 168px}
+.icon-btn.gear{width:44px;height:44px;padding:0;display:grid;place-items:center}
+.icon-btn.gear svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+.fab{position:fixed;right:max(16px,calc(50% - 364px));bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:11;width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 24px rgba(0,122,255,.32),0 2px 6px rgba(0,0,0,.12);display:grid;place-items:center;padding:0}
+.fab svg,.add-btn svg{stroke:currentColor;fill:none;stroke-linecap:round}
+.fab svg{width:26px;height:26px;stroke-width:2.4}
+body.locked .fab,body.tab-settings .fab,body.sheet-open .fab{display:none}
+.add-btn{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;border:0;border-radius:20px;background:var(--surface);box-shadow:var(--shadow);color:var(--accent);font-weight:600;font-size:1rem;padding:10px 16px;text-align:left}
+.add-btn i{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center;flex:none}
+.add-btn svg{width:18px;height:18px;stroke-width:2.4}
+.link-btn{border:0;background:none;color:var(--accent);font-weight:600;font-size:.9rem;padding:8px 0;min-height:44px;align-self:flex-start}
+.sheet-wrap{position:fixed;inset:0;z-index:30;display:flex;align-items:flex-end;justify-content:center}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.34)}
+.sheet{position:relative;width:100%;max-width:560px;max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border-radius:22px 22px 0 0;padding:8px 18px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;box-shadow:0 -8px 30px rgba(0,0,0,.12)}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--line);margin:0 auto}
+.sheet-h{display:flex;align-items:center;gap:8px;min-height:44px}
+.sheet-h h2{flex:1;font-size:1.2rem}
+.sheet-h .back{padding:0}
+.sheet-x{border:0;background:var(--sunk);color:var(--muted);width:32px;height:32px;border-radius:50%;display:grid;place-items:center;padding:0;position:relative}
+.sheet-x::before{content:"";position:absolute;inset:-6px}
+.sheet-x svg{width:14px;height:14px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round}
+.qa{display:flex;flex-direction:column}
+.qa button{display:flex;align-items:center;gap:14px;width:100%;padding:10px 0;min-height:62px;border:0;border-top:1px solid var(--line);background:none;text-align:left}
+.qa button:first-child{border-top:0}
+.qa .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;color:#fff}
+.qa .ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.qa .qt{flex:1;min-width:0;display:flex;flex-direction:column}
+.qa .qt b{font-weight:600}
+.qa .qt span{font-size:.84rem;color:var(--muted)}
+.qa .go{width:8px;height:8px;border-right:2px solid var(--line);border-top:2px solid var(--line);transform:rotate(45deg);margin-right:6px}
+details.more>summary{list-style:none;color:var(--accent);font-weight:600;font-size:.92rem;min-height:40px;display:flex;align-items:center}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin:0 0 4px 8px}
+details.more[open]>summary::after{transform:rotate(-135deg);margin:4px 0 0 8px}
+.more-body{display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.sheet .btn{min-height:50px;font-size:1rem;border-radius:14px}
+.sheet .seg{grid-template-columns:1fr 1fr}
+body.sheet-open{overflow:hidden}
+@media (prefers-reduced-motion:no-preference){
+  .sheet-wrap.in .scrim{animation:fade .25s ease}
+  .sheet-wrap.in .sheet{animation:sheetUp .42s var(--ease)}
+  .sheet-wrap.out .scrim{transition:opacity .22s ease;opacity:0}
+  .sheet-wrap.out .sheet{transition:transform .26s var(--ease);transform:translateY(100%)}
+  .fab{transition:transform .2s var(--ease)}
+  .fab:active{transform:scale(.92)}
+  .add-btn,.qa button{transition:transform .2s var(--ease),background-color .2s var(--ease)}
+  .qa button:active{transform:none;background:var(--sunk)}
+}
+.seg button[aria-selected="true"]{background:var(--seg-on,var(--surface))}
+:root[data-theme="dark"]{--seg-on:#636366}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--seg-on:#636366}}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes slideL{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
@@ -305,7 +363,7 @@ button.row.agenda{width:100%;background:none;border-left:0;border-right:0;border
         <h1 id="who-name">Тамирчин</h1>
         <div class="belt" id="belt" aria-label="Бүс"></div>
       </div>
-      <button class="icon-btn" data-act="tab" data-v="settings">Тохиргоо</button>
+      <button class="icon-btn gear" data-act="tab" data-v="settings" aria-label="Тохиргоо"><svg viewBox="0 0 24 24"><path d="M4 7h9M18 7h2M4 17h3M12 17h8"/><circle cx="15.5" cy="7" r="2.3"/><circle cx="9.5" cy="17" r="2.3"/></svg></button>
     </div>
     <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Холбогдож байна…</span></div>
   </header>
@@ -313,6 +371,8 @@ button.row.agenda{width:100%;background:none;border-left:0;border-right:0;border
 </div>
 
 <nav class="tabs" aria-label="Хэсгүүд"><div class="in" id="tabs"></div></nav>
+<button class="fab" data-act="sheet" data-v="menu" aria-label="Шинээр нэмэх" aria-haspopup="dialog"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+<div id="sheet" class="sheet-wrap" hidden><div class="scrim" data-act="sheetclose"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t"></div></div>
 
 <script src="config.js"></script>
 <script>
@@ -410,7 +470,7 @@ function sleepTarget(){const a=+S.settings.profile.age;if(!a)return[9,12,"нас
 
 /* ---------- state ---------- */
 let S={settings:clone(DEF_SET),biz:clone(DEF_BIZ),days:{},tasks:{},reviews:{},library:{}};
-const UI={tab:"today",date:todayIso(),filter:"all",libFilter:"all",etype:"in",wk:0,confirm:null,sfType:"gi",open:{},view:"day",calMonth:todayIso().slice(0,7)};
+const UI={tab:"today",date:todayIso(),filter:"all",libFilter:"all",etype:"in",wk:0,confirm:null,sfType:"gi",open:{},view:"day",calMonth:todayIso().slice(0,7),sheet:null};
 try{const t=localStorage.getItem("cb-tab");if(t)UI.tab=t;const vw=localStorage.getItem("cb-view");if(vw==="cal")UI.view="cal";UI.open=JSON.parse(localStorage.getItem("cb-open")||"{}")||{};}catch(e){}
 let assetsApi=null,downloadsApi=null;
 const hashTab=(location.hash||"").slice(1);if(["today","train","goals","biz","lib","review","settings"].includes(hashTab))UI.tab=hashTab;
@@ -588,7 +648,7 @@ function renderHeader(){
   const stripes=Math.max(0,Math.min(4,+p.stripes||0));
   document.getElementById("belt").innerHTML='<span class="b-main" style="background:'+b[2]+'"></span><span class="b-bar" style="background:'+barColor+'">'+"<i></i>".repeat(stripes)+"</span>";
   document.getElementById("belt").setAttribute("aria-label",b[1]+" бүс, "+stripes+" судал");
-  const sb=document.querySelector('.icon-btn[data-v="settings"]');if(sb)sb.setAttribute("aria-pressed",UI.tab==="settings");
+  document.body.classList.toggle("tab-settings",UI.tab==="settings");const sb=document.querySelector('.icon-btn[data-v="settings"]');if(sb)sb.setAttribute("aria-pressed",UI.tab==="settings");
   document.getElementById("tabs").innerHTML=TABS.map(t=>'<button data-act="tab" data-v="'+t[0]+'"'+(UI.tab===t[0]?' aria-current="page"':"")+'><svg viewBox="0 0 24 24">'+t[2]+"</svg>"+t[1]+"</button>").join("");
 }
 function render(anim){
@@ -599,6 +659,7 @@ function render(anim){
   m.innerHTML=v();
   if(!anim&&window.scrollY!==y)window.scrollTo({top:y,behavior:"instant"});
   if(anim){m.classList.remove("enter","enter-l","enter-r");void m.offsetWidth;m.classList.add(anim);}
+  renderSheet();
 }
 function go(anim){render(anim);window.scrollTo({top:0,behavior:"instant"});}
 const pdot=p=>'<span class="pdot" style="background:'+(PILLARS[p]||PILLARS.mind).c+'"></span>';
@@ -672,6 +733,88 @@ function vCal(){
   return h;
 }
 
+/* ----- QUICK ADD SHEET ----- */
+const PLUS='<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+const addBtn=(v,label)=>'<button class="add-btn" data-act="sheet" data-v="'+v+'" aria-haspopup="dialog"><i>'+PLUS+"</i>"+label+"</button>";
+const QA=[
+  ["sess","Бэлтгэл","Төрөл, хугацаа, хэр хүнд байсан","var(--p-bjj)",TABS[1][2],"train"],
+  ["task","Зорилго, даалгавар","Хийх зүйл, хугацаатай эсвэл үгүй","var(--p-school)",TABS[2][2],"goals"],
+  ["habit","Зуршил","Өдөр бүр тэмдэглэх шинэ зүйл","var(--p-body)",'<path d="M5 12.5l4.5 4.5L19 7.5"/>',"today"],
+  ["money","Орлого, зарлага","Мөнгө орж гарсныг бичих","var(--p-biz)",TABS[3][2],"biz"],
+  ["lib","Холбоос, материал","Бичлэг, нийтлэл, файл хадгалах","var(--p-mind)",TABS[4][2],"lib"]
+];
+const more=body=>'<details class="more"><summary>Дэлгэрэнгүй</summary><div class="more-body">'+body+"</div></details>";
+const pillarOpts=sel=>Object.keys(PILLARS).map(k=>'<option value="'+k+'"'+(k===sel?" selected":"")+">"+PILLARS[k].t+"</option>").join("");
+function fSess(){
+  const sf=UI.sfType,t=todayIso();
+  return '<div class="chips" role="group" aria-label="Төрөл">'+Object.keys(SESS).map(k=>'<button class="chip'+(sf===k?" on":"")+'" data-act="sftype" data-v="'+k+'" aria-pressed="'+(sf===k)+'">'+SESS[k]+"</button>").join("")+"</div>"+
+  '<div class="grid2"><div class="field"><label for="sf-min">Хугацаа, минут</label><input id="sf-min" type="number" min="0" inputmode="numeric" value="60"></div><div class="field"><label for="sf-rpe">Хэр хүнд байсан, 1–10</label><select id="sf-rpe">'+[1,2,3,4,5,6,7,8,9,10].map(n=>"<option"+(n===6?" selected":"")+">"+n+"</option>").join("")+"</select></div></div>"+
+  '<div class="field"><label for="sf-enj">Хэр таалагдсан бэ?</label><select id="sf-enj"><option value="5">Маш их (5)</option><option value="4" selected>Сайн (4)</option><option value="3">Дунд зэрэг (3)</option><option value="2">Бага (2)</option><option value="1">Огт үгүй (1)</option></select></div>'+
+  (sf==="comp"?'<div class="field"><label for="sf-res">Тэмцээний үр дүн, зорилго</label><textarea id="sf-res" placeholder="Зорилго: гардаа оруулах. Үр дүн: 2 ялалт, 1 ялагдал"></textarea></div>':"")+
+  more('<div class="field"><label for="sf-date">Огноо</label><input id="sf-date" type="date" value="'+(UI.date>t?t:UI.date)+'" max="'+t+'"></div><div class="field"><label for="sf-tech">Сурсан техник, мөр бүрт нэг</label><textarea id="sf-tech" placeholder="жишээ нь: Scissor sweep&#10;Armbar from guard"></textarea></div><div class="field"><label for="sf-work">Юу сайн болсон бэ?</label><textarea id="sf-work"></textarea></div><div class="field"><label for="sf-q">Дасгалжуулагчаас асуух асуулт</label><textarea id="sf-q"></textarea></div><p class="src">Хүндрэл (RPE): 1 маш хөнгөн, 10 хамгийн хүнд. Ачаалал = минут × RPE (Foster 2001).</p>')+
+  '<button class="btn" data-act="addsess">Бэлтгэл хадгалах</button>';
+}
+function fTask(){
+  const f=UI.filter;
+  return '<div class="field"><label for="g-t">Юу хийх вэ?</label><input id="g-t" type="text" enterkeyhint="done" placeholder="жишээ нь: 11-р сарын тэмцээнд оролцох"></div>'+
+  '<div class="grid2"><div class="field"><label for="g-p">Салбар</label><select id="g-p">'+pillarOpts(f==="all"?"bjj":f)+'</select></div><div class="field"><label for="g-due">Хугацаа</label><input id="g-due" type="date"></div></div>'+
+  more('<div class="field"><label for="g-k">Төрөл</label><select id="g-k"><option value="task">Даалгавар</option><option value="goal">Урт хугацааны зорилго</option></select></div>')+
+  '<button class="btn" data-act="addtask">Нэмэх</button>';
+}
+function fHabit(){
+  return '<div class="field"><label for="nh-t">Зуршил</label><input id="nh-t" type="text" enterkeyhint="done" placeholder="жишээ нь: 20 хуудас ном уншсан"></div>'+
+  '<div class="field"><label for="nh-p">Салбар</label><select id="nh-p">'+pillarOpts("bjj")+'</select></div><p class="small muted">Өнөөдөр хуудсан дээр шууд гарч ирнэ. Засах, устгах бол Тохиргоо руу.</p>'+
+  '<button class="btn" data-act="addhabit">Нэмэх</button>';
+}
+function fMoney(){
+  const et=UI.etype;
+  return '<div class="seg" role="tablist"><button role="tab" data-act="etype" data-v="in" aria-selected="'+(et==="in")+'">Орлого</button><button role="tab" data-act="etype" data-v="out" aria-selected="'+(et==="out")+'">Зарлага</button></div>'+
+  '<div class="field"><label for="e-amt">Дүн, '+esc(S.settings.currency)+'</label><input id="e-amt" type="number" min="0" inputmode="numeric" enterkeyhint="done"></div>'+
+  '<div class="field"><label for="e-note">Юуны '+(et==="in"?"орлого":"зарлага")+'?</label><input id="e-note" type="text" enterkeyhint="done" placeholder="'+(et==="in"?"жишээ нь: 5 бугуйвч зарсан":"жишээ нь: материал авсан")+'"></div>'+
+  '<div class="grid2">'+(et==="out"?'<div class="field"><label for="e-jar">Аль савнаас</label><select id="e-jar"><option value="spend">Зарцуулах</option><option value="save">Хадгалах</option><option value="give">Хандивлах</option></select></div>':'<div class="field"><label for="e-src">Хаанаас</label><select id="e-src"><option>Бизнес</option><option>Хөлс, ажил</option><option>Бэлэг</option><option>Шагнал</option><option>Бусад</option></select></div>')+
+  '<div class="field"><label for="e-date">Огноо</label><input id="e-date" type="date" value="'+todayIso()+'"></div></div>'+
+  '<button class="btn" data-act="addentry">Нэмэх</button>';
+}
+function fLib(){
+  return '<div class="field"><label for="l-url">Холбоос</label><input id="l-url" type="url" inputmode="url" enterkeyhint="done" placeholder="YouTube, нийтлэл, Instagram…"></div>'+
+  '<div class="field"><label for="l-t">Гарчиг</label><input id="l-t" type="text" enterkeyhint="done" placeholder="жишээ нь: Guard retention дасгалууд"></div>'+
+  '<div class="field"><label for="l-p">Салбар</label><select id="l-p">'+pillarOpts("bjj")+"</select></div>"+
+  more('<div class="field"><label for="l-k">Төрөл</label><select id="l-k">'+Object.keys(LIBKIND).map(k=>'<option value="'+k+'">'+LIBKIND[k]+"</option>").join("")+'</select></div><div class="field"><label for="l-n">Тэмдэглэл</label><input id="l-n" type="text" placeholder="Яагаад хэрэгтэй вэ? Хэзээ үзэх вэ?"></div>'+
+    (assetsApi?'<div class="field"><label for="l-file">Файл хавсаргах (PDF, зураг, видео, 20 MB хүртэл)</label><input id="l-file" type="file" accept="image/*,video/*,application/pdf,.txt,.md,.csv"></div>':""))+
+  '<button class="btn" data-act="addlib">Хадгалах</button>';
+}
+function sheetBody(){
+  const k=UI.sheet,q=QA.find(x=>x[0]===k);
+  const x='<button class="sheet-x" data-act="sheetclose" aria-label="Хаах"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+  if(!q)return '<div class="grab" aria-hidden="true"></div><div class="sheet-h"><h2 id="sheet-t">Юу нэмэх вэ?</h2>'+x+'</div><div class="qa">'+QA.map(a=>'<button data-act="sheet" data-v="'+a[0]+'"><span class="ic" style="background:'+a[3]+'"><svg viewBox="0 0 24 24">'+a[4]+'</svg></span><span class="qt"><b>'+a[1]+"</b><span>"+a[2]+'</span></span><span class="go" aria-hidden="true"></span></button>').join("")+"</div>";
+  const body={sess:fSess,task:fTask,habit:fHabit,money:fMoney,lib:fLib}[k]();
+  return '<div class="grab" aria-hidden="true"></div><div class="sheet-h"><button class="back" data-act="sheet" data-v="menu" aria-label="Буцах"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2 id="sheet-t">'+q[1]+"</h2>"+x+"</div>"+body;
+}
+let sheetSig="",sheetFrom=null;
+const reducedMotion=()=>window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+function renderSheet(){
+  const w=document.getElementById("sheet");if(!w)return;
+  const sig=UI.sheet?UI.sheet+"|"+UI.sfType+"|"+UI.etype+"|"+UI.filter:"";
+  if(sig===sheetSig)return;
+  const opening=!sheetSig,same=sheetSig.split("|")[0]===UI.sheet;sheetSig=sig;
+  const box=w.querySelector(".sheet");
+  if(!UI.sheet){
+    document.body.classList.remove("sheet-open");
+    const done=()=>{if(UI.sheet)return;w.hidden=true;w.classList.remove("in","out");box.innerHTML="";};
+    if(reducedMotion()||w.hidden)done();else{w.classList.remove("in");w.classList.add("out");setTimeout(done,280);}
+    if(sheetFrom&&document.body.contains(sheetFrom))sheetFrom.focus({preventScroll:true});sheetFrom=null;
+    return;
+  }
+  const keep={};let moreOpen=false;
+  if(same){box.querySelectorAll("input,select,textarea").forEach(el=>{if(el.id&&el.type!=="file")keep[el.id]=el.value;});const d=box.querySelector("details.more");moreOpen=!!(d&&d.open);}
+  box.innerHTML=sheetBody();
+  for(const id in keep){const el=box.querySelector("#"+CSS.escape(id));if(el)el.value=keep[id];}
+  if(moreOpen){const d=box.querySelector("details.more");if(d)d.open=true;}
+  if(opening){sheetFrom=document.activeElement;w.hidden=false;w.classList.remove("out");void w.offsetWidth;w.classList.add("in");document.body.classList.add("sheet-open");}
+  if(!same){box.scrollTop=0;const f=box.querySelector("#g-t,#nh-t,#e-amt,#l-url");if(f&&!opening)f.focus({preventScroll:true});else{const t=box.querySelector("h2");if(t){t.tabIndex=-1;t.focus({preventScroll:true});}}}
+}
+function added(msg,tab){UI.sheet=null;if(UI.tab===tab)toast(msg);else toast(msg,{label:"Харах",run:()=>{UI.tab=tab;try{localStorage.setItem("cb-tab",tab);}catch(err){}go("enter");}});}
+
 /* ----- TODAY ----- */
 function streak(){let n=0,ds=todayIso();if(dayPct(ds)<0.8)ds=addDays(ds,-1);while(dayPct(ds)>=0.8&&n<999){n++;ds=addDays(ds,-1);}return n;}
 function fold(key,title,meta,body,defOpen){
@@ -698,13 +841,14 @@ function vToday(){
   if(isToday&&lastRev&&(lastRev.change||"").trim())h+='<div class="focus"><span class="lbl">Энэ долоо хоногийн гол анхаарал</span><p>'+esc(lastRev.change)+"</p></div>";
 
   const schDone=sch.filter(s=>d.sched[s.t+"|"+s.x]).length;
-  h+=fold("sched","Хуваарь",schDone+"/"+sch.length,(!sch.length?'<p class="muted small">Энэ өдөр хуваарь алга.</p>':'<div class="list">'+sch.map(s=>{const on=!!d.sched[s.t+"|"+s.x];return '<div class="row'+(on?" done":"")+'"><button class="check'+(on?" on":"")+'" data-act="sched" data-k="'+esc(s.t+"|"+s.x)+'" aria-label="Хийсэн">'+CHECK+'</button><span class="time">'+esc(s.t||"—")+"</span>"+pdot(s.p)+'<span class="txt">'+esc(s.x)+"</span></div>";}).join("")+"</div>")+'<button class="x" style="align-self:flex-start;color:var(--accent)" data-act="tab" data-v="settings">Хуваарь засах</button>',true);
+  h+=fold("sched","Хуваарь",schDone+"/"+sch.length,(!sch.length?'<p class="muted small">Энэ өдөр хуваарь алга.</p>':'<div class="list">'+sch.map(s=>{const on=!!d.sched[s.t+"|"+s.x];return '<div class="row'+(on?" done":"")+'"><button class="check'+(on?" on":"")+'" data-act="sched" data-k="'+esc(s.t+"|"+s.x)+'" aria-label="Хийсэн">'+CHECK+'</button><span class="time">'+esc(s.t||"—")+"</span>"+pdot(s.p)+'<span class="txt">'+esc(s.x)+"</span></div>";}).join("")+"</div>")+'<button class="link-btn" data-act="tab" data-v="settings">Хуваарь засах</button>',true);
 
   let hb="";
   for(const p of Object.keys(PILLARS)){
     const items=hs.filter(x=>x.p===p);if(!items.length)continue;
     hb+='<div class="group-label" style="color:'+PILLARS[p].c+'">'+pdot(p)+PILLARS[p].t+'</div><div class="list">'+items.map(x=>{const on=!!d.habits[x.id];return '<div class="row'+(on?" done":"")+'"><button class="check'+(on?" on":"")+'" data-act="habit" data-id="'+esc(x.id)+'" aria-label="Хийсэн">'+CHECK+'</button><span class="txt">'+esc(x.t)+"</span></div>";}).join("")+"</div>";
   }
+  hb+='<button class="link-btn" data-act="sheet" data-v="habit">+ Зуршил нэмэх</button>';
   h+=fold("habits","Өдөр тутмын зуршил",done+"/"+hs.length,hb,true);
 
   const [a,b]=sleepTarget();
@@ -730,7 +874,7 @@ function vToday(){
 
   const j=d.journal;const jf=[["win","Өнөөдрийн ялалт","Юу сайн болсон бэ?"],["learned","Сурсан зүйл","Шинэ техник, санаа, алдаанаас сурсан зүйл"],["focus","Маргаашийн нэг зорилго","Нэг л зүйл"],["thanks","Талархал","Хэнд, юунд талархаж байна вэ?"]];
   h+=fold("journal","Өдрийн тэмдэглэл",jf.filter(x=>(j[x[0]]||"").trim()).length+"/4",jf.map(x=>'<div class="field"><label for="f-j-'+x[0]+'">'+x[1]+'</label><textarea id="f-j-'+x[0]+'" data-path="day:journal.'+x[0]+'" placeholder="'+x[2]+'">'+esc(j[x[0]]||"")+"</textarea></div>").join(""),false);
-  h+='<button class="btn" data-act="tab" data-v="train">+ Бэлтгэл бүртгэх</button>';
+  h+=addBtn("sess","Бэлтгэл бүртгэх");
   return h;
 }
 
@@ -738,16 +882,7 @@ function vToday(){
 function vTrain(){
   const t=todayIso(),last7=range(addDays(t,-6),7);
   const prev=[1,2,3].map(k=>statsFor(range(addDays(t,-6-7*k),7)).load);
-  let h='<div class="card"><div class="card-head"><h2>Сүүлийн 7 хоног</h2><span class="small muted">Судалгааны хязгаарууд</span></div>'+guardCards(last7,prev)+"</div>";
-
-  const sf=UI.sfType;
-  h+='<div class="card"><h2>Бэлтгэл нэмэх</h2><div class="field"><span class="lbl">Төрөл</span><div class="chips">'+Object.keys(SESS).map(k=>'<button class="chip'+(sf===k?" on":"")+'" data-act="sftype" data-v="'+k+'" aria-pressed="'+(sf===k)+'">'+SESS[k]+"</button>").join("")+'</div></div>'+
-  '<div class="grid3"><div class="field"><label for="sf-date">Огноо</label><input id="sf-date" type="date" value="'+UI.date+'" max="'+t+'"></div><div class="field"><label for="sf-min">Хугацаа (мин)</label><input id="sf-min" type="number" min="0" inputmode="numeric" value="60"></div><div class="field"><label for="sf-rpe">Хүндрэл (RPE 1–10)</label><select id="sf-rpe">'+[1,2,3,4,5,6,7,8,9,10].map(n=>"<option"+(n===6?" selected":"")+">"+n+"</option>").join("")+'</select></div></div>'+
-  '<div class="field"><label for="sf-enj">Хэр таалагдсан бэ? (1–5)</label><select id="sf-enj"><option value="5">5 · Маш их</option><option value="4" selected>4 · Сайн</option><option value="3">3 · Дунд</option><option value="2">2 · Бага</option><option value="1">1 · Огт үгүй</option></select></div>'+
-  '<div class="field"><label for="sf-tech">Сурсан техник (мөр бүрт нэг)</label><textarea id="sf-tech" placeholder="жишээ нь: Scissor sweep&#10;Armbar from guard"></textarea></div>'+
-  '<div class="grid2"><div class="field"><label for="sf-work">Юу сайн болсон бэ?</label><textarea id="sf-work"></textarea></div><div class="field"><label for="sf-q">Дасгалжуулагчаас асуух асуулт</label><textarea id="sf-q"></textarea></div></div>'+
-  (sf==="comp"?'<div class="field"><label for="sf-res">Тэмцээний үр дүн ба процессын зорилго</label><textarea id="sf-res" placeholder="Зорилго: гардаа оруулах. Үр дүн: 2 ялалт, 1 ялагдал"></textarea></div>':"")+
-  '<button class="btn" data-act="addsess">Хадгалах</button><p class="src">RPE: 1 маш хөнгөн, 10 хамгийн хүнд. Ачаалал = минут × RPE (Foster 2001).</p></div>';
+  let h=addBtn("sess","Бэлтгэл бүртгэх")+'<div class="card"><div class="card-head"><h2>Сүүлийн 7 хоног</h2><span class="small muted">Судалгааны хязгаарууд</span></div>'+guardCards(last7,prev)+"</div>";
 
   const mon=mondayOf(t);const wks=[7,6,5,4,3,2,1,0].map(k=>addDays(mon,-7*k));
   const mins=wks.map(w=>statsFor(range(w,7)).min);const mx=Math.max(60,...mins);
@@ -756,7 +891,7 @@ function vTrain(){
   const recent=Object.values(S.days).filter(d=>(d.sessions||[]).length).sort((a,b)=>b.date.localeCompare(a.date));
   h+='<div class="card"><h2>Сүүлийн бэлтгэлүүд</h2>';
   const rs=[];recent.forEach(d=>d.sessions.forEach((s,i)=>rs.push([d.date,i,s])));
-  if(!rs.length)h+='<p class="muted small">Одоогоор бүртгэл алга. Дээрх маягтаар эхний бэлтгэлээ нэмээрэй.</p>';
+  if(!rs.length)h+='<p class="muted small">Одоогоор бүртгэл алга. Дээд талын товчоор эхний бэлтгэлээ нэмээрэй.</p>';
   else h+='<div class="list">'+rs.slice(0,20).map(([ds,i,s])=>{const key="s"+ds+"_"+i;return '<div class="sess"><div class="sh"><span><span class="tag">'+esc(SESS[s.type]||s.type)+'</span> <span class="small muted">'+fmtDate(ds)+", "+DOW[parse(ds).getDay()]+'</span></span><span class="small num">'+esc(s.min)+" мин · RPE "+esc(s.rpe)+" · таалагдсан "+esc(s.enj||"–")+"/5"+"</span></div>"+(s.tech?'<p class="small"><b>Техник:</b> '+esc(s.tech).replace(/\n/g,", ")+"</p>":"")+(s.work?'<p class="small"><b>Сайн:</b> '+esc(s.work)+"</p>":"")+(s.q?'<p class="small"><b>Асуулт:</b> '+esc(s.q)+"</p>":"")+(s.res?'<p class="small"><b>Тэмцээн:</b> '+esc(s.res)+"</p>":"")+'<div>'+delBtn(key,"delsess",'data-d="'+ds+'" data-i="'+i+'"')+"</div></div>";}).join("")+"</div>";
   h+="</div>";
 
@@ -771,7 +906,7 @@ function vGoals(){
   const vis=all.filter(x=>f==="all"||x.p===f);
   const act=vis.filter(x=>!x.done).sort((a,b)=>(a.due||"9999").localeCompare(b.due||"9999"));
   const dn=vis.filter(x=>x.done).sort((a,b)=>(b.doneAt||"").localeCompare(a.doneAt||""));
-  let h='<div class="card"><h2>Шинэ зорилго, даалгавар</h2><div class="field"><label for="g-t">Юу хийх вэ?</label><input id="g-t" type="text" placeholder="жишээ нь: 11-р сарын тэмцээнд оролцох"></div><div class="grid3"><div class="field"><label for="g-p">Салбар</label><select id="g-p">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'"'+(k===(f==="all"?"bjj":f)?" selected":"")+">"+PILLARS[k].t+'</option>').join("")+'</select></div><div class="field"><label for="g-k">Төрөл</label><select id="g-k"><option value="task">Даалгавар</option><option value="goal">Урт хугацааны зорилго</option></select></div><div class="field"><label for="g-due">Хугацаа</label><input id="g-due" type="date"></div></div><button class="btn" data-act="addtask">Нэмэх</button></div>';
+  let h=addBtn("task","Зорилго, даалгавар нэмэх");
   h+='<div class="chips"><button class="chip'+(f==="all"?" on":"")+'" data-act="filter" data-v="all">Бүгд</button>'+Object.keys(PILLARS).map(k=>'<button class="chip'+(f===k?" on":"")+'" data-act="filter" data-v="'+k+'">'+PILLARS[k].t+"</button>").join("")+"</div>";
   const item=x=>{const over=!x.done&&x.due&&x.due<t;return '<div class="row'+(x.done?" done":"")+'"><button class="check'+(x.done?" on":"")+'" data-act="toggletask" data-id="'+esc(x.id)+'" aria-label="Дууссан">'+CHECK+"</button>"+pdot(x.p)+'<span class="txt">'+esc(x.t)+(x.kind==="goal"?' <span class="tag">Зорилго</span>':"")+(x.due?'<br><span class="small '+(over?"":"muted")+'" style="'+(over?"color:var(--bad);font-weight:600":"")+'">'+(over?"Хугацаа хэтэрсэн: ":"Хугацаа: ")+fmtDate(x.due)+"</span>":"")+"</span>"+delBtn("t"+x.id,"deltask",'data-id="'+esc(x.id)+'"')+"</div>";};
   h+='<div class="card"><div class="card-head"><h2>Хийх зүйлс</h2><span class="small muted num">'+act.length+"</span></div>"+(act.length?'<div class="list">'+act.map(item).join("")+"</div>":'<p class="muted small">Идэвхтэй зорилго алга. Доорх жишээнээс сонгож эхэлж болно.</p>')+"</div>";
@@ -791,8 +926,7 @@ function vBiz(){
   const mi=me.filter(x=>x.type==="in").reduce((a,x)=>a+(+x.amt||0),0),mo=me.filter(x=>x.type==="out").reduce((a,x)=>a+(+x.amt||0),0);
   let h='<div class="card"><div class="card-head"><h2>Гурван сав</h2><button class="x" data-act="tab" data-v="settings">Хувь өөрчлөх</button></div><div class="jars">'+[["save","Хадгалах"],["spend","Зарцуулах"],["give","Хандивлах"]].map(([k,l])=>'<div class="jar"><span>'+l+" · "+(+J[k]||0)+'%</span><b>'+money(jb(k))+"</b></div>").join("")+'</div><p class="small muted">Орлого бүр хувиараа саванд хуваагдана. Зарлагыг аль савнаас гаргаснаа сонгоно.</p></div>';
   h+='<div class="card"><h2>Энэ сар</h2><div class="summary"><div class="stat"><b class="num" style="font-size:1.2rem">'+money(mi)+'</b><span>Орлого</span></div><div class="stat"><b class="num" style="font-size:1.2rem">'+money(mo)+'</b><span>Зарлага</span></div><div class="stat"><b class="num" style="font-size:1.2rem;color:'+(mi-mo>=0?"var(--ok)":"var(--bad)")+'">'+money(mi-mo)+'</b><span>Ашиг</span></div></div></div>';
-  const et=UI.etype;
-  h+='<div class="card"><h2>Гүйлгээ нэмэх</h2><div class="chips"><button class="chip'+(et==="in"?" on":"")+'" data-act="etype" data-v="in">Орлого</button><button class="chip'+(et==="out"?" on":"")+'" data-act="etype" data-v="out">Зарлага</button></div><div class="grid3"><div class="field"><label for="e-amt">Дүн ('+esc(S.settings.currency)+')</label><input id="e-amt" type="number" min="0" inputmode="numeric"></div><div class="field"><label for="e-date">Огноо</label><input id="e-date" type="date" value="'+todayIso()+'"></div>'+(et==="out"?'<div class="field"><label for="e-jar">Аль савнаас</label><select id="e-jar"><option value="spend">Зарцуулах</option><option value="save">Хадгалах</option><option value="give">Хандивлах</option></select></div>':'<div class="field"><label for="e-src">Эх үүсвэр</label><select id="e-src"><option>Бизнес</option><option>Хөлс, ажил</option><option>Бэлэг</option><option>Шагнал</option><option>Бусад</option></select></div>')+'</div><div class="field"><label for="e-note">Тайлбар</label><input id="e-note" type="text" placeholder="'+(et==="in"?"жишээ нь: 5 ширхэг бугуйвч зарсан":"жишээ нь: материал худалдаж авсан")+'"></div><button class="btn" data-act="addentry">Нэмэх</button></div>';
+  h+=addBtn("money","Орлого, зарлага нэмэх");
   const list=e.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   h+='<div class="card"><h2>Гүйлгээнүүд</h2>'+(list.length?'<div class="list">'+list.slice(0,40).map(x=>'<div class="row"><span class="txt"><span class="'+(x.type==="in"?"amt-in":"amt-out")+' num">'+(x.type==="in"?"+":"−")+money(x.amt)+'</span><br><span class="small muted">'+fmtDate(x.date)+(x.src?" · "+esc(x.src):"")+(x.note?" · "+esc(x.note):"")+"</span></span>"+delBtn("e"+x.id,"delentry",'data-id="'+esc(x.id)+'"')+"</div>").join("")+"</div>":'<p class="muted small">Одоогоор гүйлгээ алга.</p>')+"</div>";
   const v=B.venture;const vf=(k,l,ph,ta)=>'<div class="field"><label for="v-'+k+'">'+l+"</label>"+(ta?'<textarea id="v-'+k+'" data-path="biz:venture.'+k+'" placeholder="'+ph+'">'+esc(v[k])+"</textarea>":'<input id="v-'+k+'" type="text" data-path="biz:venture.'+k+'" placeholder="'+ph+'" value="'+esc(v[k])+'">')+"</div>";
@@ -808,12 +942,10 @@ function vLib(){
   const all=Object.values(S.library).sort((a,b)=>(b.fav?1:0)-(a.fav?1:0)||(b.created||"").localeCompare(a.created||""));
   const f=UI.libFilter;
   const vis=all.filter(x=>f==="all"||(f==="fav"?x.fav:f==="todo"?!x.done:x.p===f));
-  let h='<div class="card"><h2>Материал нэмэх</h2><div class="field"><label for="l-url">Холбоос (YouTube, нийтлэл, Instagram…)</label><input id="l-url" type="url" inputmode="url" placeholder="https://"></div><div class="field"><label for="l-t">Гарчиг</label><input id="l-t" type="text" placeholder="жишээ нь: Guard retention дасгалууд"></div><div class="grid2"><div class="field"><label for="l-p">Салбар</label><select id="l-p">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'">'+PILLARS[k].t+"</option>").join("")+'</select></div><div class="field"><label for="l-k">Төрөл</label><select id="l-k">'+Object.keys(LIBKIND).map(k=>'<option value="'+k+'">'+LIBKIND[k]+"</option>").join("")+'</select></div></div><div class="field"><label for="l-n">Тэмдэглэл</label><input id="l-n" type="text" placeholder="Яагаад хэрэгтэй вэ? Хэзээ үзэх вэ?"></div>'+
-  (assetsApi?'<div class="field"><label for="l-file">Файл хавсаргах (PDF, зураг, видео, 20 MB хүртэл)</label><input id="l-file" type="file" accept="image/*,video/*,application/pdf,.txt,.md,.csv"></div>':"")+
-  '<button class="btn" data-act="addlib">Хадгалах</button></div>';
+  let h=addBtn("lib","Холбоос, материал хадгалах");
   h+='<div class="chips"><button class="chip'+(f==="all"?" on":"")+'" data-act="libfilter" data-v="all">Бүгд '+all.length+'</button><button class="chip'+(f==="fav"?" on":"")+'" data-act="libfilter" data-v="fav">★ Дуртай</button><button class="chip'+(f==="todo"?" on":"")+'" data-act="libfilter" data-v="todo">Үзээгүй</button>'+Object.keys(PILLARS).map(k=>'<button class="chip'+(f===k?" on":"")+'" data-act="libfilter" data-v="'+k+'">'+PILLARS[k].t+"</button>").join("")+"</div>";
   h+='<div class="card">'+(all.length>4?'<input id="lib-q" type="text" placeholder="Хайх…" aria-label="Материал хайх">':"");
-  if(!vis.length)h+='<p class="muted small">'+(all.length?"Энэ шүүлтүүрт материал алга.":"Хэрэгтэй бичлэг, нийтлэл, файлаа энд хадгалаарай. Доорх жишээнээс эхэлж болно.")+"</p>";
+  if(!vis.length)h+='<p class="muted small">'+(all.length?"Энэ шүүлтүүрт материал алга.":"Хэрэгтэй бичлэг, нийтлэл, файлаа дээд талын товчоор хадгалаарай. Доорх жишээнээс ч эхэлж болно.")+"</p>";
   else h+='<div class="list" id="lib-list">'+vis.map(x=>{
     const u=safeUrl(x.url);const host=hostOf(u);
     const title=u?'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+esc(x.t||host)+"</a>":esc(x.t);
@@ -866,12 +998,12 @@ function vSettings(){
   '<div class="field"><label for="p-gym">Клуб</label><input id="p-gym" type="text" data-path="set:profile.gym" value="'+esc(p.gym)+'"></div><div class="field"><label for="p-coach">Дасгалжуулагч</label><input id="p-coach" type="text" data-path="set:profile.coach" value="'+esc(p.coach)+'"></div></div>';
   h+='<p class="small muted">Нас оруулснаар нойрны зорилт болон долоо хоногийн бэлтгэлийн дээд хязгаар автоматаар тохирно.</p></div>';
 
-  h+='<div class="card"><h2>Зуршлууд</h2><div class="list">'+s.habits.map((x,i)=>'<div class="row"><div class="hab-item" style="flex:1"><input type="text" id="hb-'+esc(x.id)+'" aria-label="Зуршил" data-path="set:habits.'+i+'.t" value="'+esc(x.t)+'">'+pillarSelect("set:habits."+i+".p",x.p)+delBtn("h"+x.id,"delhabit",'data-i="'+i+'"')+"</div></div>").join("")+'</div><div class="hab-item"><input id="nh-t" type="text" placeholder="Шинэ зуршил" aria-label="Шинэ зуршил"><select id="nh-p" aria-label="Салбар">'+Object.keys(PILLARS).map(k=>'<option value="'+k+'">'+PILLARS[k].t+"</option>").join("")+'</select><button class="btn" data-act="addhabit">Нэмэх</button></div></div>';
+  h+='<div class="card"><h2>Зуршлууд</h2><div class="list">'+s.habits.map((x,i)=>'<div class="row"><div class="hab-item" style="flex:1"><input type="text" id="hb-'+esc(x.id)+'" aria-label="Зуршил" data-path="set:habits.'+i+'.t" value="'+esc(x.t)+'">'+pillarSelect("set:habits."+i+".p",x.p)+delBtn("h"+x.id,"delhabit",'data-i="'+i+'"')+"</div></div>").join("")+'</div><button class="link-btn" data-act="sheet" data-v="habit">+ Зуршил нэмэх</button></div>';
 
   h+='<div class="card"><h2>Долоо хоногийн хуваарь</h2><p class="small muted">Эхний хувилбар нь жишээ. Бодит хуваариараа солиорой.</p>';
   for(const dw of DOW_ORDER){
     const items=s.schedule[dw]||[];
-    h+='<div class="sched-day"><h3>'+DOW[dw]+"</h3>"+items.map((it,i)=>'<div class="sched-item"><input type="text" aria-label="Цаг" placeholder="17:00" data-path="set:schedule.'+dw+"."+i+'.t" value="'+esc(it.t)+'"><input type="text" aria-label="Үйл ажиллагаа" data-path="set:schedule.'+dw+"."+i+'.x" value="'+esc(it.x)+'"><span class="pp">'+pillarSelect("set:schedule."+dw+"."+i+".p",it.p)+"</span>"+delBtn("sc"+dw+"_"+i,"delsched",'data-dw="'+dw+'" data-i="'+i+'"')+"</div>").join("")+'<button class="x" style="align-self:flex-start;color:var(--accent)" data-act="addsched" data-dw="'+dw+'">+ Нэмэх</button></div>';
+    h+='<div class="sched-day"><h3>'+DOW[dw]+"</h3>"+items.map((it,i)=>'<div class="sched-item"><input type="text" aria-label="Цаг" placeholder="17:00" data-path="set:schedule.'+dw+"."+i+'.t" value="'+esc(it.t)+'"><input type="text" aria-label="Үйл ажиллагаа" data-path="set:schedule.'+dw+"."+i+'.x" value="'+esc(it.x)+'"><span class="pp">'+pillarSelect("set:schedule."+dw+"."+i+".p",it.p)+"</span>"+delBtn("sc"+dw+"_"+i,"delsched",'data-dw="'+dw+'" data-i="'+i+'"')+"</div>").join("")+'<button class="link-btn" data-act="addsched" data-dw="'+dw+'">+ Нэмэх</button></div>';
   }
   h+="</div>";
 
@@ -913,8 +1045,8 @@ let undoPath=null,undoPrev=null;
 function undoable(path){undoPath=path;undoPrev=clone(getDoc(path));}
 let confirmTimer=null;
 function armConfirm(key){UI.confirm=key;clearTimeout(confirmTimer);confirmTimer=setTimeout(()=>{if(UI.confirm===key){UI.confirm=null;requestRender();}},3500);}
-const SUBMIT={"g-t":"addtask","e-amt":"addentry","e-note":"addentry","nh-t":"addhabit","sf-min":"addsess","l-url":"addlib"};
-document.addEventListener("keydown",e=>{if(e.key!=="Enter"||e.isComposing)return;const act=SUBMIT[e.target.id];if(!act)return;const btn=document.querySelector('[data-act="'+act+'"]');if(btn){e.preventDefault();btn.click();}});
+const SUBMIT={"g-t":"addtask","e-amt":"addentry","e-note":"addentry","nh-t":"addhabit","sf-min":"addsess","l-url":"addlib","l-t":"addlib"};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&UI.sheet){UI.sheet=null;render();return;}if(e.key!=="Enter"||e.isComposing)return;const act=SUBMIT[e.target.id];if(!act)return;const btn=document.querySelector('[data-act="'+act+'"]');if(btn){e.preventDefault();btn.click();}});
 document.addEventListener("touchstart",()=>{},{passive:true});
 function markJust(a,ds){try{const sel='[data-act="'+a+'"]'+["id","k","v","f","m","p"].filter(k=>ds[k]!=null).map(k=>'[data-'+k+'="'+CSS.escape(ds[k])+'"]').join("");const el=document.querySelector(sel);if(el)el.classList.add("just");}catch(err){}}
 
@@ -928,8 +1060,10 @@ document.addEventListener("click",e=>{
   let after=null;
   const val=id=>{const el=document.getElementById(id);return el?el.value:"";};
   switch(a){
-    case "closeset":UI.tab=UI.prevTab||"today";try{localStorage.setItem("cb-tab",UI.tab);}catch(err){}go("enter-r");return;
-    case "tab":{if(ds.v==="settings"&&UI.tab==="settings"){UI.tab=UI.prevTab||"today";try{localStorage.setItem("cb-tab",UI.tab);}catch(err){}go("enter-r");return;}
+    case "sheet":UI.sheet=ds.v==="menu"?"menu":ds.v;break;
+    case "sheetclose":UI.sheet=null;break;
+    case "closeset":UI.sheet=null;UI.tab=UI.prevTab||"today";try{localStorage.setItem("cb-tab",UI.tab);}catch(err){}go("enter-r");return;
+    case "tab":{UI.sheet=null;if(ds.v==="settings"&&UI.tab==="settings"){UI.tab=UI.prevTab||"today";try{localStorage.setItem("cb-tab",UI.tab);}catch(err){}go("enter-r");return;}
       if(UI.tab===ds.v){window.scrollTo({top:0});return;}if(ds.v==="settings")UI.prevTab=UI.tab;const order=TABS.map(t=>t[0]).concat("settings"),dir=order.indexOf(ds.v)>order.indexOf(UI.tab)?"enter-l":"enter-r";UI.tab=ds.v;try{localStorage.setItem("cb-tab",ds.v);}catch(err){}go(dir);return;}
     case "dprev":UI.date=addDays(UI.date,-1);break;
     case "dnext":UI.date=addDays(UI.date,1);break;
@@ -960,17 +1094,17 @@ document.addEventListener("click",e=>{
       const min=+val("sf-min");if(!min){document.getElementById("sf-min").focus();return;}
       const d=ensureDay(date);
       d.sessions.push({type:UI.sfType,min,rpe:+val("sf-rpe"),enj:+val("sf-enj"),tech:val("sf-tech").trim(),work:val("sf-work").trim(),q:val("sf-q").trim(),res:val("sf-res").trim()});
-      save("days/"+date);toast("Бэлтгэл хадгалагдлаа");break;}
+      save("days/"+date);added("Бэлтгэл хадгалагдлаа","train");break;}
     case "delsess":{const d=S.days[ds.d];if(d){undoable("days/"+ds.d);d.sessions.splice(+ds.i,1);save("days/"+ds.d);}break;}
     case "filter":UI.filter=ds.v;break;
-    case "addtask":{const t=val("g-t").trim();if(!t){document.getElementById("g-t").focus();return;}toast("Нэмэгдлээ");const id=uid();S.tasks[id]={id,t,p:val("g-p"),kind:val("g-k"),due:val("g-due"),done:false,created:todayIso()};save("tasks/"+id);break;}
+    case "addtask":{const t=val("g-t").trim();if(!t){document.getElementById("g-t").focus();return;}const id=uid();S.tasks[id]={id,t,p:val("g-p"),kind:val("g-k")||"task",due:val("g-due"),done:false,created:todayIso()};save("tasks/"+id);added("Нэмэгдлээ","goals");break;}
     case "addsug":{const id=uid();S.tasks[id]={id,t:ds.t,p:ds.p,kind:"goal",due:"",done:false,created:todayIso()};save("tasks/"+id);toast("Зорилго нэмэгдлээ");break;}
     case "toggletask":{const x=S.tasks[ds.id];if(x){x.done=!x.done;x.doneAt=x.done?todayIso():"";save("tasks/"+ds.id);}break;}
     case "deltask":undoable("tasks/"+ds.id);delete S.tasks[ds.id];remove("tasks/"+ds.id);break;
     case "etype":UI.etype=ds.v;break;
-    case "addentry":{const amt=+val("e-amt");if(!amt){document.getElementById("e-amt").focus();return;}toast("Гүйлгээ нэмэгдлээ");const en={id:uid(),type:UI.etype,amt,date:val("e-date")||todayIso(),note:val("e-note").trim()};if(UI.etype==="out")en.jar=val("e-jar");else en.src=val("e-src");S.biz.entries.push(en);save("app/business");break;}
+    case "addentry":{const amt=+val("e-amt");if(!amt){document.getElementById("e-amt").focus();return;}const en={id:uid(),type:UI.etype,amt,date:val("e-date")||todayIso(),note:val("e-note").trim()};if(UI.etype==="out")en.jar=val("e-jar");else en.src=val("e-src");S.biz.entries.push(en);save("app/business");added("Гүйлгээ нэмэгдлээ","biz");break;}
     case "delentry":undoable("app/business");S.biz.entries=S.biz.entries.filter(x=>x.id!==ds.id);save("app/business");break;
-    case "addhabit":{const t=val("nh-t").trim();if(!t){document.getElementById("nh-t").focus();toast("Зуршлын нэрээ бичнэ үү");return;}S.settings.habits.push({id:"h"+uid(),t,p:val("nh-p")});save("app/settings");toast("Зуршил нэмэгдлээ");break;}
+    case "addhabit":{const t=val("nh-t").trim();if(!t){document.getElementById("nh-t").focus();toast("Зуршлын нэрээ бичнэ үү");return;}S.settings.habits.push({id:"h"+uid(),t,p:val("nh-p")});save("app/settings");added("Зуршил нэмэгдлээ",UI.tab==="settings"?"settings":"today");break;}
     case "delhabit":undoable("app/settings");S.settings.habits.splice(+ds.i,1);save("app/settings");break;
     case "addsched":{const k=ds.dw;const L=(S.settings.schedule[k]=S.settings.schedule[k]||[]);L.push({t:"",x:"",p:"bjj"});save("app/settings");const i=L.length-1;after=()=>{const el=document.querySelector('[data-path="set:schedule.'+k+"."+i+'.t"]');if(el)el.focus();};break;}
     case "delsched":undoable("app/settings");S.settings.schedule[ds.dw].splice(+ds.i,1);save("app/settings");break;
@@ -1008,7 +1142,7 @@ async function addLib(btn){
       const res=await assetsApi.upload(file,opt);item.file={id:res.id,name:file.name,type:res.contentType,size:res.sizeBytes};}
     catch(e){btn.disabled=false;btn.textContent="Хадгалах";toast(e&&e.code==="quota_exceeded"?"Хадгалах зай дүүрсэн":"Файл илгээж чадсангүй. Төрөл эсвэл хэмжээг шалгана уу.");return;}
   }
-  S.library[item.id]=item;save("library/"+item.id);toast("Хадгалагдлаа");render();
+  S.library[item.id]=item;save("library/"+item.id);added("Хадгалагдлаа","lib");render();
 }
 render();
 if(SB.configured()){SB.loadSession();if(SB.session)startCloud();else showLogin();}else initStoreArtifact();
