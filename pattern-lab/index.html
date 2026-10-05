@@ -409,7 +409,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 19</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 20</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -427,8 +427,8 @@ td.num, th.num { text-align: right; }
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=19"></script>
-<script src="ocr.js?v=19"></script>
+<script src="engine.js?v=20"></script>
+<script src="ocr.js?v=20"></script>
 <script>
 (function () {
   'use strict';
@@ -638,7 +638,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=19');
+    const r = await fetch('digits.json?v=20');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -803,7 +803,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=19'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=20'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -920,7 +920,8 @@ td.num, th.num { text-align: right; }
     h += `<details><summary>Аль загвар жин авав</summary><div class="bars">`;
     t.models.slice().sort((a, c) => c.weight - a.weight).forEach(m => {
       const info = PL.MODEL_INFO[m.id];
-      const extra = m.id === 'crowd' ? ` Казино удирдсан эргэлтийн тооцоолсон хувь: ${pct(m.param)}.` : m.id === 'payout' && m.param ? ` Хожлын дүнтэй ${num(m.param.n)} эргэлт.` : '';
+      const extra = m.id === 'crowd' ? ` Казино удирдсан эргэлтийн тооцоолсон хувь: ${pct(m.param)}.` : m.id === 'payout' && m.param ? ` Хожлын дүнтэй ${num(m.param.n)} эргэлт.`
+        : m.id === 'logit' && m.param ? ' Хамгийн хүчтэй шинж: ' + m.param.map((w, j) => ({ w, j })).sort((a, c) => Math.abs(c.w) - Math.abs(a.w)).slice(0, 3).map(o => `${PL.LOGIT_FEATURES[o.j].label} ${o.w >= 0 ? '+' : ''}${o.w.toFixed(2)}`).join(', ') + '.' : '';
       h += `<div class="bar"><span>${info.label}</span><span class="track"><span class="fill" style="width:${(m.weight * 100).toFixed(1)}%;display:block"></span></span><span class="num">${pct(m.weight)}</span><span class="hint">${info.hint}${extra}</span></div>`;
     });
     h += `</div></details>`;
