@@ -170,7 +170,23 @@ td.num, th.num { text-align: right; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 0.8125rem; margin: 4px 0 10px; }
 .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
 .status { font-size: 0.875rem; color: var(--muted); margin: 6px 0; }
-.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0;
+/* bottom sheet: tap to record */
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8; background: var(--surface); border-top: 1px solid var(--rule); box-shadow: 0 -6px 24px rgba(0,0,0,.12); padding: 0 12px calc(10px + env(safe-area-inset-bottom)); transform: translateY(calc(100% - 48px)); transition: transform .25s; }
+.sheet.open { transform: none; }
+.sheet .handle { display: flex; align-items: center; justify-content: space-between; height: 48px; cursor: pointer; font-weight: 600; }
+.sheet .handle small { font-weight: 400; color: var(--muted); }
+.sheet .flags { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; }
+.sheet .flag { font: inherit; font-size: 0.875rem; font-weight: 600; min-height: 38px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); cursor: pointer; }
+.sheet .flag[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.sheet .flag.mag[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: #fff; }
+.sheet .wonin { width: 7.5em; padding: 6px 8px; min-height: 38px; }
+.pad { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.pad button { font: inherit; font-size: 0.9375rem; font-weight: 700; color: #fff; border: 0; border-radius: 6px; min-height: 40px; cursor: pointer; padding: 0; }
+.pad button:active { transform: scale(.94); }
+.pad .z { grid-column: 1 / -1; }
+.wrap { padding-bottom: 120px; }
+@media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+.toast { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translate(-50%, -20px); opacity: 0;
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 0.9375rem;
   transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100% - 32px); z-index: 10; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -213,7 +229,8 @@ td.num, th.num { text-align: right; }
     <h2>Дараагийн эргэлт</h2>
     <div id="liveSummary"><p class="empty">Таамаг 30 эргэлтээс эхэлнэ.</p></div>
 
-    <h2>Эргэлт бүртгэх</h2>
+    <details><summary>Дэлгэрэнгүй бүртгэх (хожсон хүн, тоглогч, үржүүлэгчийн тоонууд)</summary>
+    <p class="muted">Энгийн бүртгэлд доорх “Бүртгэх” самбараас тоон дээр дарахад хангалттай. Энэ маягт нэмэлт мэдээлэлтэй үед.</p>
     <div class="grid3">
       <div><label for="lNumber">Буусан тоо</label><input id="lNumber" type="number" inputmode="numeric" min="0" max="36" placeholder="0–36"></div>
       <div><label for="lWon" id="lWonLabel">Хожсон дүн (сая)</label><input id="lWon" type="number" inputmode="decimal" step="any" min="0" placeholder="—"></div>
@@ -229,6 +246,7 @@ td.num, th.num { text-align: right; }
     </div>
     <label class="check"><input type="checkbox" id="lHit"> Буусан тоо үржүүлэгчтэй байсан</label>
     <div class="row"><button class="btn accent" id="liveSubmit">Бүртгэх</button><button class="btn ghost" id="liveUndo">Сүүлийнхийг буцаах</button></div>
+    </details>
     <div class="status" id="liveStatus"></div>
 
     <h2>Таамгийн дэлгэрэнгүй</h2>
@@ -382,12 +400,23 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 12</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 13</p>
+</div>
+<div class="sheet" id="sheet">
+  <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
+  <div class="flags">
+    <button class="flag" id="fNatural" aria-pressed="false">Natural</button>
+    <button class="flag mag" id="fMag" aria-pressed="false">🧲 Соронз</button>
+    <button class="flag" id="fLight" aria-pressed="false">⚡ Үржүүлэгч</button>
+    <input class="wonin" id="fWon" type="number" inputmode="decimal" step="any" min="0" placeholder="дүн, сая" aria-label="Хожсон дүн">
+    <button class="flag" id="fUndo">Буцаах</button>
+  </div>
+  <div class="pad" id="pad"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=12"></script>
-<script src="ocr.js?v=12"></script>
+<script src="engine.js?v=13"></script>
+<script src="ocr.js?v=13"></script>
 <script>
 (function () {
   'use strict';
@@ -495,9 +524,7 @@ td.num, th.num { text-align: right; }
     const steer = $('lSteer').value === '' ? null : $('lSteer').value === '1';
     return { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players, won, winners, steer, mult, light: mult && !hit ? !!mult[n] : hit, multPartial: !mult || hit, liab: null };
   }
-  $('liveSubmit').addEventListener('click', () => {
-    const spin = readEntry();
-    if (!spin) return;
+  function scoreLive(spin) {
     const n = spin.n;
     if (state.next && state.next.forSpins === state.spins.length) {
       const p = state.next.next.p;
@@ -513,6 +540,12 @@ td.num, th.num { text-align: right; }
         colorOk: gp.color.has(n), parityOk: gp.parity.has(n), dozenOk: gp.dozen.has(n), sectorOk: bestWindows(p, 2, 1)[0].nums.includes(n),
       });
     }
+  }
+  $('liveSubmit').addEventListener('click', () => {
+    const spin = readEntry();
+    if (!spin) return;
+    const n = spin.n;
+    scoreLive(spin);
     state.spins.push(spin);
     state.last = null; state.truth = null;
     ['lNumber', 'lMult', 'lWon', 'lWinners'].forEach(id => { $(id).value = ''; });
@@ -593,7 +626,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=12');
+    const r = await fetch('digits.json?v=13');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -758,7 +791,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=12'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=13'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1247,7 +1280,36 @@ td.num, th.num { text-align: right; }
     });
     $('wonOut').innerHTML = h + '</tbody></table></div>';
   }
-  function renderAll() { renderRecent(); renderWon(); renderSteer(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
+  // ---------- bottom sheet: tap a number to record it with the toggled flags ----------
+  function recordSpin(n, flags) {
+    const won = flags.won == null ? null : flags.won * state.wonUnit;
+    const spin = { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players: null, won, winners: null, steer: flags.steer, mult: null, light: flags.light, multPartial: true, liab: null };
+    scoreLive(spin);
+    state.spins.push(spin);
+    state.last = null; state.truth = null;
+    save(); renderAll();
+    toast(`${n} бүртгэгдлээ${flags.steer ? ' 🧲' : ''}${flags.light ? ' ⚡' : ''}`);
+  }
+  const pad = $('pad');
+  pad.innerHTML = `<button class="z" style="background:var(--zero)" data-n="0">0</button>` + Array.from({ length: 36 }, (_, i) => { const n = i + 1; return `<button style="background:${pocketColor(n)}" data-n="${n}">${n}</button>`; }).join('');
+  pad.addEventListener('click', e => {
+    const b = e.target.closest('button[data-n]'); if (!b) return;
+    const steer = $('fMag').getAttribute('aria-pressed') === 'true' ? true : $('fNatural').getAttribute('aria-pressed') === 'true' ? false : null;
+    const light = $('fLight').getAttribute('aria-pressed') === 'true';
+    const won = $('fWon').value.trim() === '' ? null : parseFloat($('fWon').value) || 0;
+    recordSpin(parseInt(b.dataset.n, 10), { steer, light, won });
+    $('fLight').setAttribute('aria-pressed', 'false'); $('fWon').value = '';
+  });
+  const toggle = (id, off) => $(id).addEventListener('click', () => { const on = $(id).getAttribute('aria-pressed') !== 'true'; $(id).setAttribute('aria-pressed', String(on)); if (on && off) $(off).setAttribute('aria-pressed', 'false'); });
+  toggle('fNatural', 'fMag'); toggle('fMag', 'fNatural'); toggle('fLight');
+  $('fUndo').addEventListener('click', () => $('liveUndo').click());
+  const openSheet = open => { $('sheet').classList.toggle('open', open); $('sheetHandle').setAttribute('aria-expanded', String(open)); $('sheetArrow').textContent = open ? '▼' : '▲'; try { localStorage.setItem(KEY + '.sheet', open ? '1' : '0'); } catch (e) {} };
+  $('sheetHandle').addEventListener('click', () => openSheet(!$('sheet').classList.contains('open')));
+  $('sheetHandle').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(!$('sheet').classList.contains('open')); } });
+  try { if (localStorage.getItem(KEY + '.sheet') === '1') openSheet(true); } catch (e) {}
+  function renderSheetLast() { const l = state.spins.slice(-5).map(s => s.n); $('sheetLast').textContent = l.length ? '· сүүлийн: ' + l.join(' ') : ''; }
+
+  function renderAll() { renderSheetLast(); renderRecent(); renderWon(); renderSteer(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
 
   // Surface failures instead of a silently dead page.
   window.addEventListener('error', e => { toast('Алдаа: ' + (e.message || e.error)); });
