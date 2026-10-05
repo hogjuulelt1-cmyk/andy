@@ -401,7 +401,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 14</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 15</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -411,14 +411,16 @@ td.num, th.num { text-align: right; }
     <button class="flag" id="fLight" aria-pressed="false">⚡ Үржүүлэгч</button>
     <select class="flag" id="fMult" aria-label="Үржүүлэгчийн утга" hidden><option value="">⚡ хэд?</option><option>50</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>600</option><option>700</option><option>1000</option><option>1500</option><option>2000</option></select>
     <input class="wonin" id="fWon" type="number" inputmode="decimal" step="any" min="0" placeholder="дүн, сая" aria-label="Хожсон дүн">
+    <select class="flag" id="fPlayers" aria-label="Тоглогчийн тоо, ойролцоогоор"><option value="">тоглогч ~</option><option>20</option><option>50</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>700</option><option>1000</option><option>1500</option><option>2000</option><option>3000</option><option>5000</option></select>
+    <select class="flag" id="fWinners" aria-label="Хожсон хүний тоо, ойролцоогоор"><option value="">хожсон ~</option><option>0</option><option>5</option><option>10</option><option>20</option><option>30</option><option>50</option><option>70</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>1000</option></select>
     <button class="flag" id="fUndo">Буцаах</button>
   </div>
   <div class="pad" id="pad"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=14"></script>
-<script src="ocr.js?v=14"></script>
+<script src="engine.js?v=15"></script>
+<script src="ocr.js?v=15"></script>
 <script>
 (function () {
   'use strict';
@@ -628,7 +630,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=14');
+    const r = await fetch('digits.json?v=15');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -793,7 +795,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=14'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=15'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1286,11 +1288,12 @@ td.num, th.num { text-align: right; }
   function recordSpin(n, flags) {
     const won = flags.won == null ? null : flags.won * state.wonUnit;
     const mult = flags.light && flags.mult ? { [n]: flags.mult } : null;
-    const spin = { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players: null, won, winners: null, steer: flags.steer, mult, light: flags.light, multPartial: true, liab: null };
+    const spin = { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players: flags.players || null, won, winners: flags.winners == null ? null : flags.winners, steer: flags.steer, mult, light: flags.light, multPartial: true, liab: null };
     scoreLive(spin);
     state.spins.push(spin);
     state.last = null; state.truth = null;
     save(); renderAll();
+    try { localStorage.setItem(KEY + '.players', $('fPlayers').value); } catch (e) {}
     toast(`${n} бүртгэгдлээ${flags.steer ? ' 🧲' : ''}${flags.light ? ' ⚡' + (flags.mult ? flags.mult + 'x' : '') : ''}`);
   }
   const pad = $('pad');
@@ -1301,7 +1304,10 @@ td.num, th.num { text-align: right; }
     const light = $('fLight').getAttribute('aria-pressed') === 'true';
     const won = $('fWon').value.trim() === '' ? null : parseFloat($('fWon').value) || 0;
     const mult = parseInt($('fMult').value, 10) || null;
-    recordSpin(parseInt(b.dataset.n, 10), { steer, light, won, mult });
+    const players = parseInt($('fPlayers').value, 10) || null;
+    const winners = $('fWinners').value === '' ? null : parseInt($('fWinners').value, 10);
+    recordSpin(parseInt(b.dataset.n, 10), { steer, light, won, mult, players, winners });
+    $('fWinners').value = '';
     $('fLight').setAttribute('aria-pressed', 'false'); $('fMult').value = ''; $('fMult').hidden = true; $('fWon').value = '';
   });
   const toggle = (id, off) => $(id).addEventListener('click', () => { const on = $(id).getAttribute('aria-pressed') !== 'true'; $(id).setAttribute('aria-pressed', String(on)); if (on && off) $(off).setAttribute('aria-pressed', 'false'); });
@@ -1311,7 +1317,7 @@ td.num, th.num { text-align: right; }
   const openSheet = open => { $('sheet').classList.toggle('open', open); $('sheetHandle').setAttribute('aria-expanded', String(open)); $('sheetArrow').textContent = open ? '▼' : '▲'; try { localStorage.setItem(KEY + '.sheet', open ? '1' : '0'); } catch (e) {} };
   $('sheetHandle').addEventListener('click', () => openSheet(!$('sheet').classList.contains('open')));
   $('sheetHandle').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(!$('sheet').classList.contains('open')); } });
-  try { if (localStorage.getItem(KEY + '.sheet') === '1') openSheet(true); } catch (e) {}
+  try { if (localStorage.getItem(KEY + '.sheet') === '1') openSheet(true); const pl = localStorage.getItem(KEY + '.players'); if (pl) $('fPlayers').value = pl; } catch (e) {}
   function renderSheetLast() { const l = state.spins.slice(-5).map(s => s.n); $('sheetLast').textContent = l.length ? '· сүүлийн: ' + l.join(' ') : ''; }
 
   function renderAll() { renderSheetLast(); renderRecent(); renderWon(); renderSteer(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
