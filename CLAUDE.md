@@ -2,7 +2,7 @@
 
 Static PWA (no build step): `index.html` holds all CSS/JS, `config.js` the Supabase
 URL + anon key, `supabase/schema.sql` the database. Deployed by Vercel on every push
-to `main`. UI text is Mongolian; talk to the user in Mongolian.
+to `main`. UI text is Mongolian (`hamt/` is English); talk to the user in Mongolian.
 
 `hamt/` is a second, separate app ("Хамт", group habit tracker): `hamt/index.html` holds all
 CSS/JS, `hamt/config.js` its own Supabase project (empty = local demo mode), `supabase/hamt.sql`

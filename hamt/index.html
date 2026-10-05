@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="mn">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Хамт</title>
-<meta name="description" content="Найзуудтайгаа хамт зуршил тогтоож, зорилгодоо хүрэх апп">
+<title>Hamt</title>
+<meta name="description" content="Build habits and reach goals together with friends">
 <link rel="manifest" href="/hamt/manifest.webmanifest">
 <link rel="icon" href="/hamt/icon-192.png">
 <link rel="apple-touch-icon" href="/hamt/icon-180.png">
@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#0f1513" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Хамт">
+<meta name="apple-mobile-web-app-title" content="Hamt">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -92,6 +92,7 @@ p{margin:0}
 .btn:active{transform:scale(.97)}
 .btn.ghost{background:var(--sunk);color:var(--ink)}
 .btn.block{width:100%}
+.btn.danger-fill{background:#c2334d;color:#fff}
 .btn.danger{background:transparent;color:#c2334d}
 .btn[disabled]{opacity:.5}
 .add{position:fixed;right:max(16px,calc(50% - 264px));bottom:calc(env(safe-area-inset-bottom) + 84px);width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 8px 24px -8px rgba(30,40,120,.55);z-index:5;transition:transform .25s var(--spring)}
@@ -269,15 +270,16 @@ const pdk=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
 const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
 const weekStart=d=>{const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-(x.getDay()+6)%7);return x;};
-const WD=["Ням","Даваа","Мягмар","Лхагва","Пүрэв","Баасан","Бямба"];
-const WS=["Ня","Да","Мя","Лх","Пү","Ба","Бя"];
+const WD=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const WS=["Su","Mo","Tu","We","Th","Fr","Sa"];
 const MON_ORDER=[1,2,3,4,5,6,0];
 const COLORS=["#3346c4","#e09b1a","#1e8e7e","#d04e6f","#7b57c9","#2f86c8","#6c8a2b","#c4631f"];
 const MILESTONES=[3,7,14,21,30,50,66,100,150,200,365];
-const PRAISE=["Сайн байна!","Өөртөө өгсөн үгэндээ хүрлээ.","Нэг алхам урагшиллаа.","Ингээд л явна шүү.","Жижиг ч гэсэн тогтмол. Энэ чинь хамгийн чухал нь.","Маргаашийн чи баярлана."];
+const PRAISE=["Nice work!","You kept a promise to yourself.","One step forward.","Keep it rolling.","Small but steady. That’s what counts.","Tomorrow-you says thanks."];
 const pctTxt=x=>Math.round(x*100)+"%";
 const initial=n=>(n||"?").trim().charAt(0).toUpperCase()||"?";
-function ago(iso){const s=(Date.now()-new Date(iso))/1000;if(s<60)return"дөнгөж сая";if(s<3600)return Math.floor(s/60)+" минутын өмнө";if(s<86400)return Math.floor(s/3600)+" цагийн өмнө";const d=Math.floor(s/86400);return d===1?"өчигдөр":d+" өдрийн өмнө";}
+function ago(iso){const s=(Date.now()-new Date(iso))/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+" min ago";if(s<86400)return Math.floor(s/3600)+" h ago";const d=Math.floor(s/86400);return d===1?"yesterday":d+" days ago";}
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),2400);}
 const buzz=()=>{try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}};
 const reduced=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -334,10 +336,10 @@ const persist=()=>{if(!REMOTE)store.set("hamt-local-v1",JSON.stringify(S));};
 
 function seedLocal(){
   const t=today(),me="me",now=new Date().toISOString();
-  const friends=[["f1","Анар","#e09b1a",.9],["f2","Тэмүүлэн","#1e8e7e",.72],["f3","Сарнай","#d04e6f",.55]];
-  const d={me,profiles:[{id:me,name:"",color:COLORS[0]}],groups:[{id:"demo",name:"Жишээ баг",code:"DEMO42",stake:"Долоо хоногийн эцэст хамгийн бага хувьтай нь бусаддаа кофе авч өгнө",created_by:"f1",created_at:now}],
+  const friends=[["f1","Maya","#e09b1a",.9],["f2","Leo","#1e8e7e",.72],["f3","Sam","#d04e6f",.55]];
+  const d={me,profiles:[{id:me,name:"",color:COLORS[0]}],groups:[{id:"demo",name:"Demo team",code:"DEMO42",stake:"Lowest score at the end of the week buys everyone coffee",created_by:"f1",created_at:now}],
     members:[{group_id:"demo",user_id:me}],goals:[],habits:[],checkins:[],feed:[]};
-  const titles=[["Өглөө 20 минут гүйх","Ном 10 хуудас унших"],["Англи үг 15 минут","Усаа 2 литр уух"],["Бясалгал 10 минут","Унтахаас өмнө утасгүй 30 минут"]];
+  const titles=[["Run 20 min in the morning","Read 10 pages"],["Spanish 15 min","Drink 2 L of water"],["Meditate 10 min","No phone 30 min before bed"]];
   let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
   friends.forEach(([id,name,color,p],i)=>{
     d.profiles.push({id,name,color});d.members.push({group_id:"demo",user_id:id});
@@ -348,7 +350,7 @@ function seedLocal(){
       if(i===0||(i===1&&j===0))d.checkins.push({habit_id:h.id,user_id:id,day:dk(t)});
     });
   });
-  d.feed.push({id:uid(),group_id:"demo",user_id:"f1",to_user:null,kind:"report",body:"Энэ долоо хоног 6 өдөр гүйлээ. Ням гараг алгассан ч Даваанаас дахиад эхэлсэн. Ирэх долоо хоногт оройн хоолны дараа ном уншиж үзнэ.",created_at:new Date(Date.now()-26*3600e3).toISOString()});
+  d.feed.push({id:uid(),group_id:"demo",user_id:"f1",to_user:null,kind:"report",body:"Ran 6 days this week. Skipped Sunday but got back on it Monday. Next week I’ll try reading right after dinner.",created_at:new Date(Date.now()-26*3600e3).toISOString()});
   d.feed.push({id:uid(),group_id:"demo",user_id:"f2",to_user:"f1",kind:"cheer",body:"👏",created_at:new Date(Date.now()-20*3600e3).toISOString()});
   return d;
 }
@@ -381,12 +383,12 @@ async function remove(table,row,q){
 }
 function fail(e){
   if(String(e.message)==="noauth"){render();return;}
-  toast("Хадгалж чадсангүй. Интернэтээ шалгаад дахин оролдоно уу.");
+  toast("Couldn’t save. Check your connection and try again.");
   loadData().then(render).catch(()=>{});
 }
 
 /* ---------- domain ---------- */
-const prof=id=>S.profiles.find(p=>p.id===id)||{id,name:"Гишүүн",color:"#7a8580"};
+const prof=id=>S.profiles.find(p=>p.id===id)||{id,name:"Member",color:"#7a8580"};
 const me=()=>S.profiles.find(p=>p.id===S.me)||{id:S.me,name:"",color:COLORS[0]};
 const myColor=()=>me().color||COLORS[0];
 const habitsOf=(u,g)=>S.habits.filter(h=>!h.archived&&h.user_id===u&&(g===undefined||h.group_id===g));
@@ -473,14 +475,14 @@ const ring=(v,c)=>{const r=13,L=2*Math.PI*r;return `<svg class="ring" viewBox="0
 function render(){
   const root=$("#root");
   if(REMOTE&&!R.session){root.innerHTML=authView();return;}
-  if(!S){root.innerHTML='<div class="gate"><p class="muted">Ачаалж байна…</p></div>';return;}
+  if(!S){root.innerHTML='<div class="gate"><p class="muted">Loading…</p></div>';return;}
   if(!me().name){root.innerHTML=onboardView();return;}
   CK=new Set(S.checkins.map(c=>c.habit_id+"|"+c.day));
   store.set("hamt-tab",UI.tab);store.set("hamt-group",UI.group);
   document.documentElement.style.setProperty("--me",myColor());
   const page={today:todayView,group:groupView,goals:goalsView,me:meView}[UI.tab]||todayView;
-  const tabs=[["today","Өнөөдөр"],["group","Баг"],["goals","Зорилго"],["me","Би"]];
-  const fab=UI.tab==="today"||UI.tab==="goals"?`<button class="add" data-act="${UI.tab==="goals"?"new-goal":"new-habit"}" aria-label="${UI.tab==="goals"?"Зорилго нэмэх":"Зуршил нэмэх"}">${ICON.plus}</button>`:"";
+  const tabs=[["today","Today"],["group","Team"],["goals","Goals"],["me","Me"]];
+  const fab=UI.tab==="today"||UI.tab==="goals"?`<button class="add" data-act="${UI.tab==="goals"?"new-goal":"new-habit"}" aria-label="${UI.tab==="goals"?"Add goal":"Add habit"}">${ICON.plus}</button>`:"";
   root.innerHTML=`<main class="app">${page()}</main>${fab}
   <nav class="tabs"><div class="tabs-in" role="tablist">${tabs.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${UI.tab===k}" data-act="tab" data-v="${k}">${ICON[k==="goals"?"goal":k]}${l}</button>`).join("")}</div></nav>`;
 }
@@ -488,52 +490,52 @@ function render(){
 /* ---------- views ---------- */
 function authView(){
   const dots=COLORS.slice(0,4).map(c=>`<i style="--c:${c}"></i>`).join("");
-  return `<div class="gate"><div class="brand-dots">${dots}</div><h1 class="brand">Хамт</h1>
-  <p class="lead">Зуршлаа найзуудтайгаа хамт тогтоо. Өдөр бүр тэмдэглэж, бие биенээ дэмжинэ.</p>
+  return `<div class="gate"><div class="brand-dots">${dots}</div><h1 class="brand">Hamt</h1>
+  <p class="lead">Build habits with your friends. Check in every day and keep each other going.</p>
   <form id="auth" novalidate>
-   <label class="field"><span>Имэйл</span><input class="input" name="email" type="email" autocomplete="email" required></label>
-   <label class="field"><span>Нууц үг</span><input class="input" name="password" type="password" autocomplete="current-password" minlength="6" required><small>6-аас доошгүй тэмдэгт</small></label>
-   <div class="actions"><button class="btn block" name="mode" value="login">Нэвтрэх</button><button class="btn ghost block" name="mode" value="signup">Шинээр бүртгүүлэх</button></div>
+   <label class="field"><span>Email</span><input class="input" name="email" type="email" autocomplete="email" required></label>
+   <label class="field"><span>Password</span><input class="input" name="password" type="password" autocomplete="current-password" minlength="6" required><small>At least 6 characters</small></label>
+   <div class="actions"><button class="btn block" name="mode" value="login">Log in</button><button class="btn ghost block" name="mode" value="signup">Create account</button></div>
    <p class="err" id="auth-err" role="alert"></p>
   </form></div>`;
 }
-function colorPicker(name,cur){return `<div class="colors" role="radiogroup">${COLORS.map(c=>`<label><input type="radio" name="${name}" value="${c}" ${c===cur?"checked":""} aria-label="Өнгө ${c}"><span style="--c:${c}"></span></label>`).join("")}</div>`;}
+function colorPicker(name,cur){return `<div class="colors" role="radiogroup">${COLORS.map(c=>`<label><input type="radio" name="${name}" value="${c}" ${c===cur?"checked":""} aria-label="Color ${c}"><span style="--c:${c}"></span></label>`).join("")}</div>`;}
 function onboardView(){
-  return `<div class="gate"><h1 class="brand" style="font-size:40px">Сайн уу!</h1>
-  <p class="lead">Багийнхан чинь чамайг энэ нэрээр, энэ өнгөөр харна.</p>
+  return `<div class="gate"><h1 class="brand" style="font-size:40px">Hi there!</h1>
+  <p class="lead">Your team will see you with this name and color.</p>
   <form id="onboard">
-   <label class="field"><span>Нэр</span><input class="input" name="name" maxlength="24" autocomplete="given-name" required></label>
-   <div class="field"><span>Өнгө</span>${colorPicker("color",me().color||COLORS[0])}</div>
-   <div class="actions"><button class="btn block">Эхлэх</button></div>
+   <label class="field"><span>Name</span><input class="input" name="name" maxlength="24" autocomplete="given-name" required></label>
+   <div class="field"><span>Color</span>${colorPicker("color",me().color||COLORS[0])}</div>
+   <div class="actions"><button class="btn block">Get started</button></div>
   </form></div>`;
 }
 
 function todayView(){
   const t=today(),mine=habitsOf(S.me),due=mine.filter(h=>sched(h,t)),rest=mine.filter(h=>!sched(h,t));
   const n=due.filter(h=>done(h,t)).length;
-  const date=WD[t.getDay()]+", "+(t.getMonth()+1)+"-р сарын "+t.getDate();
-  let html=`<header class="top"><div><p class="eyebrow">${date}</p><h1 class="title">Өнөөдөр</h1></div>${due.length?`<p class="count" aria-label="${n} нь ${due.length}-аас хийгдсэн"><b>${n}</b>/${due.length}</p>`:""}</header>`;
+  const date=WD[t.getDay()]+", "+MONTHS[t.getMonth()]+" "+t.getDate();
+  let html=`<header class="top"><div><p class="eyebrow">${date}</p><h1 class="title">Today</h1></div>${due.length?`<p class="count" aria-label="${n} of ${due.length} done"><b>${n}</b>/${due.length}</p>`:""}</header>`;
   if(due.length)html+=`<div class="segs" aria-hidden="true">${due.map(h=>`<i class="${done(h,t)?"on":""}"></i>`).join("")}</div>`;
   // cheers received in the last two days
   const recent=S.feed.filter(f=>f.kind==="cheer"&&f.to_user===S.me&&Date.now()-new Date(f.created_at)<2*864e5).slice(0,2);
-  html+=recent.map(f=>`<div class="notice"><span class="em">${esc(f.body.length<=4?f.body:"👏")}</span><p><b>${esc(prof(f.user_id).name)}</b> чамайг дэмжлээ${f.body.length>4?": “"+esc(f.body)+"”":""}</p></div>`).join("");
+  html+=recent.map(f=>`<div class="notice"><span class="em">${esc(f.body.length<=4?f.body:"👏")}</span><p><b>${esc(prof(f.user_id).name)}</b> cheered you on${f.body.length>4?": “"+esc(f.body)+"”":""}</p></div>`).join("");
   if(!mine.length){
-    html+=`<div class="empty"><h3>Эхний зуршлаа нэм</h3><p class="muted">Жижиг, тодорхой зүйлээс эхэл. 2 минутад хийж чадах хэмжээтэй байвал бүр сайн. Доорхоос сонгож болно.</p>
-    <div class="chips">${["Ном 10 хуудас унших","10 минут алхах","Бясалгал 5 минут","Англи үг 10","Ус 2 литр","Өдрийн тэмдэглэл 3 мөр"].map(s=>`<button class="chip" data-act="quick" data-v="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`;
+    html+=`<div class="empty"><h3>Add your first habit</h3><p class="muted">Start small and specific. If it takes 2 minutes, even better. Pick one below or write your own.</p>
+    <div class="chips">${["Read 10 pages","Walk 10 min","Meditate 5 min","Learn 10 words","Drink 2 L of water","Journal 3 lines"].map(s=>`<button class="chip" data-act="quick" data-v="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`;
   }else{
-    html+=due.length?`<div class="list">${due.map(habitRow).join("")}</div>`:`<div class="empty"><h3>Өнөөдөр амрах өдөр</h3><p class="muted">Хуваарьт зуршил алга. Амар.</p></div>`;
-    if(rest.length)html+=`<div class="section"><div class="section-head"><h2>Өнөөдрийн хуваарьт ороогүй</h2></div><div class="list">${rest.map(habitRow).join("")}</div></div>`;
+    html+=due.length?`<div class="list">${due.map(habitRow).join("")}</div>`:`<div class="empty"><h3>Rest day</h3><p class="muted">Nothing scheduled today. Enjoy it.</p></div>`;
+    if(rest.length)html+=`<div class="section"><div class="section-head"><h2>Not scheduled today</h2></div><div class="list">${rest.map(habitRow).join("")}</div></div>`;
   }
   // group strip
   const g=S.groups.find(x=>x.id===UI.group);
   if(g){
     const others=groupMembers(g.id).filter(u=>u!==S.me);
-    if(others.length)html+=`<div class="section"><div class="section-head"><h2>${esc(g.name)} өнөөдөр</h2><button class="link" data-act="tab" data-v="group">Баг руу</button></div>
+    if(others.length)html+=`<div class="section"><div class="section-head"><h2>${esc(g.name)} today</h2><button class="link" data-act="tab" data-v="group">Open team</button></div>
     <div class="friends">${others.map(u=>{const p=prof(u),f=dayFrac(u,g.id,t),v=f==null?0:f,r=25,L=2*Math.PI*r;
-      return `<button class="friend" data-act="cheer" data-v="${esc(u)}" aria-label="${esc(p.name)}: ${f==null?"өнөөдөр хуваарьгүй":pctTxt(v)}. Дэмжлэг илгээх"><span class="av-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="3.5"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${esc(p.color)}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L*(1-v)}" transform="rotate(-90 28 28)"/></svg>${av(p)}</span><span>${esc(p.name)}</span></button>`;}).join("")}</div>
-    <p class="small muted" style="margin-top:4px">Найз дээрээ дарж 👏 илгээ.</p></div>`;
+      return `<button class="friend" data-act="cheer" data-v="${esc(u)}" aria-label="${esc(p.name)}: ${f==null?"nothing scheduled today":pctTxt(v)}. Send a cheer"><span class="av-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="3.5"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${esc(p.color)}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L*(1-v)}" transform="rotate(-90 28 28)"/></svg>${av(p)}</span><span>${esc(p.name)}</span></button>`;}).join("")}</div>
+    <p class="small muted" style="margin-top:4px">Tap a friend to send 👏.</p></div>`;
   }else if(mine.length){
-    html+=`<div class="section"><div class="empty"><h3>Хамт хийвэл амар</h3><p class="muted">Ахицаа бусдад харуулдаг хүмүүс зорилгодоо илүү хүрдэг. Найзуудаа урь.</p><div class="actions"><button class="btn" data-act="tab" data-v="group">Баг үүсгэх</button></div></div></div>`;
+    html+=`<div class="section"><div class="empty"><h3>Easier together</h3><p class="muted">People who share their progress reach their goals more often. Invite your friends.</p><div class="actions"><button class="btn" data-act="tab" data-v="group">Create team</button></div></div></div>`;
   }
   return html;
 }
@@ -541,86 +543,86 @@ function habitRow(h){
   const t=today(),on=done(h,t),st=streak(h),warn=sched(h,t)&&!on&&missedYesterday(h);
   const meta=[];
   if(h.cue)meta.push(esc(h.cue));
-  if(warn)meta.push('<span class="warn">Өчигдөр алгассан. Өнөөдөр давтахгүй!</span>');
-  else if(st)meta.push(st+" удаа дараалан");
-  if(!h.group_id)meta.push("зөвхөн би");
-  return `<div class="row ${on?"done":""}"><button class="check ${on?"on":""}" data-act="toggle" data-v="${esc(h.id)}" aria-pressed="${on}" aria-label="${esc(h.title)}: ${on?"хийсэн":"хийгээгүй"}">${ICON.check}</button>
+  if(warn)meta.push('<span class="warn">Missed yesterday. Don’t miss twice!</span>');
+  else if(st)meta.push(st+" in a row");
+  if(!h.group_id)meta.push("private");
+  return `<div class="row ${on?"done":""}"><button class="check ${on?"on":""}" data-act="toggle" data-v="${esc(h.id)}" aria-pressed="${on}" aria-label="${esc(h.title)}: ${on?"done":"not done"}">${ICON.check}</button>
   <button class="row-main" data-act="habit" data-v="${esc(h.id)}"><div class="row-title">${esc(h.title)}</div>${meta.length?`<div class="row-meta">${meta.join(" · ")}</div>`:""}</button>
-  <span title="Зуршлын бат бэх">${ring(strength(h),myColor())}</span></div>`;
+  <span title="Habit strength">${ring(strength(h),myColor())}</span></div>`;
 }
 
 function groupView(){
-  if(!S.groups.length)return `<header class="top"><div><h1 class="title">Баг</h1></div></header>
-  <div class="empty"><h3>Хамтдаа хариуцлагатай</h3><p class="muted">3–6 хүнтэй жижиг баг хамгийн сайн. Өдөр бүрийн ахиц бүгдэд харагдана, долоо хоног бүр тайлангаа бичнэ, бие биенээ дэмжинэ.</p>
-  <div class="actions"><button class="btn" data-act="new-group">Баг үүсгэх</button><button class="btn ghost" data-act="join-group">Кодоор нэгдэх</button></div></div>`;
+  if(!S.groups.length)return `<header class="top"><div><h1 class="title">Team</h1></div></header>
+  <div class="empty"><h3>Accountable together</h3><p class="muted">Small teams of 3–6 work best. Everyone sees daily progress, writes a short weekly report, and cheers each other on.</p>
+  <div class="actions"><button class="btn" data-act="new-group">Create team</button><button class="btn ghost" data-act="join-group">Join with code</button></div></div>`;
   const g=S.groups.find(x=>x.id===UI.group)||S.groups[0];UI.group=g.id;
   const ms=groupMembers(g.id),t=today(),ws=weekStart(t);
   const team=teamStat(g.id),tw=teamWeeks(g.id);
   const rows=ms.map(u=>({u,p:prof(u),w:weekStat(u,g.id),n:habitsOf(u,g.id).length})).sort((a,b)=>b.w.pct-a.w.pct||b.w.points-a.w.points);
   const cheered=new Set(S.feed.filter(f=>f.kind==="cheer"&&f.user_id===S.me&&f.group_id===g.id&&dk(new Date(f.created_at))===dk(t)).map(f=>f.to_user));
-  let html=`<header class="top"><div style="min-width:0"><p class="eyebrow">${ms.length} гишүүн</p><h1 class="title" style="overflow-wrap:anywhere">${esc(g.name)}</h1></div><button class="link" data-act="group-menu">Тохиргоо</button></header>`;
+  let html=`<header class="top"><div style="min-width:0"><p class="eyebrow">${ms.length} member${ms.length===1?"":"s"}</p><h1 class="title" style="overflow-wrap:anywhere">${esc(g.name)}</h1></div><button class="link" data-act="group-menu">Settings</button></header>`;
   if(S.groups.length>1)html+=`<div class="seg" style="margin:-8px 0 18px">${S.groups.map(x=>`<label><input type="radio" name="gsel" data-act="pick-group" value="${esc(x.id)}" ${x.id===g.id?"checked":""}><span>${esc(x.name)}</span></label>`).join("")}</div>`;
-  html+=`<section class="team" aria-label="Багийн энэ долоо хоног"><p class="eyebrow">Энэ долоо хоногт баг</p><p class="team-num">${Math.round(team*100)}<small>%</small></p>
-   <div class="bar" role="img" aria-label="Зорилт 80%"><i style="width:${Math.min(100,team*100)}%"></i><b style="left:80%"></b></div>
-   <p class="small muted">${team>=.8?"Багийн зорилт биелж байна. Ингээд л үргэлжлүүл!":"Багийн дундаж 80%-д хүрвэл энэ долоо хоног биелнэ."}${tw?` Өмнөх ${tw} долоо хоног дараалан биелсэн 🔥`:""}</p></section>`;
+  html+=`<section class="team" aria-label="Team this week"><p class="eyebrow">Team this week</p><p class="team-num">${Math.round(team*100)}<small>%</small></p>
+   <div class="bar" role="img" aria-label="Target 80%"><i style="width:${Math.min(100,team*100)}%"></i><b style="left:80%"></b></div>
+   <p class="small muted">${team>=.8?"The team is on target. Keep it up!":"The week counts when the team average reaches 80%."}${tw?` Target hit ${tw} week${tw>1?"s":""} in a row 🔥`:""}</p></section>`;
   // the weave: one row per member, one cell per day, filled with their color
-  html+=`<div class="section"><div class="section-head"><h2>Энэ долоо хоногийн хээ</h2></div><div class="weave" role="table" aria-label="Гишүүдийн өдөр бүрийн ахиц"><span></span>${MON_ORDER.map((w,i)=>`<span class="wh ${dk(addDays(ws,i))===dk(t)?"now":""}">${WS[w]}</span>`).join("")}
+  html+=`<div class="section"><div class="section-head"><h2>This week’s pattern</h2></div><div class="weave" role="table" aria-label="Each member’s daily progress"><span></span>${MON_ORDER.map((w,i)=>`<span class="wh ${dk(addDays(ws,i))===dk(t)?"now":""}">${WS[w]}</span>`).join("")}
    ${rows.map(r=>`<span class="wn">${esc(r.p.name)}</span>`+MON_ORDER.map((w,i)=>{const d=addDays(ws,i);if(d>t)return '<span class="cell future"></span>';const f=dayFrac(r.u,g.id,d);if(f==null)return '<span class="cell rest"></span>';return `<span class="cell" title="${pctTxt(f)}"><i style="--c:${esc(r.p.color)};opacity:${f?(.25+.75*f).toFixed(2):0}"></i></span>`;}).join("")).join("")}
   </div></div>`;
-  html+=`<div class="section"><div class="section-head"><h2>Чансаа</h2><span class="small muted">Даваа бүр шинээр эхэлнэ</span></div><div class="rank">${rows.map((r,i)=>`<div class="row"><span class="pos">${i+1}</span>${av(r.p)}<div class="row-main"><div class="row-title">${esc(r.p.name)}${r.u===S.me?' <span class="muted small">(би)</span>':""}</div><div class="row-meta">${r.n?r.w.points+" оноо · "+r.w.done+"/"+r.w.sched+" удаа":"Багт зуршил нэмээгүй байна"}</div></div><span class="pct">${r.n?pctTxt(r.w.pct):"–"}</span>${r.u===S.me?'<span style="width:44px"></span>':`<button class="cheer ${cheered.has(r.u)?"sent":""}" data-act="cheer" data-v="${esc(r.u)}" aria-label="${esc(r.p.name)}-д дэмжлэг илгээх">👏</button>`}</div>`).join("")}</div></div>`;
-  html+=`<div class="section"><div class="section-head"><h2>Бооцоо</h2></div><button class="stake" data-act="stake"><span class="em">🤝</span><span>${g.stake?esc(g.stake):'<span class="muted">Хүсвэл багаараа жижиг бооцоо тавь. Жишээ нь сүүлийн байрын хүн бусдадаа кофе авч өгнө.</span>'}</span></button></div>`;
+  html+=`<div class="section"><div class="section-head"><h2>Leaderboard</h2><span class="small muted">Resets every Monday</span></div><div class="rank">${rows.map((r,i)=>`<div class="row"><span class="pos">${i+1}</span>${av(r.p)}<div class="row-main"><div class="row-title">${esc(r.p.name)}${r.u===S.me?' <span class="muted small">(you)</span>':""}</div><div class="row-meta">${r.n?r.w.points+" pts · "+r.w.done+"/"+r.w.sched+" check-ins":"No team habits yet"}</div></div><span class="pct">${r.n?pctTxt(r.w.pct):"–"}</span>${r.u===S.me?'<span style="width:44px"></span>':`<button class="cheer ${cheered.has(r.u)?"sent":""}" data-act="cheer" data-v="${esc(r.u)}" aria-label="Send a cheer to ${esc(r.p.name)}">👏</button>`}</div>`).join("")}</div></div>`;
+  html+=`<div class="section"><div class="section-head"><h2>Stake</h2></div><button class="stake" data-act="stake"><span class="em">🤝</span><span>${g.stake?esc(g.stake):'<span class="muted">Optional: set a small friendly stake. For example, last place buys the coffee.</span>'}</span></button></div>`;
   const posts=S.feed.filter(f=>f.group_id===g.id).slice(0,30);
-  html+=`<div class="section"><div class="section-head"><h2>Мэдээ</h2><button class="link" data-act="report">Тайлан бичих</button></div>
-   ${posts.length?`<div class="feed">${posts.map(postView).join("")}</div>`:`<p class="muted">Долоо хоногийн эцэст юу сайн болсон, юу саад болсныг богино бичээд хуваалц.</p>`}</div>`;
+  html+=`<div class="section"><div class="section-head"><h2>Feed</h2><button class="link" data-act="report">Write report</button></div>
+   ${posts.length?`<div class="feed">${posts.map(postView).join("")}</div>`:`<p class="muted">At the end of the week, share a few lines on what went well and what got in the way.</p>`}</div>`;
   return html;
 }
 function postView(f){
   const p=prof(f.user_id);
   if(f.kind==="cheer"){const to=prof(f.to_user);return `<div class="post">${av(p)}<div class="post-body"><p class="post-head"><b>${esc(p.name)}</b> → <b>${esc(to.name)}</b> · ${ago(f.created_at)}</p><p>${esc(f.body)}</p></div></div>`;}
-  return `<div class="post">${av(p)}<div class="post-body"><p class="post-head"><b>${esc(p.name)}</b> долоо хоногийн тайлан · ${ago(f.created_at)}</p><p>${esc(f.body)}</p>${f.user_id!==S.me?`<button class="link" data-act="cheer" data-v="${esc(f.user_id)}">👏 Дэмжих</button>`:""}</div></div>`;
+  return `<div class="post">${av(p)}<div class="post-body"><p class="post-head"><b>${esc(p.name)}</b> · weekly report · ${ago(f.created_at)}</p><p>${esc(f.body)}</p>${f.user_id!==S.me?`<button class="link" data-act="cheer" data-v="${esc(f.user_id)}">👏 Cheer</button>`:""}</div></div>`;
 }
 
 function goalsView(){
   const gs=S.goals.filter(g=>g.user_id===S.me).sort((a,b)=>a.done-b.done);
-  let html=`<header class="top"><div><h1 class="title">Зорилго</h1></div></header>`;
-  if(!gs.length)html+=`<div class="empty"><h3>Том зорилгоо тодорхойл</h3><p class="muted">“Илүү эрүүл болох” гэхээс “3-р сар гэхэд 5 км зогсолтгүй гүйх” гэвэл илүү үр дүнтэй. Дараа нь зорилгодоо хүргэх өдөр тутмын зуршлуудаа холбоно.</p><div class="actions"><button class="btn" data-act="new-goal">Зорилго нэмэх</button></div></div>`;
+  let html=`<header class="top"><div><h1 class="title">Goals</h1></div></header>`;
+  if(!gs.length)html+=`<div class="empty"><h3>Set your big goal</h3><p class="muted">“Run 5 km without stopping by March” works better than “get healthier”. Then link the daily habits that get you there.</p><div class="actions"><button class="btn" data-act="new-goal">Add goal</button></div></div>`;
   html+=gs.map(g=>{
     const hs=habitsOf(S.me).filter(h=>h.goal_id===g.id);
-    let left="";if(g.due){const n=Math.ceil((pdk(g.due)-today())/864e5);left=n>0?n+" өдөр үлдсэн":n===0?"Өнөөдөр":"Хугацаа өнгөрсөн";}
+    let left="";if(g.due){const n=Math.ceil((pdk(g.due)-today())/864e5);left=n>1?n+" days left":n===1?"1 day left":n===0?"Due today":"Overdue";}
     const grp=S.groups.find(x=>x.id===g.group_id);
     return `<article class="goal ${g.done?"done":""}"><button data-act="goal" data-v="${esc(g.id)}" style="text-align:left;width:100%"><h3>${esc(g.title)}</h3>${g.why?`<p class="why">${esc(g.why)}</p>`:""}</button>
-     <div class="goal-meta">${g.done?'<span class="pill">Биелсэн 🎉</span>':left?`<span class="pill">${left}</span>`:""}<span>${grp?esc(grp.name)+"-д харагдана":"Зөвхөн би"}</span></div>
-     ${hs.length?`<ul>${hs.map(h=>`<li><span>${esc(h.title)}</span><span class="muted">${pctTxt(rate(h,14))} · 14 хоног</span></li>`).join("")}</ul>`:g.done?"":`<p class="small muted" style="margin-top:10px"><button class="link" data-act="new-habit" data-v="${esc(g.id)}">Зуршил холбох</button></p>`}</article>`;
+     <div class="goal-meta">${g.done?'<span class="pill">Done 🎉</span>':left?`<span class="pill">${left}</span>`:""}<span>${grp?"Shared with "+esc(grp.name):"Only me"}</span></div>
+     ${hs.length?`<ul>${hs.map(h=>`<li><span>${esc(h.title)}</span><span class="muted">${pctTxt(rate(h,14))} · 14 days</span></li>`).join("")}</ul>`:g.done?"":`<p class="small muted" style="margin-top:10px"><button class="link" data-act="new-habit" data-v="${esc(g.id)}">Link a habit</button></p>`}</article>`;
   }).join("");
   return html;
 }
 
 const STUDIES=[
- ["🔁","Зуршил дунджаар 66 хоногт тогтдог","Lally ба бусад, 2010",["96 хүн 84 хоног өдөр бүр нэг үйлдэл хийжээ. Үйлдэл автомат болоход хүмүүсийн хооронд 18-аас 254 хоног, дунджаар 66 хоног зарцуулагдсан. “21 хоног” гэдэг нь судалгааны үндэсгүй домог.","Нэг өдөр алгасах нь ахицад бараг нөлөөлөөгүй. Тиймээс энэ апп нэг өдөр алгасахад дараалсан тоог тасалдаггүй. Харин хоёр өдөр дараалан алгасвал тасарна. Дугуй дүрс зуршлын бат бэхийг 66 давталтын замаар харуулна."],"https://doi.org/10.1002/ejsp.674"],
- ["📍","“Хэзээ, хаана” гэж төлөвлөх","Gollwitzer & Sheeran, 2006",["94 судалгааны нэгтгэл: “X болоход би Y хийнэ” гэж урьдчилан төлөвлөсөн хүмүүс зорилгодоо мэдэгдэхүйц илүү хүрсэн (d = 0.65).","Зуршил нэмэхдээ “Хэзээ?” талбарт “Өглөөний цайны дараа” гэх мэт тодорхой мөчийг бич."],"https://doi.org/10.1016/S0065-2601(06)38002-1"],
- ["📊","Ахицаа тэмдэглэж, бусдад харуулах","Harkin ба бусад, 2016",["138 судалгаа, 19,951 оролцогч: ахицаа хянадаг хүмүүс зорилгодоо илүү хүрдэг (d = 0.40). Ахицаа бусдад мэдэгдэх, бичиж тэмдэглэх үед нөлөө бүр их байсан.","Иймээс өдөр бүрийн тэмдэглэл чинь багийнханд шууд харагдана."],"https://doi.org/10.1037/bul0000025"],
- ["🏁","Нөхөрсөг өрсөлдөөн","Patel ба бусад, 2019 · Zhang ба бусад, 2016",["602 хүнтэй STEP UP туршилтад өрсөлдөөнтэй бүлэг өдөрт хамгийн их буюу 920 алхам нэмж, туршилт дууссаны дараа ч ахиц нь хадгалагдсан. Зөвхөн дэмжлэг үзүүлсэн бүлгийн нөлөө бага байв.","Оюутнуудын судалгаанд бусдын ахицыг харсан хүмүүс дасгалдаа 90% орчим илүү явсан. Тиймээс багт долоо хоногийн чансаа бий."],"https://doi.org/10.1001/jamainternmed.2019.3505"],
- ["👏","Магтаал шагналаас илүү","Deci, Koestner & Ryan, 1999",["128 туршилтын нэгтгэл: эд зүйлсийн шагнал дотоод урам зоригийг бууруулж болдог бол эерэг үг, магтаал нэмэгдүүлдэг.","Тиймээс энд шагнал гэдэг нь найзуудын 👏, ахицын тэмдэг, өөртөө амласан жижиг баяр юм."],"https://doi.org/10.1037/0033-2909.125.6.627"],
- ["✍️","Долоо хоногийн тайлан","Matthews, 2015",["Зорилгоо бичээд, долоо хоног бүр найздаа ахицаа мэдэгдсэн бүлэг хамгийн их ахисан. Анхааруулга: энэ судалгаа рецензтэй сэтгүүлд хэвлэгдээгүй, түүвэр бага тул чиг хандлага төдий гэж ойлгоорой.","“Тайлан бичих” товч үүнд зориулагдсан."],"https://www.dominican.edu/sites/default/files/2020-02/gailmatthews-harvard-goals-researchsummary.pdf"],
- ["🌅","Даваа гараг бол шинэ эхлэл","Dai, Milkman & Riis, 2014",["Хүмүүс долоо хоног, сар эхлэхэд шинэ зорилго эхлүүлэх магадлал өндөр. Долоо хоногийн эхэнд биеийн тамирын заал руу явах нь 33% илүү байжээ.","Чансаа, багийн хувь Даваа гараг бүр шинээр эхэлнэ. Өнгөрсөн долоо хоног муу байсан ч дахиад эхлэх боломж байна."],"https://doi.org/10.1287/mnsc.2014.1901"],
- ["🎯","Тодорхой, хүндэвтэр зорилго","Locke & Latham, 2002",["“Чадах чинээгээрээ” гэхээс тодорхой, хүндэвтэр зорилго илүү үр дүнтэй. Гэхдээ үүнд зорилгодоо үнэнхүү тууштай байх, ахицаа байнга мэдэх хэрэгтэй.","Зорилгоо хэмжигдэхүйц бич, хугацаа тавь."],"https://doi.org/10.1037/0003-066X.57.9.705"],
- ["🤝","Бооцоо сайн дураар","Halpern ба бусад, 2015",["Тамхинаас гарах 2,538 хүнтэй туршилтад мөнгөн барьцааг сонгосон хүмүүст маш сайн нөлөөлсөн ч ердөө 14% нь л сонгосон.","Иймээс бооцоо сонголттой, мөнгөгүй, нөхөрсөг байна."],"https://doi.org/10.1056/NEJMoa1414293"],
- ["🎧","Дуртай зүйлтэйгээ хослуул","Milkman, Minson & Volpp, 2014",["Дуртай аудио номоо зөвхөн заалд сонсох боломжтой хүмүүс эхэндээ 51% илүү явсан. Цаг хугацааны явцад энэ нөлөө суларсан.","Зуршлын “Шагнал” талбарт хослуулах зүйлээ бичиж болно."],"https://doi.org/10.1287/mnsc.2013.1784"]
+ ["🔁","Habits take about 66 days on average","Lally et al., 2010",["96 people repeated one daily behavior for 84 days. Reaching automaticity took 18 to 254 days, with a median of 66. The “21 days” rule has no research behind it.","Missing a single day barely affected progress. So here one miss doesn’t break your streak; two misses in a row do. The ring shows habit strength along the 66-repetition path."],"https://doi.org/10.1002/ejsp.674"],
+ ["📍","Plan when and where","Gollwitzer & Sheeran, 2006",["A review of 94 studies: people who planned “when X happens, I will do Y” reached their goals significantly more often (d = 0.65).","When adding a habit, fill in the “When and where?” field with a concrete moment, like “after breakfast”."],"https://doi.org/10.1016/S0065-2601(06)38002-1"],
+ ["📊","Track progress and share it","Harkin et al., 2016",["138 studies, 19,951 participants: monitoring progress improves goal attainment (d = 0.40). The effect was larger when progress was reported to others and physically recorded.","That’s why your daily check-ins are visible to your team."],"https://doi.org/10.1037/bul0000025"],
+ ["🏁","Friendly competition","Patel et al., 2019 · Zhang et al., 2016",["In the 602-person STEP UP trial, the competition arm gained the most (920 extra steps a day) and kept part of it after the trial ended. The support-only arm gained less.","In a student study, people who could see peers' progress attended about 90% more exercise classes. That’s why teams have a weekly leaderboard."],"https://doi.org/10.1001/jamainternmed.2019.3505"],
+ ["👏","Praise beats prizes","Deci, Koestner & Ryan, 1999",["A review of 128 experiments: tangible rewards can lower intrinsic motivation, while positive feedback raises it.","So rewards here are friends' 👏, milestones, and small treats you promise yourself."],"https://doi.org/10.1037/0033-2909.125.6.627"],
+ ["✍️","Weekly report","Matthews, 2015",["The group that wrote down goals and sent a weekly progress report to a friend did best. Caveat: not peer-reviewed and the sample was small, so treat it as a hint, not proof.","That’s what the “Write report” button is for."],"https://www.dominican.edu/sites/default/files/2020-02/gailmatthews-harvard-goals-researchsummary.pdf"],
+ ["🌅","Monday is a fresh start","Dai, Milkman & Riis, 2014",["People are more likely to start on goals at the beginning of a week or month. Gym visits were 33% higher at the start of a week.","The leaderboard and team score reset every Monday. A bad week is never the end."],"https://doi.org/10.1287/mnsc.2014.1901"],
+ ["🎯","Specific, challenging goals","Locke & Latham, 2002",["Specific, challenging goals beat “do your best”, as long as you’re committed and get regular feedback.","Make your goal measurable and give it a deadline."],"https://doi.org/10.1037/0003-066X.57.9.705"],
+ ["🤝","Stakes are opt-in","Halpern et al., 2015",["In a 2,538-person quit-smoking trial, deposits worked well for those who chose them, but only 14% did.","So stakes here are optional, money-free and friendly."],"https://doi.org/10.1056/NEJMoa1414293"],
+ ["🎧","Pair it with something you enjoy","Milkman, Minson & Volpp, 2014",["People who could only hear their favorite audiobook at the gym went 51% more at first. The effect faded over time.","You can write the pairing in a habit’s “Reward” field."],"https://doi.org/10.1287/mnsc.2013.1784"]
 ];
 function meView(){
   const p=me(),mine=habitsOf(S.me),total=S.checkins.filter(c=>c.user_id===S.me).length;
   const best=mine.reduce((a,h)=>Math.max(a,streak(h)),0);
   const wk=weekStat(S.me);
   return `<header class="top"><div class="me-head">${av(p)}<div><h1 class="title" style="overflow-wrap:anywhere">${esc(p.name)}</h1>${REMOTE&&R.session.email?`<p class="small muted">${esc(R.session.email)}</p>`:""}</div></div></header>
-  <div class="stats"><div class="stat"><b>${total}</b><span>Нийт тэмдэглэл</span></div><div class="stat"><b>${best}</b><span>Шилдэг дараалал</span></div><div class="stat"><b>${wk.sched?pctTxt(wk.pct):"–"}</b><span>Энэ долоо хоног</span></div></div>
-  <div class="section"><div class="section-head"><h2>Яагаад ингэж бүтээсэн бэ</h2></div>
-  ${STUDIES.map(([em,t,src,ps,url])=>`<details class="study"><summary><span class="em" aria-hidden="true">${em}</span><span><b>${t}</b><span>${src}</span></span></summary><div>${ps.map(x=>`<p>${x}</p>`).join("")}<p><a href="${url}" target="_blank" rel="noopener">Эх сурвалж</a></p></div></details>`).join("")}</div>
+  <div class="stats"><div class="stat"><b>${total}</b><span>Check-ins</span></div><div class="stat"><b>${best}</b><span>Best streak</span></div><div class="stat"><b>${wk.sched?pctTxt(wk.pct):"–"}</b><span>This week</span></div></div>
+  <div class="section"><div class="section-head"><h2>The research behind it</h2></div>
+  ${STUDIES.map(([em,t,src,ps,url])=>`<details class="study"><summary><span class="em" aria-hidden="true">${em}</span><span><b>${t}</b><span>${src}</span></span></summary><div>${ps.map(x=>`<p>${x}</p>`).join("")}<p><a href="${url}" target="_blank" rel="noopener">Source</a></p></div></details>`).join("")}</div>
   <div class="section"><div class="menu">
-   <button data-act="profile">Нэр, өнгө солих<span class="muted">›</span></button>
-   <button data-act="archived">Зогсоосон зуршлууд<span class="muted">${S.habits.filter(h=>h.archived&&h.user_id===S.me).length||""} ›</span></button>
-   <button data-act="export">Өгөгдөл татах (JSON)<span class="muted">›</span></button>
-   ${REMOTE?'<button data-act="logout" style="color:#c2334d">Гарах</button>':'<button data-act="reset" style="color:#c2334d">Бүх өгөгдлийг устгах</button>'}
-  </div>${REMOTE?"":'<p class="small muted" style="margin-top:12px">Одоо зөвхөн энэ төхөөрөмж дээр хадгалагдаж байна. Найзуудтайгаа холбогдохын тулд Supabase тохируулна (README-г үз).</p>'}</div>`;
+   <button data-act="profile">Change name and color<span class="muted">›</span></button>
+   <button data-act="archived">Paused habits<span class="muted">${S.habits.filter(h=>h.archived&&h.user_id===S.me).length||""} ›</span></button>
+   <button data-act="export">Download data (JSON)<span class="muted">›</span></button>
+   ${REMOTE?'<button data-act="logout" style="color:#c2334d">Log out</button>':'<button data-act="reset" style="color:#c2334d">Delete all data</button>'}
+  </div>${REMOTE?"":'<p class="small muted" style="margin-top:12px">Data is saved on this device only. To connect with friends, set up Supabase (see the README).</p>'}</div>`;
 }
 
 /* ---------- sheets ---------- */
@@ -645,27 +647,27 @@ function closeSheet(now){
 function habitForm(h,goalId){
   h=h||{title:"",cue:"",days:[0,1,2,3,4,5,6],reward:"",group_id:UI.group&&S.groups.some(g=>g.id===UI.group)?UI.group:null,goal_id:goalId||null};
   const goals=S.goals.filter(g=>g.user_id===S.me&&!g.done);
-  const share=[["","Зөвхөн би"]].concat(S.groups.map(g=>[g.id,g.name]));
-  openSheet(`<h2>${h.id?"Зуршил засах":"Шинэ зуршил"}</h2><p class="lead">Жижиг, тодорхой байх тусам амархан тогтоно.</p>
+  const share=[["","Only me"]].concat(S.groups.map(g=>[g.id,g.name]));
+  openSheet(`<h2>${h.id?"Edit habit":"New habit"}</h2><p class="lead">The smaller and more specific, the easier it sticks.</p>
   <form id="habit-form" data-id="${esc(h.id||"")}">
-   <label class="field"><span>Юу хийх вэ?</span><input class="input" name="title" maxlength="60" required value="${esc(h.title)}" placeholder="Ном 10 хуудас унших"></label>
-   <label class="field"><span>Хэзээ, хаана?</span><input class="input" name="cue" maxlength="60" value="${esc(h.cue)}" placeholder="Өглөөний цайны дараа"><small>Өдөр бүр давтагддаг үйлдэлд уявал мартахгүй.</small></label>
-   <div class="field"><span>Аль өдрүүдэд?</span><div class="days">${MON_ORDER.map(w=>`<label><input type="checkbox" name="days" value="${w}" ${h.days.includes(w)?"checked":""}><span>${WS[w]}</span></label>`).join("")}</div></div>
-   ${S.groups.length?`<div class="field"><span>Хэнд харагдах вэ?</span><div class="seg">${share.map(([v,l])=>`<label><input type="radio" name="group" value="${esc(v)}" ${(h.group_id||"")===v?"checked":""}><span>${esc(l)}</span></label>`).join("")}</div><small>Багт харагдах зуршил л чансаанд орно.</small></div>`:""}
-   ${goals.length?`<label class="field"><span>Аль зорилгод хамаарах вэ?</span><select class="input" name="goal"><option value="">Аль нь ч биш</option>${goals.map(g=>`<option value="${esc(g.id)}" ${h.goal_id===g.id?"selected":""}>${esc(g.title)}</option>`).join("")}</select></label>`:""}
-   <label class="field"><span>Өөртөө өгөх шагнал</span><input class="input" name="reward" maxlength="80" value="${esc(h.reward)}" placeholder="Долоо хоног бүтэн хийвэл дуртай кофе"><small>Долоо хоногийн бүх өдрөө хийвэл сануулна. Заавал биш.</small></label>
-   <div class="actions"><button class="btn block">Хадгалах</button>${h.id?`<button type="button" class="btn danger block" data-act="archive" data-v="${esc(h.id)}">Зуршлыг зогсоох</button>`:""}</div>
+   <label class="field"><span>What will you do?</span><input class="input" name="title" maxlength="60" required value="${esc(h.title)}" placeholder="Read 10 pages"></label>
+   <label class="field"><span>When and where?</span><input class="input" name="cue" maxlength="60" value="${esc(h.cue)}" placeholder="After breakfast"><small>Tie it to something you already do every day.</small></label>
+   <div class="field"><span>Which days?</span><div class="days">${MON_ORDER.map(w=>`<label><input type="checkbox" name="days" value="${w}" ${h.days.includes(w)?"checked":""}><span>${WS[w]}</span></label>`).join("")}</div></div>
+   ${S.groups.length?`<div class="field"><span>Who can see it?</span><div class="seg">${share.map(([v,l])=>`<label><input type="radio" name="group" value="${esc(v)}" ${(h.group_id||"")===v?"checked":""}><span>${esc(l)}</span></label>`).join("")}</div><small>Only team habits count toward the leaderboard.</small></div>`:""}
+   ${goals.length?`<label class="field"><span>Part of which goal?</span><select class="input" name="goal"><option value="">None</option>${goals.map(g=>`<option value="${esc(g.id)}" ${h.goal_id===g.id?"selected":""}>${esc(g.title)}</option>`).join("")}</select></label>`:""}
+   <label class="field"><span>Reward for yourself</span><input class="input" name="reward" maxlength="80" value="${esc(h.reward)}" placeholder="Favorite coffee after a full week"><small>We’ll remind you when you complete every day of the week. Optional.</small></label>
+   <div class="actions"><button class="btn block">Save</button>${h.id?`<button type="button" class="btn danger block" data-act="archive" data-v="${esc(h.id)}">Pause habit</button>`:""}</div>
   </form>`);
 }
 function goalForm(g){
   g=g||{title:"",why:"",due:"",group_id:null};
-  openSheet(`<h2>${g.id?"Зорилго засах":"Шинэ зорилго"}</h2><p class="lead">Тодорхой, хэмжиж болохуйц, бага зэрэг хэцүү зорилго хамгийн сайн ажилладаг.</p>
+  openSheet(`<h2>${g.id?"Edit goal":"New goal"}</h2><p class="lead">Specific, measurable and a little hard works best.</p>
   <form id="goal-form" data-id="${esc(g.id||"")}">
-   <label class="field"><span>Зорилго</span><input class="input" name="title" maxlength="80" required value="${esc(g.title)}" placeholder="3-р сар гэхэд 5 км зогсолтгүй гүйх"></label>
-   <label class="field"><span>Яагаад чухал вэ?</span><textarea class="input" name="why" maxlength="300" placeholder="Хүүтэйгээ хамт уралдаанд гармаар байна">${esc(g.why)}</textarea><small>Урам буурах үед үүнийг уншина.</small></label>
-   <label class="field"><span>Хугацаа</span><input class="input" type="date" name="due" value="${esc(g.due||"")}"></label>
-   ${S.groups.length?`<div class="field"><span>Хэнд харагдах вэ?</span><div class="seg">${[["","Зөвхөн би"]].concat(S.groups.map(x=>[x.id,x.name])).map(([v,l])=>`<label><input type="radio" name="group" value="${esc(v)}" ${(g.group_id||"")===v?"checked":""}><span>${esc(l)}</span></label>`).join("")}</div></div>`:""}
-   <div class="actions"><button class="btn block">Хадгалах</button>${g.id?`<button type="button" class="btn ghost block" data-act="goal-done" data-v="${esc(g.id)}">${g.done?"Биелээгүй гэж буцаах":"Биелсэн гэж тэмдэглэх 🎉"}</button><button type="button" class="btn danger block" data-act="goal-del" data-v="${esc(g.id)}">Устгах</button>`:""}</div>
+   <label class="field"><span>Goals</span><input class="input" name="title" maxlength="80" required value="${esc(g.title)}" placeholder="Run 5 km without stopping by March"></label>
+   <label class="field"><span>Why does it matter?</span><textarea class="input" name="why" maxlength="300" placeholder="I want to run a race with my son">${esc(g.why)}</textarea><small>You’ll read this when motivation dips.</small></label>
+   <label class="field"><span>Deadline</span><input class="input" type="date" name="due" value="${esc(g.due||"")}"></label>
+   ${S.groups.length?`<div class="field"><span>Who can see it?</span><div class="seg">${[["","Only me"]].concat(S.groups.map(x=>[x.id,x.name])).map(([v,l])=>`<label><input type="radio" name="group" value="${esc(v)}" ${(g.group_id||"")===v?"checked":""}><span>${esc(l)}</span></label>`).join("")}</div></div>`:""}
+   <div class="actions"><button class="btn block">Save</button>${g.id?`<button type="button" class="btn ghost block" data-act="goal-done" data-v="${esc(g.id)}">${g.done?"Mark as not done":"Mark as achieved 🎉"}</button><button type="button" class="btn danger block" data-act="goal-del" data-v="${esc(g.id)}">Delete</button>`:""}</div>
   </form>`);
 }
 function habitDetail(h){
@@ -675,19 +677,19 @@ function habitDetail(h){
   for(let d=start;d<=addDays(weekStart(t),6);d=addDays(d,1)){
     const k=dk(d),fut=d>t,canTap=!fut&&(t-d)/864e5<=7&&k>=cday(h);
     const cls=fut?"fut":done(h,d)?"on":sched(h,d)?"":"off";
-    const lbl=`${d.getMonth()+1}/${d.getDate()} ${done(h,d)?"хийсэн":"хийгээгүй"}`;
+    const lbl=`${d.getMonth()+1}/${d.getDate()} ${done(h,d)?"done":"not done"}`;
     cells+=canTap?`<button class="${cls} ${k===dk(t)?"today":""}" data-act="toggle-day" data-v="${esc(h.id)}" data-d="${k}" aria-label="${lbl}"></button>`:`<i class="${cls}" title="${lbl}"></i>`;
   }
   openSheet(`<h2>${esc(h.title)}</h2>${h.cue?`<p class="lead">${esc(h.cue)}</p>`:'<p class="lead"></p>'}
-   <div class="stats" style="margin-top:0"><div class="stat"><b>${st}</b><span>Дараалан</span></div><div class="stat"><b>${pctTxt(rate(h,30))}</b><span>30 хоногт</span></div><div class="stat"><b>${n}</b><span>Нийт</span></div></div>
-   <div class="section" style="margin-top:22px"><div class="section-head"><h2>Бат бэх: ${pctTxt(sv)}</h2><span class="small muted">${Math.min(n,66)}/66 давталт</span></div>
-   <div class="path"><i style="width:${Math.max(2,sv*100)}%"></i></div><p class="small muted">Давтах бүрт бат бэх нэмэгдэнэ. Нэг өдөр алгасахад бага зэрэг л буурна.</p></div>
-   <div class="section" style="margin-top:22px"><div class="section-head"><h2>Сүүлийн 12 долоо хоног</h2></div><div class="heat">${cells}</div><p class="small muted">Тэмдэглэхээ мартсан бол сүүлийн 7 хоногийн нүдэн дээр дарж засна.</p></div>
+   <div class="stats" style="margin-top:0"><div class="stat"><b>${st}</b><span>Streak</span></div><div class="stat"><b>${pctTxt(rate(h,30))}</b><span>Last 30 days</span></div><div class="stat"><b>${n}</b><span>Total</span></div></div>
+   <div class="section" style="margin-top:22px"><div class="section-head"><h2>Strength: ${pctTxt(sv)}</h2><span class="small muted">${Math.min(n,66)}/66 reps</span></div>
+   <div class="path"><i style="width:${Math.max(2,sv*100)}%"></i></div><p class="small muted">Each repetition adds strength. Missing a day only takes a little away.</p></div>
+   <div class="section" style="margin-top:22px"><div class="section-head"><h2>Last 12 weeks</h2></div><div class="heat">${cells}</div><p class="small muted">Forgot to check in? Tap any day from the past week to fix it.</p></div>
    ${h.reward?`<div class="reward"><span>🎁</span><span>${esc(h.reward)}</span></div>`:""}
-   <div class="actions"><button class="btn ghost block" data-act="edit-habit" data-v="${esc(h.id)}">Засах</button></div>`);
+   <div class="actions"><button class="btn ghost block" data-act="edit-habit" data-v="${esc(h.id)}">Edit</button></div>`);
 }
 function celebrate(big,title,text,reward){
-  openSheet(`<div class="cele"><h2 style="margin:0">${esc(title)}</h2><p class="big">${esc(big)}</p><p>${esc(text)}</p>${reward?`<div class="reward"><span>🎁</span><span><b>Шагналаа аваарай:</b> ${esc(reward)}</span></div>`:""}</div><div class="actions"><button class="btn block" data-act="close">Баярлалаа</button></div>`);
+  openSheet(`<div class="cele"><h2 style="margin:0">${esc(title)}</h2><p class="big">${esc(big)}</p><p>${esc(text)}</p>${reward?`<div class="reward"><span>🎁</span><span><b>Claim your reward:</b> ${esc(reward)}</span></div>`:""}</div><div class="actions"><button class="btn block" data-act="close">Thanks</button></div>`);
   confetti();
 }
 function confetti(){
@@ -698,6 +700,9 @@ function confetti(){
   document.body.append(box);setTimeout(()=>box.remove(),2800);
 }
 
+let askFn=null;
+function ask(q,label,fn,note){askFn=fn;openSheet(`<h2>${esc(q)}</h2>${note?`<p class="lead">${esc(note)}</p>`:""}<div class="actions"><button class="btn block danger-fill" data-act="ask-yes">${esc(label)}</button><button class="btn ghost block" data-act="close">Cancel</button></div>`);}
+const leaveGroup=g=>handlers._leave(g);
 /* ---------- actions ---------- */
 async function toggle(h,d,quiet){
   const k=dk(d),on=!CK.has(h.id+"|"+k),row={habit_id:h.id,user_id:S.me,day:k};
@@ -707,15 +712,15 @@ async function toggle(h,d,quiet){
   buzz();render();
   const st=streak(h);
   if(MILESTONES.includes(st)){
-    const msg=st===66?"Судалгаагаар зуршил дунджаар 66 хоногт автомат болдог. Чи тэр замыг туулчихлаа.":st>=21?"Энэ зуршил чиний нэг хэсэг болж байна.":"Эхлэл тавигдлаа. Цааш нь үргэлжлүүл.";
-    setTimeout(()=>celebrate(st,"“"+h.title+"”","удаа дараалан. "+msg,null),350);return;
+    const msg=st===66?"Research says habits become automatic after about 66 days on average. You made it.":st>=21?"This habit is becoming part of you.":"Great start. Keep going.";
+    setTimeout(()=>celebrate(st,"“"+h.title+"”","in a row. "+msg,null),350);return;
   }
   // weekly reward: every scheduled day this week done
   if(h.reward){const ws=weekStart(today());let all=true,any=false;for(let i=0;i<7;i++){const x=addDays(ws,i);if(!h.days.includes(x.getDay()))continue;any=true;if(x>today()||!done(h,x)){all=false;break;}}
     const lastSched=MON_ORDER.slice().reverse().find(w=>h.days.includes(w));
-    if(any&&all&&today().getDay()===lastSched){setTimeout(()=>celebrate("7/7","Долоо хоног бүтэн!","Энэ долоо хоногийн бүх өдрөө хийлээ.",h.reward),350);return;}}
+    if(any&&all&&today().getDay()===lastSched){setTimeout(()=>celebrate("7/7","Perfect week!","You did every day this week.",h.reward),350);return;}}
   const due=habitsOf(S.me).filter(x=>sched(x,today()));
-  if(due.length>1&&due.every(x=>done(x,today()))){toast("Өнөөдрийнхөө бүгдийг хийлээ! +5 оноо");confetti();return;}
+  if(due.length>1&&due.every(x=>done(x,today()))){toast("All done for today! +5 pts");confetti();return;}
   if(Math.random()<.35)toast(PRAISE[Math.floor(Math.random()*PRAISE.length)]);
 }
 async function sendCheer(u,body){
@@ -723,12 +728,12 @@ async function sendCheer(u,body){
   if(!g)return;
   buzz();
   await save("feed",{id:uid(),group_id:g.id,user_id:S.me,to_user:u,kind:"cheer",body:body||"👏",created_at:new Date().toISOString()});
-  toast(prof(u).name+"-д "+(body&&body.length>4?"зурвас":"👏")+" илгээлээ");render();
+  toast("Sent "+(body&&body.length>4?"a message":"👏")+" to "+prof(u).name);render();
 }
 function cheerSheet(u){
   const p=prof(u),f=dayFrac(u,UI.group,today());
-  const msgs=["👏","🔥","💪","Өнөөдөр чадна шүү!","Чамаар бахархаж байна","Маргааш хамт хийцгээе"];
-  openSheet(`<h2>${esc(p.name)}</h2><p class="lead">${f==null?"Өнөөдөр хуваарьт зуршилгүй.":f===1?"Өнөөдрийнхөө бүгдийг хийсэн байна.":"Өнөөдөр "+pctTxt(f)+" хийсэн."} Дэмжлэг илгээх үү?</p>
+  const msgs=["👏","🔥","💪","You’ve got this today!","Proud of you","Let’s do it together tomorrow"];
+  openSheet(`<h2>${esc(p.name)}</h2><p class="lead">${f==null?"Nothing scheduled today.":f===1?"Done everything today.":pctTxt(f)+" done today."} Send some encouragement?</p>
   <div class="chips">${msgs.map(m=>`<button class="chip" data-act="send-cheer" data-v="${esc(u)}" data-m="${esc(m)}" style="${m.length<=2?"font-size:22px;min-width:56px":""}">${esc(m)}</button>`).join("")}</div>`);
 }
 
@@ -741,36 +746,38 @@ const handlers={
   "edit-habit":(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);h&&habitForm(h);},
   toggle:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);h&&toggle(h,today());},
   "toggle-day":(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;toggle(h,pdk(el.dataset.d),true);habitDetail(h);},
-  archive:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;save("habits",Object.assign({},h,{archived:true}));closeSheet();render();toast("Зогсоолоо. “Би” хэсгээс сэргээнэ.");},
+  archive:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;save("habits",Object.assign({},h,{archived:true}));closeSheet();render();toast("Paused. Restore it from the Me tab.");},
   archived:()=>{const hs=S.habits.filter(h=>h.archived&&h.user_id===S.me);
-    openSheet(`<h2>Зогсоосон зуршлууд</h2>${hs.length?`<div class="menu">${hs.map(h=>`<button data-act="unarchive" data-v="${esc(h.id)}">${esc(h.title)}<span class="link">Сэргээх</span></button>`).join("")}</div>`:'<p class="lead">Одоогоор алга.</p>'}`);},
-  unarchive:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;save("habits",Object.assign({},h,{archived:false}));closeSheet();render();toast("Сэргээлээ");},
+    openSheet(`<h2>Paused habits</h2>${hs.length?`<div class="menu">${hs.map(h=>`<button data-act="unarchive" data-v="${esc(h.id)}">${esc(h.title)}<span class="link">Restore</span></button>`).join("")}</div>`:'<p class="lead">Nothing here yet.</p>'}`);},
+  unarchive:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;save("habits",Object.assign({},h,{archived:false}));closeSheet();render();toast("Restored");},
   cheer:(el)=>cheerSheet(el.dataset.v),
   "send-cheer":(el)=>{closeSheet();sendCheer(el.dataset.v,el.dataset.m);},
   "new-goal":()=>goalForm(),
   goal:(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);g&&goalForm(g);},
-  "goal-done":(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);if(!g)return;const d=!g.done;save("goals",Object.assign({},g,{done:d}));render();if(d)celebrate("🎉","Зорилго биеллээ!","“"+g.title+"”. Баяраа багийнхантайгаа хуваалцаарай.",null);else closeSheet();},
-  "goal-del":(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);if(!g||!confirm("Энэ зорилгыг устгах уу?"))return;S.habits.forEach(h=>{if(h.goal_id===g.id)h.goal_id=null;});remove("goals",g,"id=eq."+g.id);closeSheet();render();},
-  "new-group":()=>openSheet(`<h2>Баг үүсгэх</h2><p class="lead">Дараа нь урилгын кодоо найзууддаа илгээнэ.</p><form id="group-form"><label class="field"><span>Багийн нэр</span><input class="input" name="name" maxlength="40" required placeholder="Өглөөний клуб"></label><label class="field"><span>Бооцоо (заавал биш)</span><input class="input" name="stake" maxlength="120" placeholder="Сүүлийн байрын хүн кофе авч өгнө"></label><div class="actions"><button class="btn block">Үүсгэх</button></div></form>`),
-  "join-group":()=>openSheet(`<h2>Багт нэгдэх</h2><p class="lead">Найзаасаа 6 тэмдэгттэй код ав.</p><form id="join-form"><label class="field"><span>Урилгын код</span><input class="input" name="code" maxlength="6" required autocapitalize="characters" autocomplete="off" style="letter-spacing:.2em;text-transform:uppercase"></label><p class="err" id="join-err" role="alert"></p><div class="actions"><button class="btn block">Нэгдэх</button></div></form>`),
+  "goal-done":(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);if(!g)return;const d=!g.done;save("goals",Object.assign({},g,{done:d}));render();if(d)celebrate("🎉","Goal achieved!","“"+g.title+"”. Share it with your team.",null);else closeSheet();},
+  "goal-del":(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);if(!g)return;ask("Delete this goal?","Delete goal",()=>{S.habits.forEach(h=>{if(h.goal_id===g.id)h.goal_id=null;});remove("goals",g,"id=eq."+g.id);render();});},
+  "new-group":()=>openSheet(`<h2>Create team</h2><p class="lead">Next you’ll send the invite code to your friends.</p><form id="group-form"><label class="field"><span>Team name</span><input class="input" name="name" maxlength="40" required placeholder="Morning club"></label><label class="field"><span>Stake (optional)</span><input class="input" name="stake" maxlength="120" placeholder="Last place buys the coffee"></label><div class="actions"><button class="btn block">Create</button></div></form>`),
+  "join-group":()=>openSheet(`<h2>Join a team</h2><p class="lead">Ask your friend for the 6-character code.</p><form id="join-form"><label class="field"><span>Invite code</span><input class="input" name="code" maxlength="6" required autocapitalize="characters" autocomplete="off" style="letter-spacing:.2em;text-transform:uppercase"></label><p class="err" id="join-err" role="alert"></p><div class="actions"><button class="btn block">Join</button></div></form>`),
   "pick-group":(el)=>{UI.group=el.value;render();},
   "group-menu":()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;const link=location.origin+location.pathname+"?join="+g.code;
-    openSheet(`<h2>${esc(g.name)}</h2><p class="lead">Энэ кодоор найзууд чинь нэгдэнэ.</p><p class="code">${esc(g.code)}</p>
-    <div class="actions"><button class="btn block" data-act="share" data-v="${esc(link)}">Урилга илгээх</button><button class="btn ghost block" data-act="stake">Бооцоо засах</button><button class="btn ghost block" data-act="new-group">Өөр баг үүсгэх</button><button class="btn ghost block" data-act="join-group">Өөр багт нэгдэх</button><button class="btn danger block" data-act="leave">Багаас гарах</button></div>`);},
-  share:async(el)=>{const url=el.dataset.v,text="Хамт апп дээр манай багт нэгдээрэй! Урилгын холбоос:";
-    try{if(navigator.share){await navigator.share({title:"Хамт",text,url});return;}await navigator.clipboard.writeText(text+" "+url);toast("Холбоос хуулагдлаа");}catch(e){}},
-  stake:()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;openSheet(`<h2>Бооцоо</h2><p class="lead">Нөхөрсөг, жижиг байвал сайн. Мөнгөгүй бооцоо ч ажилладаг.</p><form id="stake-form"><label class="field"><span>Долоо хоногийн бооцоо</span><textarea class="input" name="stake" maxlength="120" placeholder="Сүүлийн байрын хүн бусдадаа кофе авч өгнө">${esc(g.stake)}</textarea></label><div class="actions"><button class="btn block">Хадгалах</button></div></form>`);},
-  leave:async()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g||!confirm("“"+g.name+"” багаас гарах уу? Таны зуршлууд хувийн болно."))return;
+    openSheet(`<h2>${esc(g.name)}</h2><p class="lead">Friends join with this code.</p><p class="code">${esc(g.code)}</p>
+    <div class="actions"><button class="btn block" data-act="share" data-v="${esc(link)}">Send invite</button><button class="btn ghost block" data-act="stake">Edit stake</button><button class="btn ghost block" data-act="new-group">Create another team</button><button class="btn ghost block" data-act="join-group">Join another team</button><button class="btn danger block" data-act="leave">Leave team</button></div>`);},
+  share:async(el)=>{const url=el.dataset.v,text="Join our team on Hamt! Invite link:";
+    try{if(navigator.share){await navigator.share({title:"Hamt",text,url});return;}await navigator.clipboard.writeText(text+" "+url);toast("Link copied");}catch(e){}},
+  stake:()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;openSheet(`<h2>Stake</h2><p class="lead">Keep it small and friendly. Stakes work without money too.</p><form id="stake-form"><label class="field"><span>Weekly stake</span><textarea class="input" name="stake" maxlength="120" placeholder="Last place buys everyone coffee">${esc(g.stake)}</textarea></label><div class="actions"><button class="btn block">Save</button></div></form>`);},
+  leave:()=>{const g=S.groups.find(x=>x.id===UI.group);if(g)ask("Leave “"+g.name+"”?","Leave team",()=>leaveGroup(g),"Your habits in this team become private.");},
+  "ask-yes":()=>{const f=askFn;askFn=null;closeSheet(true);f&&f();},
+  _leave:async(g)=>{
     S.habits.forEach(h=>{if(h.user_id===S.me&&h.group_id===g.id){h.group_id=null;if(REMOTE)R.patch("habits","id=eq."+h.id,{group_id:null}).catch(()=>{});}});
     S.goals.forEach(x=>{if(x.user_id===S.me&&x.group_id===g.id){x.group_id=null;if(REMOTE)R.patch("goals","id=eq."+x.id,{group_id:null}).catch(()=>{});}});
     S.members=S.members.filter(m=>!(m.group_id===g.id&&m.user_id===S.me));S.groups=S.groups.filter(x=>x.id!==g.id);UI.group=(S.groups[0]||{}).id||null;persist();
     if(REMOTE)try{await R.del("members","group_id=eq."+g.id+"&user_id=eq."+S.me);}catch(e){fail(e);}
     closeSheet();render();},
-  report:()=>{const w=weekStat(S.me,UI.group);openSheet(`<h2>Долоо хоногийн тайлан</h2><p class="lead">Энэ долоо хоногт ${w.sched?pctTxt(w.pct)+" ("+w.done+"/"+w.sched+")":"тэмдэглэл алга"}. Багийнхандаа товч бич.</p><form id="report-form"><label class="field"><span>Тайлан</span><textarea class="input" name="body" maxlength="600" required placeholder="Юу сайн болов? Юу саад болов? Ирэх долоо хоногт юуг өөрчлөх вэ?"></textarea></label><div class="actions"><button class="btn block">Нийтлэх</button></div></form>`);},
-  profile:()=>openSheet(`<h2>Нэр, өнгө</h2><form id="profile-form"><label class="field"><span>Нэр</span><input class="input" name="name" maxlength="24" required value="${esc(me().name)}"></label><div class="field"><span>Өнгө</span>${colorPicker("color",myColor())}</div><div class="actions"><button class="btn block">Хадгалах</button></div></form>`),
+  report:()=>{const w=weekStat(S.me,UI.group);openSheet(`<h2>Weekly report</h2><p class="lead">This week: ${w.sched?pctTxt(w.pct)+" ("+w.done+"/"+w.sched+")":"no check-ins yet"}. Write a short note to your team.</p><form id="report-form"><label class="field"><span>Report</span><textarea class="input" name="body" maxlength="600" required placeholder="What went well? What got in the way? What will you change next week?"></textarea></label><div class="actions"><button class="btn block">Post</button></div></form>`);},
+  profile:()=>openSheet(`<h2>Name and color</h2><form id="profile-form"><label class="field"><span>Name</span><input class="input" name="name" maxlength="24" required value="${esc(me().name)}"></label><div class="field"><span>Color</span>${colorPicker("color",myColor())}</div><div class="actions"><button class="btn block">Save</button></div></form>`),
   export:()=>{const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hamt-"+dk(today())+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);},
-  logout:()=>{if(!confirm("Гарах уу?"))return;R.keep(null);S=null;render();},
-  reset:()=>{if(!confirm("Энэ төхөөрөмж дээрх бүх өгөгдлийг устгах уу?"))return;store.set("hamt-local-v1",null);S=null;loadData().then(render);}
+  logout:()=>ask("Log out?","Log out",()=>{R.keep(null);S=null;render();}),
+  reset:()=>ask("Delete all data on this device?","Delete everything",()=>{store.set("hamt-local-v1",null);S=null;loadData().then(render);},"This can’t be undone.")
 };
 document.addEventListener("click",e=>{
   const el=e.target.closest("[data-act]");if(!el||el.tagName==="INPUT")return;
@@ -782,23 +789,23 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&sheetEl)closeSheet(
 const forms={
   auth:async(f,fd,sub)=>{
     const email=fd.get("email").trim(),pw=fd.get("password"),err=$("#auth-err");
-    if(!email||pw.length<6){err.textContent="Имэйл болон 6-аас доошгүй тэмдэгттэй нууц үгээ оруулна уу.";return;}
+    if(!email||pw.length<6){err.textContent="Enter your email and a password of at least 6 characters.";return;}
     err.textContent="";f.querySelectorAll("button").forEach(b=>b.disabled=true);
     try{
-      if(sub&&sub.value==="signup"){const ok=await R.signup(email,pw);if(!ok){err.textContent="Имэйл рүү чинь баталгаажуулах холбоос илгээлээ. Түүнийг нээгээд энд нэвтэрнэ үү.";f.querySelectorAll("button").forEach(b=>b.disabled=false);return;}}
+      if(sub&&sub.value==="signup"){const ok=await R.signup(email,pw);if(!ok){err.textContent="We sent a confirmation link to your email. Open it, then log in here.";f.querySelectorAll("button").forEach(b=>b.disabled=false);return;}}
       else await R.login(email,pw);
       await boot();
-    }catch(e){err.textContent=/invalid/i.test(e.message)?"Имэйл эсвэл нууц үг буруу байна.":/registered|exists/i.test(e.message)?"Энэ имэйлээр бүртгэл байна. Нэвтэрнэ үү.":"Алдаа гарлаа: "+e.message;f.querySelectorAll("button").forEach(b=>b.disabled=false);}
+    }catch(e){err.textContent=/invalid/i.test(e.message)?"Wrong email or password.":/registered|exists/i.test(e.message)?"An account with this email exists. Log in instead.":"Something went wrong: "+e.message;f.querySelectorAll("button").forEach(b=>b.disabled=false);}
   },
   onboard:async(f,fd)=>{const name=fd.get("name").trim();if(!name)return;await save("profiles",{id:S.me,name,color:fd.get("color")||COLORS[0]});await joinFromLink();render();},
   "profile-form":async(f,fd)=>{const name=fd.get("name").trim();if(!name)return;save("profiles",{id:S.me,name,color:fd.get("color")||myColor()});closeSheet();render();},
   "habit-form":async(f,fd)=>{
     const title=fd.get("title").trim(),days=fd.getAll("days").map(Number).sort();
-    if(!title)return;if(!days.length){toast("Дор хаяж нэг өдөр сонгоно уу");return;}
+    if(!title)return;if(!days.length){toast("Pick at least one day");return;}
     const old=S.habits.find(h=>h.id===f.dataset.id);
     const row=Object.assign({},old||{id:uid(),user_id:S.me,archived:false,created_at:new Date().toISOString()},
       {title,cue:fd.get("cue").trim(),days,reward:fd.get("reward").trim(),group_id:fd.has("group")?(fd.get("group")||null):(old?old.group_id:null),goal_id:fd.has("goal")?(fd.get("goal")||null):(old?old.goal_id:null)});
-    save("habits",row);closeSheet();UI.tab=UI.tab==="goals"?"goals":"today";render();if(!old)toast("Нэмлээ. Өнөөдрөөс эхэлцгээе!");
+    save("habits",row);closeSheet();UI.tab=UI.tab==="goals"?"goals":"today";render();if(!old)toast("Added. Let’s start today!");
   },
   "goal-form":async(f,fd)=>{
     const title=fd.get("title").trim();if(!title)return;
@@ -814,30 +821,30 @@ const forms={
       let id;
       if(REMOTE){id=await R.rpc("create_group",{p_name:name,p_stake:stake});await loadData();}
       else{id=uid();S.groups.push({id,name,code:Math.random().toString(36).slice(2,8).toUpperCase(),stake,created_by:S.me,created_at:new Date().toISOString()});S.members.push({group_id:id,user_id:S.me});persist();}
-      UI.group=id;UI.tab="group";closeSheet();render();toast("Баг үүслээ. Одоо найзуудаа урь!");setTimeout(()=>handlers["group-menu"](),450);
+      UI.group=id;UI.tab="group";closeSheet();render();toast("Team created. Now invite your friends!");setTimeout(()=>handlers["group-menu"](),450);
     }catch(e){f.querySelector("button").disabled=false;fail(e);}
   },
   "join-form":async(f,fd)=>{
     const code=fd.get("code").trim().toUpperCase(),err=$("#join-err");
-    if(!REMOTE){err.textContent="Энэ төхөөрөмж дээр л ажиллаж байгаа тул нэгдэх боломжгүй. Эхлээд Supabase холбоно уу.";return;}
+    if(!REMOTE){err.textContent="This copy runs on this device only, so joining isn’t available. Connect Supabase first.";return;}
     f.querySelector("button").disabled=true;
-    try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";closeSheet();render();toast("Багт нэгдлээ!");}
-    catch(e){err.textContent=/not found/i.test(e.message)?"Ийм код олдсонгүй. Дахин шалгана уу.":"Алдаа: "+e.message;f.querySelector("button").disabled=false;}
+    try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";closeSheet();render();toast("Joined the team!");}
+    catch(e){err.textContent=/not found/i.test(e.message)?"No team with that code. Check it and try again.":"Error: "+e.message;f.querySelector("button").disabled=false;}
   },
   "stake-form":async(f,fd)=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;g.stake=fd.get("stake").trim();persist();closeSheet();render();
     if(REMOTE)try{await R.patch("groups","id=eq."+g.id,{stake:g.stake});}catch(e){fail(e);}},
-  "report-form":async(f,fd)=>{const body=fd.get("body").trim();if(!body||!UI.group)return;save("feed",{id:uid(),group_id:UI.group,user_id:S.me,to_user:null,kind:"report",body,created_at:new Date().toISOString()});S.feed.sort((a,b)=>b.created_at<a.created_at?-1:1);closeSheet();render();toast("Нийтэллээ");}
+  "report-form":async(f,fd)=>{const body=fd.get("body").trim();if(!body||!UI.group)return;save("feed",{id:uid(),group_id:UI.group,user_id:S.me,to_user:null,kind:"report",body,created_at:new Date().toISOString()});S.feed.sort((a,b)=>b.created_at<a.created_at?-1:1);closeSheet();render();toast("Posted");}
 };
 document.addEventListener("submit",e=>{const f=e.target,h=forms[f.id];if(!h)return;e.preventDefault();h(f,new FormData(f),e.submitter);});
 
 async function joinFromLink(){
   const code=new URLSearchParams(location.search).get("join");if(!code||!REMOTE)return;
   history.replaceState(null,"",location.pathname);
-  try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";toast("Багт нэгдлээ!");}catch(e){toast("Урилгын код олдсонгүй");}
+  try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";toast("Joined the team!");}catch(e){toast("Invite code not found");}
 }
 async function boot(){
   if(REMOTE){R.load();if(!R.session){render();return;}}
-  try{await loadData();}catch(e){if(e.message==="noauth"){render();return;}$("#root").innerHTML='<div class="gate"><h1 class="brand" style="font-size:32px">Холбогдож чадсангүй</h1><p class="lead">Интернэтээ шалгаад дахин нээнэ үү.</p><button class="btn" onclick="location.reload()">Дахин оролдох</button></div>';return;}
+  try{await loadData();}catch(e){if(e.message==="noauth"){render();return;}$("#root").innerHTML='<div class="gate"><h1 class="brand" style="font-size:32px">Couldn’t connect</h1><p class="lead">Check your connection and reopen the app.</p><button class="btn" onclick="location.reload()">Try again</button></div>';return;}
   if(me().name)await joinFromLink();
   render();
 }

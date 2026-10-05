@@ -1,13 +1,13 @@
 {
-  "name": "Хамт — зуршил, зорилго",
-  "short_name": "Хамт",
+  "name": "Hamt — habits & goals together",
+  "short_name": "Hamt",
   "start_url": "/hamt/",
   "scope": "/hamt/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#eef1ec",
   "theme_color": "#eef1ec",
-  "lang": "mn",
+  "lang": "en",
   "icons": [
     { "src": "/hamt/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/hamt/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
