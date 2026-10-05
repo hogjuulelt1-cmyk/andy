@@ -401,7 +401,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 15</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 16</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -411,16 +411,16 @@ td.num, th.num { text-align: right; }
     <button class="flag" id="fLight" aria-pressed="false">⚡ Үржүүлэгч</button>
     <select class="flag" id="fMult" aria-label="Үржүүлэгчийн утга" hidden><option value="">⚡ хэд?</option><option>50</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>600</option><option>700</option><option>1000</option><option>1500</option><option>2000</option></select>
     <input class="wonin" id="fWon" type="number" inputmode="decimal" step="any" min="0" placeholder="дүн, сая" aria-label="Хожсон дүн">
-    <select class="flag" id="fPlayers" aria-label="Тоглогчийн тоо, ойролцоогоор"><option value="">тоглогч ~</option><option>20</option><option>50</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>700</option><option>1000</option><option>1500</option><option>2000</option><option>3000</option><option>5000</option></select>
-    <select class="flag" id="fWinners" aria-label="Хожсон хүний тоо, ойролцоогоор"><option value="">хожсон ~</option><option>0</option><option>5</option><option>10</option><option>20</option><option>30</option><option>50</option><option>70</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>1000</option></select>
+    <select class="flag" id="fPlayers" aria-label="Тоглогчийн тоо, ойролцоогоор"><option value="">тоглогч ~</option><option>50</option><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option><option>600</option><option>700</option><option>800</option><option>900</option><option>1000</option><option>1100</option><option>1200</option><option>1300</option><option>1400</option><option>1500</option><option>1600</option><option>1700</option><option>1800</option><option>1900</option><option>2000</option><option>2100</option><option>2200</option><option>2300</option><option>2400</option><option>2500</option><option>2600</option><option>2700</option><option>2800</option><option>2900</option><option>3000</option><option>4000</option><option>5000</option></select>
+    <select class="flag" id="fWinners" aria-label="Хожсон хүний тоо, ойролцоогоор"><option value="">хожсон ~</option><option>0</option><option>10</option><option>20</option><option>30</option><option>40</option><option>50</option><option>100</option><option>150</option><option>200</option><option>250</option><option>300</option><option>350</option><option>400</option><option>450</option><option>500</option><option>550</option><option>600</option><option>650</option><option>700</option><option>750</option><option>800</option><option>850</option><option>900</option><option>950</option><option>1000</option></select>
     <button class="flag" id="fUndo">Буцаах</button>
   </div>
   <div class="pad" id="pad"></div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=15"></script>
-<script src="ocr.js?v=15"></script>
+<script src="engine.js?v=16"></script>
+<script src="ocr.js?v=16"></script>
 <script>
 (function () {
   'use strict';
@@ -630,7 +630,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=15');
+    const r = await fetch('digits.json?v=16');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -795,7 +795,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=15'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=16'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
