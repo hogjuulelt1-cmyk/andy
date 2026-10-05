@@ -337,10 +337,11 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, ашигласан эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
+<p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 4</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js"></script>
+<script src="engine.js?v=4"></script>
 <script>
 (function () {
   'use strict';
@@ -665,7 +666,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=4'); } catch (e) { worker = false; }
     return worker;
   }
   function trainAsync(spins) {
