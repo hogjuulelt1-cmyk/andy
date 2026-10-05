@@ -1,0 +1,75 @@
+{
+  "_note": "Placeholder prices (KRW per person, 2026 estimates, 6 people per vehicle). Not quotes.",
+  "packages": [
+    {
+      "slug": "gobi-7d",
+      "title": { "ko": "고비 사막 7일", "en": "Gobi 7 days", "mn": "Govi 7 honog" },
+      "days": 7,
+      "nights": 6,
+      "season": "May-Sep",
+      "priceRangeKrw": [1200000, 1800000],
+      "flightPortionKrw": [500000, 900000],
+      "highlights": ["Tsagaan Suvarga", "Yolyn Am", "Khongoryn Els", "Bayanzag", "stargazing"],
+      "itinerary": [
+        { "day": 1, "title": "Arrive Ulaanbaatar", "stay": "UB hotel" },
+        { "day": 2, "title": "Tsagaan Suvarga", "stay": "Ger camp" },
+        { "day": 3, "title": "Yolyn Am", "stay": "Ger camp" },
+        { "day": 4, "title": "Khongoryn Els (camel ride)", "stay": "Nomad family ger" },
+        { "day": 5, "title": "Bayanzag + stargazing", "stay": "Ger camp" },
+        { "day": 6, "title": "Ongi monastery / Baga Gazriin Chuluu", "stay": "Ger camp" },
+        { "day": 7, "title": "Fly home", "stay": null }
+      ]
+    },
+    {
+      "slug": "terelj-hustai-4d",
+      "title": {
+        "ko": "테를지 + 후스타이 4일",
+        "en": "Terelj + Hustai 4 days",
+        "mn": "Terelj + Hustai 4 honog"
+      },
+      "days": 4,
+      "nights": 3,
+      "season": "all-year",
+      "priceRangeKrw": [800000, 1200000],
+      "highlights": ["Turtle Rock", "horse riding", "Chinggis Khaan statue", "Przewalski horses"],
+      "itinerary": [
+        { "day": 1, "title": "Terelj, Turtle Rock, horse riding", "stay": "Ger camp" },
+        {
+          "day": 2,
+          "title": "Aryapala temple, Chinggis Khaan statue, stargazing",
+          "stay": "Ger camp"
+        },
+        { "day": 3, "title": "Hustai National Park, Gandan, Zaisan", "stay": "UB hotel" },
+        { "day": 4, "title": "Cashmere shopping, fly home", "stay": null }
+      ]
+    },
+    {
+      "slug": "khuvsgul-6d",
+      "title": { "ko": "흡스굴 호수 6일", "en": "Khuvsgul 6 days", "mn": "Hovsgol 6 honog" },
+      "days": 6,
+      "nights": 5,
+      "season": "Jun-Aug",
+      "priceRangeKrw": [1400000, 2000000],
+      "highlights": [
+        "Lake Khuvsgul",
+        "kayak",
+        "horse riding",
+        "Tsaatan reindeer herders (optional)"
+      ],
+      "itinerary": [
+        { "day": 1, "title": "Arrive Ulaanbaatar", "stay": "UB hotel" },
+        { "day": 2, "title": "Fly to Murun, drive to Khatgal", "stay": "Ger camp" },
+        { "day": 3, "title": "Lake Khuvsgul activities", "stay": "Ger camp" },
+        { "day": 4, "title": "Lake Khuvsgul activities", "stay": "Ger camp" },
+        { "day": 5, "title": "Murun to UB", "stay": "UB hotel" },
+        { "day": 6, "title": "Fly home", "stay": null }
+      ]
+    }
+  ],
+  "addOns": [
+    { "slug": "naadam-ticket", "title": "Naadam ticket (Jul 11-13)" },
+    { "slug": "photo-shoot", "title": "Drone / deel photo shoot" },
+    { "slug": "esim", "title": "eSIM" },
+    { "slug": "insurance", "title": "Travel insurance" }
+  ]
+}
