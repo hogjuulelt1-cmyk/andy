@@ -158,6 +158,13 @@ td.num, th.num { text-align: right; }
 .gbar.down .x { color: var(--bad); }
 .win[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .freq td.up { color: var(--good); font-weight: 600; } .freq td.down { color: var(--bad); font-weight: 600; }
+.sum { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 8px 0; }
+.sum .c { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 10px 12px; }
+.sum .k { color: var(--muted); font-size: 0.75rem; }
+.sum .v { font-size: 1.125rem; font-weight: 700; line-height: 1.25; }
+.sum .x { font-size: 0.8125rem; color: var(--muted); }
+.sum .up .x { color: var(--good); } .sum .down .x { color: var(--bad); }
+.sum .n { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.875rem; margin-right: 4px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 0.8125rem; margin: 4px 0 10px; }
 .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
 .status { font-size: 0.875rem; color: var(--muted); margin: 6px 0; }
@@ -199,10 +206,13 @@ td.num, th.num { text-align: right; }
     </div>
     <textarea id="allText" hidden readonly aria-label="Бүх эргэлт"></textarea>
 
+    <h2>Дараагийн эргэлт</h2>
+    <div id="liveSummary"><p class="empty">Таамаг 30 эргэлтээс эхэлнэ.</p></div>
+
     <h2>Эргэлт бүртгэх</h2>
     <div class="grid3">
       <div><label for="lNumber">Буусан тоо</label><input id="lNumber" type="number" inputmode="numeric" min="0" max="36" placeholder="0–36"></div>
-      <div><label for="lWon">Хожсон дүн</label><input id="lWon" type="number" inputmode="decimal" min="0" placeholder="—"></div>
+      <div><label for="lWon" id="lWonLabel">Хожсон дүн (сая)</label><input id="lWon" type="number" inputmode="decimal" step="any" min="0" placeholder="—"></div>
       <div><label for="lWinners">Хожсон хүн</label><input id="lWinners" type="number" inputmode="numeric" min="0" placeholder="—"></div>
     </div>
     <div class="grid2">
@@ -213,7 +223,7 @@ td.num, th.num { text-align: right; }
     <div class="row"><button class="btn accent" id="liveSubmit">Бүртгэх</button><button class="btn ghost" id="liveUndo">Сүүлийнхийг буцаах</button></div>
     <div class="status" id="liveStatus"></div>
 
-    <h2>Дараагийн эргэлтийн таамаг</h2>
+    <h2>Таамгийн дэлгэрэнгүй</h2>
     <div class="row" role="group" aria-label="Сурах цонх">
       <span class="muted">Сурах цонх:</span>
       <button class="btn ghost small win" data-win="0" aria-pressed="true">Бүгд</button>
@@ -257,6 +267,8 @@ td.num, th.num { text-align: right; }
           <option value="36">Стандарт: нэг тоо 36 дахин</option>
           <option value="20">Үржүүлэгчтэй: нэг тоо 20 дахин, үржүүлэгч 50–2000x</option>
         </select></div>
+      <div><label for="wonUnit">Хожлын дүнгийн нэгж</label>
+        <select id="wonUnit"><option value="1000000">сая (1.5 = 1 500 000)</option><option value="1000">мянга (250 = 250 000)</option><option value="1">бүтэн тоо</option></select></div>
       <div id="lightningOpts" hidden><label for="avgLightning">Нэг эргэлтэд дунджаар хэдэн тоо үржүүлэгчтэй вэ</label><input id="avgLightning" type="number" inputmode="decimal" step="0.5" min="1" max="10" value="3"></div>
     </div>
     <p class="muted" id="gameNote"></p>
@@ -359,25 +371,27 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 9</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 10</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=9"></script>
-<script src="ocr.js?v=9"></script>
+<script src="engine.js?v=10"></script>
+<script src="ocr.js?v=10"></script>
 <script>
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
   const KEY = 'patternlab.v1';
-  const state = { spins: [], players: [], log: [], truth: null, last: null, playerLog: '', straightRet: 36, avgLightning: 3, live: [], next: null, session: '', window: 0 };
+  const state = { spins: [], players: [], log: [], truth: null, last: null, playerLog: '', straightRet: 36, avgLightning: 3, live: [], next: null, session: '', window: 0, wonUnit: 1000000 };
+  const UNIT_NAMES = { 1000000: 'сая', 1000: 'мянга', 1: '' };
+  const fmtWon = v => v == null ? '—' : num(v / state.wonUnit, state.wonUnit === 1 ? 0 : 2) + (UNIT_NAMES[state.wonUnit] ? ' ' + UNIT_NAMES[state.wonUnit] : '');
 
   // ---------- storage (per-browser; the page still works if it is blocked) ----------
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
         spins: PL.spinsToCsv(state.spins), playerLog: state.playerLog, log: state.log.slice(-50), truth: state.truth,
-        straightRet: state.straightRet, avgLightning: state.avgLightning, live: state.live.slice(-500), session: state.session, window: state.window,
+        straightRet: state.straightRet, avgLightning: state.avgLightning, live: state.live.slice(-500), session: state.session, window: state.window, wonUnit: state.wonUnit,
       }));
     } catch (e) { toast('Өгөгдөл хэт том тул хөтөч дээр хадгалагдсангүй. CSV татаж хадгална уу.'); }
   }
@@ -395,6 +409,7 @@ td.num, th.num { text-align: right; }
       state.live = Array.isArray(d.live) ? d.live : [];
       state.session = d.session || '';
       state.window = [0, 50, 100, 200].includes(d.window) ? d.window : 0;
+      state.wonUnit = [1, 1000, 1000000].includes(d.wonUnit) ? d.wonUnit : 1000000;
     } catch (e) { /* storage unavailable */ }
   }
 
@@ -445,7 +460,7 @@ td.num, th.num { text-align: right; }
     $('sessionLine').innerHTML = `<span>Сесс: <b>${esc(cur)}</b></span><span>${num(inSession.length)} эргэлт энэ сесст</span><span>${num(state.spins.length)} нийт</span>`;
     const last = inSession.slice(-40);
     $('recentChips').innerHTML = last.length
-      ? last.map((s, i) => `<span class="chip${PL.lightHit(s) ? ' light' : ''}${i === last.length - 1 ? ' last' : ''}" style="background:${pocketColor(s.n)}" title="${s.mult && s.mult[s.n] ? s.mult[s.n] + 'x' : ''}${s.players ? ' тоглогч ' + s.players : ''}${s.winners != null ? ', хожсон ' + s.winners : ''}">${s.n}</span>`).join('')
+      ? last.map((s, i) => `<span class="chip${PL.lightHit(s) ? ' light' : ''}${i === last.length - 1 ? ' last' : ''}" style="background:${pocketColor(s.n)}" title="${s.mult && s.mult[s.n] ? s.mult[s.n] + 'x' : ''}${s.players ? ' тоглогч ' + s.players : ''}${s.winners != null ? ', хожсон ' + s.winners : ''}${s.won != null ? ', дүн ' + fmtWon(s.won) : ''}">${s.n}</span>`).join('')
       : '<span class="muted">Энэ сесст эргэлт бүртгээгүй байна.</span>';
     if (!$('allText').hidden) $('allText').value = PL.spinsToText(state.spins);
   }
@@ -463,7 +478,7 @@ td.num, th.num { text-align: right; }
     const n = parseInt($('lNumber').value, 10);
     if (!(n >= 0 && n <= 36)) { toast('Буусан тоо 0–36 байх ёстой.'); $('lNumber').focus(); return null; }
     const mult = PL.parseMult($('lMult').value), hit = $('lHit').checked;
-    const won = $('lWon').value.trim() === '' ? null : parseFloat($('lWon').value) || 0;
+    const won = $('lWon').value.trim() === '' ? null : (parseFloat($('lWon').value) || 0) * state.wonUnit;
     const winners = $('lWinners').value.trim() === '' ? null : parseInt($('lWinners').value, 10) || 0;
     const players = parseInt($('lPlayers').value, 10) > 0 ? parseInt($('lPlayers').value, 10) : null;
     return { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players, won, winners, mult, light: mult && !hit ? !!mult[n] : hit, multPartial: !mult || hit, liab: null };
@@ -554,6 +569,11 @@ td.num, th.num { text-align: right; }
       : 'Нэг тоо 36 дахин төлнө, казиногийн давуу тал 2.7%.';
     save();
   }
+  function setWonUnit(u) {
+    state.wonUnit = u; $('wonUnit').value = String(u);
+    $('lWonLabel').textContent = 'Хожсон дүн' + (UNIT_NAMES[u] ? ' (' + UNIT_NAMES[u] + ')' : '');
+  }
+  $('wonUnit').addEventListener('change', () => { setWonUnit(parseInt($('wonUnit').value, 10)); save(); renderAll(); });
   $('avgLightning').addEventListener('change', () => { state.avgLightning = Math.max(1, parseFloat($('avgLightning').value) || 3); save(); renderTests(); });
   $('gameType').addEventListener('change', () => { setGame(parseInt($('gameType').value, 10) === 20 ? 20 : 36); state.last = null; renderAll(); });
 
@@ -561,7 +581,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=9');
+    const r = await fetch('digits.json?v=10');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -705,7 +725,7 @@ td.num, th.num { text-align: right; }
     const bandTable = (title, intro, bands) => {
       const hasW = bands.some(b => b.winners != null);
       let t = `<h3>${title}</h3><p class="muted">${intro}</p><div class="scroll"><table><thead><tr><th>Бүлэг</th><th class="num">Эргэлт</th><th class="num">Тоглогч</th>${hasW ? '<th class="num">Хожсон хүн</th><th class="num">Хожсон хувь</th>' : ''}<th class="num">Дундаж хожил</th><th class="num">Үржүүлэгч z</th></tr></thead><tbody>`;
-      bands.forEach(b => { t += `<tr><td>${esc(b.label)}</td><td class="num">${num(b.n)}</td><td class="num">${b.players == null ? '—' : num(b.players, 1)}</td>${hasW ? `<td class="num">${b.winners == null ? '—' : num(b.winners, 1)}</td><td class="num">${pct(b.winShare)}</td>` : ''}<td class="num">${b.won == null ? '—' : num(b.won)}</td><td class="num">${b.lightning ? b.lightning.z.toFixed(2) : '—'}</td></tr>`; });
+      bands.forEach(b => { t += `<tr><td>${esc(b.label)}</td><td class="num">${num(b.n)}</td><td class="num">${b.players == null ? '—' : num(b.players, 1)}</td>${hasW ? `<td class="num">${b.winners == null ? '—' : num(b.winners, 1)}</td><td class="num">${pct(b.winShare)}</td>` : ''}<td class="num">${fmtWon(b.won)}</td><td class="num">${b.lightning ? b.lightning.z.toFixed(2) : '—'}</td></tr>`; });
       return t + '</tbody></table></div>';
     };
     if (r.byHour) h += bandTable('Өдрийн цагаар', 'Тоглогч олонтой, мөнгө ихтэй цагт тоглоом өөрөөр ажилладаг эсэх.', r.byHour);
@@ -726,7 +746,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=9'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=10'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1057,7 +1077,7 @@ td.num, th.num { text-align: right; }
     const sizes = [50, 100, 200, 0].filter(n => !n || state.spins.length >= n);
     if (state.spins.length < 20) return '';
     const items = GROUPS[0].items.concat(GROUPS[1].items, GROUPS[GROUPS.length - 1].items);
-    let h = `<h3>Давтамж цонх бүрээр</h3><p class="muted">Санамсаргүй түвшнээс хоёр стандарт хазайлтаас илүү зөрсөн нь тодорсон. Богино цонхны хэлбэлзэл том байдаг тул 50-ийн баганад тод үзүүлэлт их гарна.</p><div class="scroll"><table class="freq"><thead><tr><th>Бооцоо</th><th class="num">санамсаргүй</th>${sizes.map(n => `<th class="num">${n ? 'сүүлийн ' + n : 'бүгд'}</th>`).join('')}</tr></thead><tbody>`;
+    let h = `<p class="muted">Санамсаргүй түвшнээс хоёр стандарт хазайлтаас илүү зөрсөн нь тодорсон. Богино цонхны хэлбэлзэл том байдаг тул 50-ийн баганад тод үзүүлэлт их гарна.</p><div class="scroll"><table class="freq"><thead><tr><th>Бооцоо</th><th class="num">санамсаргүй</th>${sizes.map(n => `<th class="num">${n ? 'сүүлийн ' + n : 'бүгд'}</th>`).join('')}</tr></thead><tbody>`;
     items.forEach(it => {
       const chance = it.count / 37;
       h += `<tr><td>${it.label}</td><td class="num muted">${(chance * 100).toFixed(1)}%</td>`;
@@ -1070,13 +1090,41 @@ td.num, th.num { text-align: right; }
     });
     return h + '</tbody></table></div>';
   }
+  // One card per way to bet: the best option of each kind, with its probability and ratio to chance.
+  function renderSummary(p, order, picks) {
+    const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
+    const best = (items) => items.map(it => { const q = sum(it.has); return { it, q, ratio: q / (it.count / 37) }; }).sort((a, b) => b.ratio - a.ratio)[0];
+    const card = (k, html, ratio) => `<div class="c ${ratio > 1.03 ? 'up' : ratio < 0.97 ? 'down' : ''}"><div class="k">${k}</div>${html}</div>`;
+    const simple = (k, items) => { const b = best(items); return card(k, `<div class="v">${b.it.label}</div><div class="x">${(b.q * 100).toFixed(1)}% · ×${b.ratio.toFixed(2)}</div>`, b.ratio); };
+    const G = GROUPS;
+    let h = '<div class="sum">';
+    h += card('Тоо (эхний 3)', `<div class="v">${order.slice(0, 3).map(o => `<span class="n" style="background:${pocketColor(o.k)}">${o.k}</span>`).join('')}</div><div class="x">${order.slice(0, 3).map(o => (o.v * 100).toFixed(1) + '%').join(' · ')}</div>`, order[0].v * 37);
+    const w = bestWindows(p, 2, 1)[0];
+    h += card('Дугуйн бүс (5 нүд)', `<div class="v"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span>${w.nums.join('·')}</div><div class="x">${(w.q * 100).toFixed(1)}% · ×${w.ratio.toFixed(2)}</div>`, w.ratio);
+    h += simple('Өнгө', G[0].items.slice(0, 2));
+    h += simple('Тэгш / сондгой', G[0].items.slice(3, 5));
+    h += simple('Бага / их', G[0].items.slice(5, 7));
+    h += simple('Арван хоёр', G[1].items.slice(0, 3));
+    h += simple('Эгнээ 2:1', G[1].items.slice(3, 6));
+    h += simple('Хосолсон шилдэг', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items));
+    h += simple('Дугуйн бүс (уламжлалт)', G[7].items.slice(0, 4));
+    h += '</div>';
+    const proven = state.last && state.last.verdict.level === 'edge';
+    h += picks.length && proven
+      ? `<div class="advice">Нэг тоон дээр давуу тал: <b>${picks.map(o => o.k).join(', ')}</b> (${picks.map(o => ((state.straightRet * o.v - 1) * 100).toFixed(0) + '%').join(', ')}). Шинжилгээ баталгаажуулсан ч шинэ өгөгдөл дээр давтан шалга.</div>`
+      : picks.length
+        ? `<div class="advice none">Загварын хамгийн магадлалтай тоо: <b>${picks.map(o => o.k).join(', ')}</b>. Давуу тал “Шинжилгээ” хэсэгт баталгаажаагүй тул энэ нь бооцооны зөвлөмж биш.</div>`
+        : `<div class="advice none">Нэг тоон дээр давуу тал алга. ×1.00 орчим бол санамсаргүйгээс ялгаагүй.</div>`;
+    $('liveSummary').innerHTML = h;
+  }
   function renderLive() {
     renderRecent();
     const r = state.next;
-    if (!r) { $('liveOut').innerHTML = `<p class="empty">${state.spins.length < 30 ? `Таамаг 30 эргэлтээс эхэлнэ (одоо ${state.spins.length}).` : 'Тооцоолж байна…'}</p>`; renderLiveChart(); return; }
+    if (!r) { const t = `<p class="empty">${state.spins.length < 30 ? `Таамаг 30 эргэлтээс эхэлнэ (одоо ${state.spins.length}).` : 'Тооцоолж байна…'}</p>`; $('liveOut').innerHTML = t; $('liveSummary').innerHTML = t; renderLiveChart(); return; }
     const p = r.next.p, order = p.map((v, k) => ({ v, k })).sort((a, b) => b.v - a.v);
     const margin = state.last ? state.last.best.margin : 0.1;
     const picks = order.filter(o => state.straightRet * o.v - 1 > margin).slice(0, 3);
+    renderSummary(p, order, picks);
     let h = picks.length
       ? `<div class="advice">Загварын сонголт: <b>${picks.map(o => o.k).join(', ')}</b>. Хүлээгдэж буй өгөөж нэг нэгжид ${picks.map(o => (state.straightRet * o.v - 1 >= 0 ? '+' : '') + ((state.straightRet * o.v - 1) * 100).toFixed(0) + '%').join(', ')}. Давуу тал “Шинжилгээ” хэсэгт баталгаажаагүй бол бодит мөнгөөр бүү тавь.</div>`
       : `<div class="advice none">Нэг тоон дээр давуу тал алга: аль ч тоо босгыг (${state.straightRet} × магадлал − 1 > ${Math.round(margin * 100)}%) давахгүй. Шударга тоглоом дээр энэ хэвийн.</div>`;
@@ -1084,13 +1132,12 @@ td.num, th.num { text-align: right; }
     h += `<p class="muted">Нүдний өнгө тод байх тусам тэр тоо буух магадлал өндөр. Баруун талд арван хоёрын, доор баганын нийлбэр.</p><div class="layout">${layoutHeat(p)}</div>`;
     h += `<div class="strip">${heatStrip(p)}</div>`;
     const w5 = bestWindows(p, 2, 3), w9 = bestWindows(p, 4, 2);
-    h += `<h3>Дугуй дээрх бүс</h3><div class="layout">${wheelSvg(p, w5[0])}</div>`;
+    h += `<details><summary>Дугуй дээрх бүс</summary><div class="layout">${wheelSvg(p, w5[0])}</div>`;
     h += `<p class="muted">Хөршийн цонх: тоо ба дугуй дээр хажуу талын нүднүүд. Санамсаргүй бол 5 нүд 13.5%, 9 нүд 24.3%.</p><div class="picks">` +
       w5.map(w => `<span class="pick"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span><span>${w.nums.join('·')}<br><small>5 нүд ${(w.q * 100).toFixed(1)}% ×${w.ratio.toFixed(2)}</small></span></span>`).join('') +
-      w9.map(w => `<span class="pick"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span><span>±4 хөрш<br><small>9 нүд ${(w.q * 100).toFixed(1)}% ×${w.ratio.toFixed(2)}</small></span></span>`).join('') + '</div>';
-    h += `<p class="muted" style="margin-top:14px">Мөр бүр: магадлал, санамсаргүйгээс хэд дахин (×1.00 = ялгаагүй), стандарт бооцоотой бол хүлээгдэж буй өгөөж. Дунд зураас = санамсаргүй түвшин.</p>`;
-    h += groupBars(p);
-    h += freqTable();
+      w9.map(w => `<span class="pick"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span><span>±4 хөрш<br><small>9 нүд ${(w.q * 100).toFixed(1)}% ×${w.ratio.toFixed(2)}</small></span></span>`).join('') + '</div></details>';
+    h += `<details><summary>Бүх бооцооны магадлал</summary><p class="muted">Мөр бүр: магадлал, санамсаргүйгээс хэд дахин (×1.00 = ялгаагүй), стандарт бооцоотой бол хүлээгдэж буй өгөөж. Дунд зураас = санамсаргүй түвшин.</p>${groupBars(p)}</details>`;
+    h += `<details><summary>Давтамж цонх бүрээр</summary>${freqTable()}</details>`;
     const top = r.models.slice().sort((a, b) => b.weight - a.weight).slice(0, 3);
     h += `<p class="muted">Сүүлийн ${num(r.recent.scored)} эргэлтэд: 1-р таамаг ${pct(r.recent.top1 / Math.max(1, r.recent.scored))} онов (санамсаргүй 2.7%). Хамгийн их жинтэй загвар: ${top.map(m => `${PL.MODEL_INFO[m.id].label} ${pct(m.weight)}`).join(', ')}.</p>`;
     const pay = r.models.find(m => m.id === 'payout');
@@ -1149,6 +1196,7 @@ td.num, th.num { text-align: right; }
   load();
   document.querySelectorAll('.win').forEach(x => x.setAttribute('aria-pressed', String((parseInt(x.dataset.win, 10) || 0) === state.window)));
   setGame(state.straightRet);
+  setWonUnit(state.wonUnit);
   $('avgLightning').value = state.avgLightning;
   renderAll();
   if (state.playerLog) { $('playerText').value = state.playerLog.length < 400000 ? state.playerLog : ''; analyzePlayersFromText(state.playerLog); }
