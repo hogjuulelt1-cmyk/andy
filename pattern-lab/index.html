@@ -337,11 +337,11 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, ашигласан эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-<p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 4</p>
+<p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 5</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=4"></script>
+<script src="engine.js?v=5"></script>
 <script>
 (function () {
   'use strict';
@@ -666,7 +666,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=4'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=5'); } catch (e) { worker = false; }
     return worker;
   }
   function trainAsync(spins) {
@@ -955,6 +955,10 @@ td.num, th.num { text-align: right; }
   });
 
   function renderAll() { renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); renderLastSpins(); refreshNext(); }
+
+  // Surface failures instead of a silently dead page.
+  window.addEventListener('error', e => { toast('Алдаа: ' + (e.message || e.error)); });
+  window.addEventListener('unhandledrejection', e => { toast('Алдаа: ' + (e.reason && e.reason.message || e.reason)); });
 
   load();
   setGame(state.straightRet);
