@@ -166,6 +166,8 @@ td.num, th.num { text-align: right; }
 .sum .v { font-size: 1.125rem; font-weight: 700; line-height: 1.25; }
 .sum .x { font-size: 0.8125rem; color: var(--muted); }
 .sum .up .x { color: var(--good); } .sum .down .x { color: var(--bad); }
+.sum .flat .n, .picks.flat .n { opacity: 0.45; }
+.models td .n { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.8125rem; margin-right: 3px; }
 .sum .n { display: inline-flex; width: 26px; height: 26px; border-radius: 50%; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.875rem; margin-right: 4px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 0.8125rem; margin: 4px 0 10px; }
 .legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; }
@@ -401,7 +403,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 16</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 17</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -419,8 +421,8 @@ td.num, th.num { text-align: right; }
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=16"></script>
-<script src="ocr.js?v=16"></script>
+<script src="engine.js?v=17"></script>
+<script src="ocr.js?v=17"></script>
 <script>
 (function () {
   'use strict';
@@ -630,7 +632,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=16');
+    const r = await fetch('digits.json?v=17');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -795,7 +797,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=16'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=17'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1140,6 +1142,27 @@ td.num, th.num { text-align: right; }
     return h + '</tbody></table></div>';
   }
   // One card per way to bet: the best option of each kind, with its probability and ratio to chance.
+  // Which pattern pushes this number above 1/37 the most, in the current forecast.
+  function pickReason(k) {
+    const r = state.next; if (!r || !r.next.models) return '';
+    const best = r.next.models.map(m => ({ id: m.id, c: m.weight * (m.p[k] - 1 / 37) })).sort((a, b) => b.c - a.c)[0];
+    return best && best.c > 0.0005 ? PL.MODEL_INFO[best.id].label : '';
+  }
+  // Every pattern's own top numbers next to how often it has been right lately, so a pick can be traced
+  // to its reason instead of looking like the last few numbers repeated.
+  function renderModels(r) {
+    const scored = Math.max(1, r.recent.scored), stats = {};
+    r.models.forEach(m => { stats[m.id] = m; });
+    let h = `<details><summary>Хэв маяг бүрийн таамаг</summary><p class="muted">Мөр бүр нэг хэв маягийн өөрийн топ 3 тоо, нийт таамагт эзлэх жин, сүүлийн ${num(r.recent.scored)} эргэлтэд 1-р тоогоо хэдэн удаа оносон (санамсаргүй ${(scored / 37).toFixed(1)}). Жин өндөр, оносон нь санамсаргүйгээс дээш бол тэр хэв маяг ажиллаж байна.</p><div class="scroll"><table class="models"><thead><tr><th>Хэв маяг</th><th>Топ 3</th><th class="num">Жин</th><th class="num">Оносон</th></tr></thead><tbody>`;
+    r.next.models.slice().sort((a, b) => b.weight - a.weight).forEach(m => {
+      const info = PL.MODEL_INFO[m.id] || { label: m.id }, st = stats[m.id] || {};
+      const ord = m.p.map((v, k) => ({ v, k })).sort((a, b) => b.v - a.v);
+      const active = ord[0].v * 37 > 1.005;
+      const hit = st.top1 || 0, good = hit > scored / 37 * 1.5 && hit >= 3;
+      h += `<tr><td>${info.label}</td><td>${active ? ord.slice(0, 3).map(o => `<span class="n" style="background:${pocketColor(o.k)}">${o.k}</span>`).join('') + `<small class="muted"> ×${(ord[0].v * 37).toFixed(2)}</small>` : '<span class="muted">идэвхгүй</span>'}</td><td class="num">${pct(m.weight)}</td><td class="num">${active ? `${hit}${good ? ' <span class="pill ok">✓</span>' : ''}` : '—'}</td></tr>`;
+    });
+    return h + '</tbody></table></div></details>';
+  }
   function renderSummary(p, order, picks) {
     const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
     const best = (items) => items.map(it => { const q = sum(it.has); return { it, q, ratio: q / (it.count / 37) }; }).sort((a, b) => b.ratio - a.ratio)[0];
@@ -1147,7 +1170,9 @@ td.num, th.num { text-align: right; }
     const simple = (k, items) => { const b = best(items); return card(k, `<div class="v">${b.it.label}</div><div class="x">${(b.q * 100).toFixed(1)}% · ×${b.ratio.toFixed(2)}</div>`, b.ratio); };
     const G = GROUPS;
     let h = '<div class="sum">';
-    h += card('Тоо (эхний 3)', `<div class="v">${order.slice(0, 3).map(o => `<span class="n" style="background:${pocketColor(o.k)}">${o.k}</span>`).join('')}</div><div class="x">${order.slice(0, 3).map(o => (o.v * 100).toFixed(1) + '%').join(' · ')}</div>`, order[0].v * 37);
+    const topLift = order[0].v * 37, flat = topLift < 1.1;
+    const why = pickReason(order[0].k);
+    h += `<div class="c ${flat ? 'flat' : topLift > 1.03 ? 'up' : ''}"><div class="k">${flat ? 'Тоо: тодорхой дохио алга' : 'Тоо (эхний 3)'}</div><div class="v">${order.slice(0, 3).map(o => `<span class="n" style="background:${pocketColor(o.k)}">${o.k}</span>`).join('')}</div><div class="x">${flat ? `хамгийн өндөр нь ×${topLift.toFixed(2)}: санамсаргүйгээс ялгаагүй` : order.slice(0, 3).map(o => '×' + (o.v * 37).toFixed(2)).join(' · ') + (why ? ' · ' + why : '')}</div></div>`;
     const w = bestWindows(p, 2, 1)[0];
     h += card('Дугуйн бүс (5 нүд)', `<div class="v"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span>${w.nums.join('·')}</div><div class="x">${(w.q * 100).toFixed(1)}% · ×${w.ratio.toFixed(2)}</div>`, w.ratio);
     h += simple('Өнгө', G[0].items.slice(0, 2));
@@ -1179,7 +1204,9 @@ td.num, th.num { text-align: right; }
     let h = picks.length
       ? `<div class="advice">Загварын сонголт: <b>${picks.map(o => o.k).join(', ')}</b>. Хүлээгдэж буй өгөөж нэг нэгжид ${picks.map(o => (state.straightRet * o.v - 1 >= 0 ? '+' : '') + ((state.straightRet * o.v - 1) * 100).toFixed(0) + '%').join(', ')}. Давуу тал “Шинжилгээ” хэсэгт баталгаажаагүй бол бодит мөнгөөр бүү тавь.</div>`
       : `<div class="advice none">Нэг тоон дээр давуу тал алга: аль ч тоо босгыг (${state.straightRet} × магадлал − 1 > ${Math.round(margin * 100)}%) давахгүй. Шударга тоглоом дээр энэ хэвийн.</div>`;
-    h += `<div class="picks">${order.slice(0, 5).map(o => `<span class="pick"><span class="n" style="background:${pocketColor(o.k)}">${o.k}</span><span>${(o.v * 100).toFixed(1)}%<br><small>×${(o.v * 37).toFixed(2)}</small></span></span>`).join('')}</div>`;
+    h += `<div class="picks${order[0].v * 37 < 1.1 ? ' flat' : ''}">${order.slice(0, 5).map(o => `<span class="pick"><span class="n" style="background:${pocketColor(o.k)}">${o.k}</span><span>${(o.v * 100).toFixed(1)}%<br><small>×${(o.v * 37).toFixed(2)}</small></span></span>`).join('')}</div>`;
+    if (order[0].v * 37 < 1.1) h += `<p class="muted">Бүх тоо ×1.10-аас доош: загвар аль ч тоог ялгахгүй байна. Өгөгдөл цөөн үед сая буусан тоонууд жагсаалтын эхэнд гарах нь хэвийн, энэ нь таамаг биш. Доорх бүлгийн (өнгө, арван хоёр, эгнээ) таамаг болон хэв маяг бүрийн хүснэгтийг хар.</p>`;
+    h += renderModels(r);
     h += `<p class="muted">Нүдний өнгө тод байх тусам тэр тоо буух магадлал өндөр. Баруун талд арван хоёрын, доор баганын нийлбэр.</p><div class="layout">${layoutHeat(p)}</div>`;
     h += `<div class="strip">${heatStrip(p)}</div>`;
     const w5 = bestWindows(p, 2, 3), w9 = bestWindows(p, 4, 2);

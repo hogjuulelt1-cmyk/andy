@@ -566,7 +566,9 @@
   };
 
   function makeModels(cfg) {
-    const decay = cfg.decay, a = 1;
+    // Pseudo-count per pocket. 1 let a single fresh spin tilt the sector and signature models
+    // towards the last number's neighbours; 3 (111 virtual spins) needs real repetition first.
+    const decay = cfg.decay, a = cfg.prior || 3;
     const freqRaw = new Float64Array(N);
     let freqSum = 0;
     const freqP = () => { const p = new Float64Array(N); for (let k = 0; k < N; k++) p[k] = (freqRaw[k] + a) / (freqSum + N * a); return p; };
@@ -796,7 +798,7 @@
   }
 
   // straightRet: total return per unit on a winning straight-up bet (36 = standard, 20 = lightning-style).
-  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36 };
+  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3 };
 
   // Walk-forward: every spin is predicted before the model sees it. Nothing peeks at the future.
   // scoreFrom: spins before this index train the model but are not scored (holdout evaluation).
@@ -810,7 +812,7 @@
     const gaps = new Float64Array(N).fill(N);
     const LOG2N = Math.log2(N);
     let bits = 0, scored = 0, top1 = 0, top3 = 0;
-    const modelBits = new Float64Array(K);
+    const modelBits = new Float64Array(K), modelTop1 = new Float64Array(K), modelTop3 = new Float64Array(K);
     const curve = [], weightsHist = [], bank = [];
     let bankroll = 0, bets = 0, hits = 0, expectedHits = 0;
     const every = Math.max(1, Math.floor(spins.length / 300));
@@ -844,7 +846,14 @@
         scored++;
         const g = LOG2N + Math.log2(p[y]);
         bits += g;
-        for (let i = 0; i < K; i++) modelBits[i] += LOG2N + Math.log2(preds[i][y]);
+        for (let i = 0; i < K; i++) {
+          modelBits[i] += LOG2N + Math.log2(preds[i][y]);
+          const q = preds[i], py = q[y];
+          let above = 0, tie = 0;
+          for (let k = 0; k < N; k++) { if (q[k] > py) above++; else if (q[k] === py && k !== y) tie++; }
+          // A model that is still uniform gets no credit for a hit.
+          if (tie < N - 1) { if (above === 0 && tie === 0) modelTop1[i]++; if (above + tie < 3) modelTop3[i]++; }
+        }
         const order = Array.from(p).map((v, k) => ({ v, k })).sort((a, b) => b.v - a.v);
         if (order[0].k === y) top1++;
         if (order.slice(0, 3).some(o => o.k === y)) top3++;
@@ -886,7 +895,7 @@
     return {
       next, cfg, scored, bits, bitsPerSpin: scored ? bits / scored : 0,
       top1, top3, curve, bank, weightsHist,
-      models: models.map((m, i) => ({ id: m.id, bits: modelBits[i], weight: w[i], param: m.param ? m.param() : null })),
+      models: models.map((m, i) => ({ id: m.id, bits: modelBits[i], top1: modelTop1[i], top3: modelTop3[i], weight: w[i], param: m.param ? m.param() : null })),
       betting: { bets, hits, expectedHits, bankroll, roi: bets ? bankroll / bets : 0, p: bets ? binomSf(hits, bets, 1 / N) : 1 },
     };
   }
