@@ -599,25 +599,31 @@
   function groupGapStats(spins, familyId) {
     const f = CAT_FAMILIES.find(x => x.id === familyId);
     if (!f) return null;
-    const gap = {}, run = {}, T = {};
-    f.cats.forEach(c => { gap[c] = null; run[c] = 0; });
+    const gap = {}, run = {}, T = {}, P = {};
+    f.cats.forEach(c => { gap[c] = null; run[c] = 0; P[c] = {}; GRUN_STATES.forEach(st => { P[c][st] = { hits: 0, tries: 0 }; }); });
     GRUN_STATES.forEach(st => { T[st] = { hits: 0, tries: 0 }; });
     spins.forEach(s => {
       const yc = f.of(s.n);
       f.cats.forEach(c => {
         if (gap[c] == null) return;
         const st = grunState(gap[c], run[c]);
-        T[st].tries++; if (yc === c) T[st].hits++;
+        T[st].tries++; P[c][st].tries++; if (yc === c) { T[st].hits++; P[c][st].hits++; }
       });
       f.cats.forEach(c => { if (yc === c) { gap[c] = 0; run[c]++; } else { if (gap[c] != null) gap[c]++; else if (yc != null) gap[c] = 1; run[c] = 0; } });
     });
     const base = catBaseRate(f, f.cats[0]);
     const now = f.cats.map(c => ({ cat: c, gap: gap[c], run: run[c], state: gap[c] == null ? null : grunState(gap[c], run[c]) }));
-    return { family: familyId, base, now, states: GRUN_STATES.map(st => ({ state: st, label: grunLabel(st), hits: T[st].hits, tries: T[st].tries, rate: T[st].tries ? T[st].hits / T[st].tries : null })) };
+    const row = t => ({ hits: t.hits, tries: t.tries, rate: t.tries ? t.hits / t.tries : null });
+    return {
+      family: familyId, base, now,
+      states: GRUN_STATES.map(st => Object.assign({ state: st, label: grunLabel(st) }, row(T[st]))),
+      perCat: Object.fromEntries(f.cats.map(c => [c, Object.fromEntries(GRUN_STATES.map(st => [st, row(P[c][st])]))])),
+    };
   }
 
   const MODEL_INFO = {
-    grun: { label: 'Бүлгийн завсар', hint: 'Эгнээ, арван хоёр, өнгө зэрэг бүлэг хэдэн эргэлт буугаагүй эсвэл хэд дараалан буусан үед дараагийнхад хэр бууж байсныг сурна (“удаан буугаагүй бол удаан буухгүй” гэх мэт).' },
+    grunFast: { label: 'Бүлгийн завсар, богино', hint: 'Мөн адил, гэхдээ сүүлийн ~100 эргэлтээс сурна: цуваа “яг одоо” урт явж байгаа үеийг барина.' },
+    grun: { label: 'Бүлгийн завсар', hint: 'Эгнээ, арван хоёр, өнгө зэрэг бүлэг хэдэн эргэлт буугаагүй эсвэл хэд дараалан буусан үед дараагийнхад хэр бууж байсныг сурна (“удаан буугаагүй бол удаан буухгүй” гэх мэт). Эгнээ тус бүрийн өөрийн цувааг өгөгдөл хангалттай болохоор тусад нь сурна.' },
     logit: { label: 'Шугаман суралцагч', hint: 'Дугуйн байрлал, өмнөх тооноос зай, удсан/халуун тоо, олны зуршил зэрэг 30 шинжийг нэг дор жинлэж сурна (онлайн логистик регресс).' },
     hot: { label: 'Халуун тоо', hint: 'Сүүлийн 30 орчим эргэлтийн давтамж: богино хугацааны хазайлт, машины “үе”.' },
     cat: { label: 'Бүлгийн дараалал', hint: 'Өнгө, тэгш/сондгой, бага/их, арван хоёр, эгнээний цуваа дараагийн бүлгийг хэрхэн тодорхойлдгийг сурна (казино цуваанд тавигчдын эсрэг буулгадаг эсэх).' },
@@ -674,9 +680,47 @@
     const catBase = CAT_FAMILIES.map(f => { const b = {}; f.cats.forEach(c => { let n = 0; for (let k = 0; k < N; k++) if (f.of(k) === c) n++; b[c] = n / 36; }); return b; });
     const catPrior = cfg.catPrior || 20, grunPrior = cfg.grunPrior || 40;
     const grBase = CAT_FAMILIES.map(f => catBaseRate(f, f.cats[0]));
-    const grT = CAT_FAMILIES.map(() => { const t = {}; GRUN_STATES.forEach(st => { t[st] = { h: 0, n: 0 }; }); return t; });
-    const grGap = CAT_FAMILIES.map(f => { const g = {}; f.cats.forEach(c => { g[c] = null; }); return g; });
-    const grRun = CAT_FAMILIES.map(f => { const g = {}; f.cats.forEach(c => { g[c] = 0; }); return g; });
+    // Group gap/run learner. Shared table per family (all columns alike) plus a per-category table shrunk
+    // towards it (column 3's own streaks). decayG sets the memory: the slow one learns the table, the fast one
+    // (~30 spins) notices when streaks are running right now.
+    const grunModel = (id, decayG, prior, kCat) => {
+      const T = CAT_FAMILIES.map(() => { const t = {}; GRUN_STATES.forEach(st => { t[st] = { h: 0, n: 0 }; }); return t; });
+      const P = CAT_FAMILIES.map(f => { const t = {}; f.cats.forEach(c => { t[c] = {}; GRUN_STATES.forEach(st => { t[c][st] = { h: 0, n: 0 }; }); }); return t; });
+      const gap = CAT_FAMILIES.map(f => { const g = {}; f.cats.forEach(c => { g[c] = null; }); return g; });
+      const run = CAT_FAMILIES.map(f => { const g = {}; f.cats.forEach(c => { g[c] = 0; }); return g; });
+      const rate = (fi, c, st) => {
+        const t = T[fi][st], shared = (t.h + grBase[fi] * prior) / (t.n + prior);
+        const u = P[fi][c][st];
+        return (u.h + shared * kCat) / (u.n + kCat);
+      };
+      return {
+        id,
+        predict() {
+          const p = new Float64Array(N).fill(1);
+          CAT_FAMILIES.forEach((f, fi) => {
+            const q = {}; let tot = 0;
+            f.cats.forEach(c => { const g = gap[fi][c]; q[c] = g == null ? grBase[fi] : rate(fi, c, grunState(g, run[fi][c])); tot += q[c]; });
+            f.cats.forEach(c => { const lift = Math.max(0.5, Math.min(2, (q[c] / tot) * f.cats.length)); for (let k = 0; k < N; k++) if (f.of(k) === c) p[k] *= lift; });
+          });
+          return normalize(p);
+        },
+        update(ctx, y) {
+          CAT_FAMILIES.forEach((f, fi) => {
+            const yc = f.of(y);
+            f.cats.forEach(c => {
+              const g = gap[fi][c];
+              if (g != null) {
+                const st = grunState(g, run[fi][c]), hit = yc === c ? 1 : 0;
+                const t = T[fi][st]; t.h = t.h * decayG + hit; t.n = t.n * decayG + 1;
+                const u = P[fi][c][st]; u.h = u.h * decayG + hit; u.n = u.n * decayG + 1;
+              }
+              if (yc === c) { gap[fi][c] = 0; run[fi][c]++; } else { if (g != null) gap[fi][c] = g + 1; else if (yc != null) gap[fi][c] = 1; run[fi][c] = 0; }
+            });
+          });
+        },
+        param: () => CAT_FAMILIES.map((f, fi) => ({ family: f.id, base: grBase[fi], states: GRUN_STATES.map(st => ({ state: st, label: grunLabel(st), rate: (T[fi][st].h + grBase[fi] * prior) / (T[fi][st].n + prior), n: T[fi][st].n })), perCat: Object.fromEntries(f.cats.map(c => [c, GRUN_STATES.map(st => ({ state: st, rate: rate(fi, c, st), n: P[fi][c][st].n }))])), now: f.cats.map(c => ({ cat: c, gap: gap[fi][c], run: run[fi][c] })) })),
+      };
+    };
     const catT = CAT_FAMILIES.map((f, fi) => { const t = {}; f.cats.forEach(c => { for (let L = 1; L <= 3; L++) { const row = {}; f.cats.forEach(c2 => { row[c2] = catBase[fi][c2] * catPrior; }); t[c + L] = row; } }); return t; });
     return [
       { id: 'uniform', predict: () => uniformP(), update() {} },
@@ -913,29 +957,8 @@
           });
         },
       },
-      {
-        id: 'grun',
-        predict() {
-          const p = new Float64Array(N).fill(1);
-          CAT_FAMILIES.forEach((f, fi) => {
-            const q = {}; let tot = 0;
-            f.cats.forEach(c => { const g = grGap[fi][c]; if (g == null) { q[c] = grBase[fi]; } else { const t = grT[fi][grunState(g, grRun[fi][c])]; q[c] = (t.h + grBase[fi] * grunPrior) / (t.n + grunPrior); } tot += q[c]; });
-            f.cats.forEach(c => { const lift = Math.max(0.5, Math.min(2, (q[c] / tot) / (grBase[fi] / (grBase[fi] * f.cats.length)))); for (let k = 0; k < N; k++) if (f.of(k) === c) p[k] *= lift; });
-          });
-          return normalize(p);
-        },
-        update(ctx, y) {
-          CAT_FAMILIES.forEach((f, fi) => {
-            const yc = f.of(y);
-            f.cats.forEach(c => {
-              const g = grGap[fi][c];
-              if (g != null) { const t = grT[fi][grunState(g, grRun[fi][c])]; t.h = t.h * decay + (yc === c ? 1 : 0); t.n = t.n * decay + 1; }
-              if (yc === c) { grGap[fi][c] = 0; grRun[fi][c]++; } else { if (g != null) grGap[fi][c] = g + 1; else if (yc != null) grGap[fi][c] = 1; grRun[fi][c] = 0; }
-            });
-          });
-        },
-        param: () => CAT_FAMILIES.map((f, fi) => ({ family: f.id, base: grBase[fi], states: GRUN_STATES.map(st => ({ state: st, label: grunLabel(st), rate: (grT[fi][st].h + grBase[fi] * grunPrior) / (grT[fi][st].n + grunPrior), n: grT[fi][st].n })), now: f.cats.map(c => ({ cat: c, gap: grGap[fi][c], run: grRun[fi][c] })) })),
-      },
+      grunModel('grun', decay, grunPrior, cfg.grunKCat || 200),
+      grunModel('grunFast', cfg.fastDecay || 0.99, cfg.fastPrior || 40, 1e9),
       {
         id: 'overdue',
         predict(ctx) {
@@ -954,7 +977,7 @@
   }
 
   // straightRet: total return per unit on a winning straight-up bet (36 = standard, 20 = lightning-style).
-  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3, gate: 0.02, logitLr: 0.1, psychStep: 0.02, catPrior: 60, markovK0: 200, hotPrior: 3, grunPrior: 40 };
+  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3, gate: 0.02, logitLr: 0.1, psychStep: 0.02, catPrior: 60, markovK0: 200, hotPrior: 3, grunPrior: 40, grunKCat: 200, fastDecay: 0.99, fastPrior: 40 };
 
   // Walk-forward: every spin is predicted before the model sees it. Nothing peeks at the future.
   // scoreFrom: spins before this index train the model but are not scored (holdout evaluation).
@@ -1162,7 +1185,7 @@
     const biasPockets = new Set([WHEEL[5], WHEEL[6], WHEEL[7], WHEEL[8]]);
     const sigD = 1 + Math.floor(r() * 35), sigD2 = 1 + Math.floor(r() * 35);
     const rigged = new Set();
-    for (let s = 1; s <= o.sessions; s++) if (o.wheel === 'house' && r() < o.house) rigged.add(String(s));
+    for (let s = 1; s <= o.sessions; s++) if ((o.wheel === 'house' || o.wheel === 'streak') && r() < o.house) rigged.add(String(s));
     const spins = [], log = [], history = [];
     const gaps = new Array(N).fill(0);
     for (let t = 0; t < o.spins; t++) {
@@ -1218,6 +1241,11 @@
       let y;
       const pr = new Float64Array(N).fill(1);
       if (o.wheel === 'biased') biasPockets.forEach(k => { pr[k] *= 1 + o.bias * 4; });
+      if (o.wheel === 'streak' && rigged.has(session) && sameSession && spins[t - 1].n !== 0) {
+        // Streaky sessions: the column that just hit is three times as likely to hit again.
+        const col = (spins[t - 1].n - 1) % 3 + 1;
+        for (let k = 1; k < N; k++) if ((k - 1) % 3 + 1 === col) pr[k] *= 3;
+      }
       if (o.wheel === 'avoid') {
         // The house keeps away from a column the crowd starts calling "overdue": absent 5+ spins → much less likely.
         for (let col = 1; col <= 3; col++) {
