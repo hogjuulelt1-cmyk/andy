@@ -182,6 +182,7 @@
       const iP = col(['players', 'player_count', 'тоглогч', 'тоглогчид']);
       const iW = col(['won', 'total_won', 'payout', 'paid', 'хожсон']);
       const iWin = col(['winners', 'winner_count', 'хожсон хүн', 'хожигчид']);
+      const iSt = col(['steer', 'magnet', 'соронз']);
       const iM = col(['multipliers', 'multiplier', 'lightning', 'mult', 'үржүүлэгч']);
       const iH = col(['hit', 'lightning_hit', 'mult_hit', 'буусан']);
       const iPart = col(['mult_partial', 'partial']);
@@ -205,6 +206,7 @@
           players: iP >= 0 && parseInt(cells[iP], 10) > 0 ? parseInt(cells[iP], 10) : null,
           won: iW >= 0 && cells[iW] !== undefined && cells[iW].trim() !== '' ? parseFloat(cells[iW]) || 0 : null,
           winners: iWin >= 0 && cells[iWin] !== undefined && cells[iWin].trim() !== '' ? parseInt(cells[iWin], 10) || 0 : null,
+          steer: iSt >= 0 && String(cells[iSt] || '').trim() !== '' ? /^(1|true|yes|y|да|тийм|magnet|соронз)$/i.test(String(cells[iSt]).trim()) : null,
           mult: iM >= 0 ? parseMult(cells[iM]) : null,
           light: iH >= 0 && String(cells[iH] || '').trim() !== '' ? /^(1|true|yes|y|да|тийм)$/i.test(String(cells[iH]).trim()) : null,
           multPartial: iPart >= 0 ? /^(1|true|yes)$/i.test(String(cells[iPart] || '').trim()) : false,
@@ -234,7 +236,7 @@
         const n = parseInt(inParens ? m[1] : m[3], 10);
         if (!(n >= 0 && n <= 36)) { errors.push(`${li + 1}-р мөр: "${m[0]}" 0–36 биш.`); continue; }
         const k = m[2] ? parseInt(m[2], 10) : 0;
-        spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null, winners: null,
+        spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null, winners: null, steer: null,
           light: inParens ? true : (hasParens ? false : null), mult: k > 1 ? { [n]: k } : null, multPartial: inParens, liab: null });
         sawNumber = true;
       }
@@ -253,13 +255,14 @@
   function spinsToCsv(spins) {
     const hasL = spins.some(s => s.liab);
     const hasDir = spins.some(s => s.dir), hasT = spins.some(s => s.time != null), hasP = spins.some(s => s.players != null);
-    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult), hasH = spins.some(s => s.light != null), hasPart = spins.some(s => s.multPartial), hasWin = spins.some(s => s.winners != null);
+    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult), hasH = spins.some(s => s.light != null), hasPart = spins.some(s => s.multPartial), hasWin = spins.some(s => s.winners != null), hasSt = spins.some(s => s.steer != null);
     const head = ['number', 'session', 'dealer'];
     if (hasDir) head.push('direction');
     if (hasT) head.push('time');
     if (hasP) head.push('players');
     if (hasW) head.push('won');
     if (hasWin) head.push('winners');
+    if (hasSt) head.push('steer');
     if (hasM) head.push('multipliers');
     if (hasH) head.push('hit');
     if (hasPart) head.push('mult_partial');
@@ -272,6 +275,7 @@
       if (hasP) r.push(s.players == null ? '' : s.players);
       if (hasW) r.push(s.won == null ? '' : s.won);
       if (hasWin) r.push(s.winners == null ? '' : s.winners);
+      if (hasSt) r.push(s.steer == null ? '' : s.steer ? 1 : 0);
       if (hasM) r.push(multToStr(s.mult));
       if (hasH) r.push(s.light == null ? '' : s.light ? 1 : 0);
       if (hasPart) r.push(s.multPartial ? 1 : 0);
@@ -557,6 +561,7 @@
     crowd: { label: 'Олны эсрэг', hint: 'Их бооцоотой нүд буухгүй гэж таана (казино удирддаг бол).' },
     overdue: { label: '“Удсан тоо”', hint: 'Тоглогчдын итгэл: удаан буугаагүй тоо удахгүй бууна. Жин нь хасах бол эсрэгээрээ.' },
     psych: { label: 'Олны сэтгэл зүй', hint: 'Тоглогчид хаана их тавьж байгааг зуршлаас нь тооцоолж, үр дүн тэдний талд уу, эсрэг үү гэдгийг сурна.' },
+    magnet: { label: 'Соронз', hint: 'Таны “соронзолсон” гэж тэмдэглэсэн эргэлтүүдээс хэзээ соронзолдог, тэр үед хаана буудгийг сурна. Тэмдэглэгээгүй бол идэвхгүй.' },
     payout: { label: 'Хожлын дүн', hint: 'Бүртгэсэн хожлын дүнгээс ямар тоо их төлдгийг сураад, казино бага төлөх тоо руу чиглүүлдэг эсэхийг шалгана. Хожлын дүн оруулаагүй бол идэвхгүй.' },
   };
 
@@ -577,6 +582,21 @@
     // Payout regression: log(won) ≈ pay0 + Σ payW·feature(outcome); learned only from spins with a won amount.
     const payW = new Float64Array(PSYCH_FEATURES.length);
     let pay0 = 0, payN = 0, payBeta = 0;
+    // Magnet model: a logistic P(steered | context) and a softmax over the crowd-habit features
+    // for where a steered ball lands. Both learn only from spins the user tagged.
+    const MF = 9; // intercept, prev steered, 2nd prev, colour streak, last won z, recent won z, hour sin/cos, players z
+    const mgW = new Float64Array(MF), mgOut = new Float64Array(PSYCH_FEATURES.length);
+    let mgN = 0, mgPos = 0, mgOutN = 0;
+    const magnetFeatures = ctx => {
+      const f = new Float64Array(MF);
+      f[0] = 1; f[1] = ctx.prevSteer === true ? 1 : ctx.prevSteer === false ? -1 : 0; f[2] = ctx.prevSteer2 === true ? 1 : ctx.prevSteer2 === false ? -1 : 0;
+      f[3] = Math.min(6, streakOf(ctx.hist || [], n => (n === 0 ? null : colorOf(n))).L) / 3;
+      f[4] = ctx.lastWonZ || 0; f[5] = ctx.recentWonZ || 0;
+      if (ctx.hour != null) { f[6] = Math.sin(ctx.hour / 24 * 2 * Math.PI); f[7] = Math.cos(ctx.hour / 24 * 2 * Math.PI); }
+      f[8] = ctx.playersZ || 0;
+      return f;
+    };
+    const magnetP = f => { let z = 0; for (let j = 0; j < MF; j++) z += mgW[j] * f[j]; return 1 / (1 + Math.exp(-z)); };
     const lr = cfg.lr;
     return [
       { id: 'uniform', predict: () => uniformP(), update() {} },
@@ -693,6 +713,43 @@
         param: () => Array.from(pw),
       },
       {
+        id: 'magnet',
+        predict(ctx) {
+          if (mgN < 10) return uniformP();
+          const ps = magnetP(magnetFeatures(ctx));
+          const F = ctx._psychF || (ctx._psychF = psychFeatures(ctx));
+          const q = new Float64Array(N);
+          let mx = -Infinity;
+          for (let k = 0; k < N; k++) { let v = 0; for (let j = 0; j < F.length; j++) v += mgOut[j] * F[j][k]; q[k] = v; if (v > mx) mx = v; }
+          for (let k = 0; k < N; k++) q[k] = Math.exp(q[k] - mx);
+          normalize(q);
+          const p = new Float64Array(N);
+          for (let k = 0; k < N; k++) p[k] = ps * q[k] + (1 - ps) / N;
+          return p;
+        },
+        update(ctx, y) {
+          if (ctx.steer == null) return;
+          const f = magnetFeatures(ctx), ps = magnetP(f), step = Math.max(0.01, 0.1 / Math.sqrt(1 + mgN / 50));
+          const g = (ctx.steer ? 1 : 0) - ps;
+          for (let j = 0; j < MF; j++) mgW[j] = Math.max(-4, Math.min(4, mgW[j] + step * g * f[j]));
+          mgN++; if (ctx.steer) mgPos++;
+          if (!ctx.steer) return;
+          // Where steered balls land, as a softmax over the crowd-habit features.
+          const F = ctx._psychF || (ctx._psychF = psychFeatures(ctx));
+          const q = new Float64Array(N);
+          let mx = -Infinity;
+          for (let k = 0; k < N; k++) { let v = 0; for (let j = 0; j < F.length; j++) v += mgOut[j] * F[j][k]; q[k] = v; if (v > mx) mx = v; }
+          for (let k = 0; k < N; k++) q[k] = Math.exp(q[k] - mx);
+          normalize(q);
+          const st2 = Math.max(0.01, 0.06 / Math.sqrt(1 + mgOutN / 50));
+          for (let j = 0; j < F.length; j++) { let ez = 0; for (let k = 0; k < N; k++) ez += q[k] * F[j][k]; mgOut[j] = Math.max(-3, Math.min(3, mgOut[j] + st2 * (F[j][y] - ez))); }
+          mgOutN++;
+        },
+        param: () => ({ n: mgN, pos: mgPos, w: Array.from(mgW), out: Array.from(mgOut), pNext: null }),
+        // P(next spin steered) for the forecast, filled in by walkForward.
+        steerProb(ctx) { return mgN >= 10 ? magnetP(magnetFeatures(ctx)) : null; },
+      },
+      {
         id: 'payout',
         predict(ctx) {
           if (payN < 20) return uniformP();
@@ -759,10 +816,26 @@
     const every = Math.max(1, Math.floor(spins.length / 300));
     const dirs = directions(spins);
     let prev = null, prevSession = null, hist = [];
+    let prevSteer = null, prevSteer2 = null;
+    const wonLog = [];
+    let wonMean = 0, wonM2 = 0, wonN = 0;
+    const wonZ = v => (wonN > 5 && wonM2 > 0 ? (Math.log1p(v) - wonMean) / Math.sqrt(wonM2 / (wonN - 1)) : 0);
+    let plMean = 0, plM2 = 0, plN = 0;
+    const playersZ = v => (plN > 5 && plM2 > 0 ? (v - plMean) / Math.sqrt(plM2 / (plN - 1)) : 0);
+    const context = (s, t, newSession) => {
+      const recent = wonLog.slice(-5);
+      return {
+        prevSteer, prevSteer2,
+        lastWonZ: wonLog.length ? wonZ(wonLog[wonLog.length - 1]) : 0,
+        recentWonZ: recent.length ? recent.reduce((a, v) => a + wonZ(v), 0) / recent.length : 0,
+        hour: s && s.time != null ? new Date(s.time).getUTCHours() : null,
+        playersZ: s && s.players != null ? playersZ(s.players) : 0,
+      };
+    };
     for (let t = 0; t < spins.length; t++) {
       const s = spins[t];
-      if (s.session !== prevSession) { prev = null; hist = []; }
-      const ctx = { prev, liab: s.liab, gaps, step: t, dir: dirs[t], hist, newSession: s.session !== prevSession, won: s.won, lightHit: !!lightHit(s) };
+      if (s.session !== prevSession) { prev = null; hist = []; prevSteer = null; prevSteer2 = null; }
+      const ctx = Object.assign({ prev, liab: s.liab, gaps, step: t, dir: dirs[t], hist, newSession: s.session !== prevSession, won: s.won, lightHit: !!lightHit(s), steer: s.steer }, context(s, t));
       const preds = models.map(m => m.predict(ctx));
       const p = new Float64Array(N);
       for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
@@ -794,16 +867,21 @@
       gaps[y] = 0;
       prev = y; prevSession = s.session;
       hist.push(y); if (hist.length > 120) hist.shift();
+      prevSteer2 = prevSteer; prevSteer = s.steer;
+      if (s.won != null && !lightHit(s)) { const v = Math.log1p(Math.max(0, s.won)); wonN++; const d = v - wonMean; wonMean += d / wonN; wonM2 += d * (v - wonMean); wonLog.push(s.won); if (wonLog.length > 50) wonLog.shift(); }
+      if (s.players != null) { plN++; const d = s.players - plMean; plMean += d / plN; plM2 += d * (s.players - plMean); }
     }
     // Forecast for the spin that has not happened yet (same session, stakes unknown).
     let next = null;
     if (opts.next) {
       const t = spins.length, dir = t && spins[t - 1].dir ? null : (t % 2 ? 'B' : 'A');
-      const ctx = { prev, liab: null, gaps, step: t, dir: dir || 'A', hist, newSession: t === 0 };
+      const last = spins[spins.length - 1] || null;
+      const ctx = Object.assign({ prev, liab: null, gaps, step: t, dir: dir || 'A', hist, newSession: t === 0 }, context(last && { time: last.time != null ? last.time + 45000 : null, players: last.players }, t));
       const preds = models.map(m => m.predict(ctx));
       const p = new Float64Array(N);
       for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
-      next = { p: Array.from(p), models: models.map((m, i) => ({ id: m.id, weight: w[i], p: Array.from(preds[i]) })) };
+      const mg = models.find(m => m.id === 'magnet');
+      next = { p: Array.from(p), steerProb: mg ? mg.steerProb(ctx) : null, models: models.map((m, i) => ({ id: m.id, weight: w[i], p: Array.from(preds[i]) })) };
     }
     return {
       next, cfg, scored, bits, bitsPerSpin: scored ? bits / scored : 0,
@@ -1106,12 +1184,62 @@
     return players;
   }
 
+  // How the user's "steered" tags relate to context: streaks, payouts, hour, clustering, landing zone.
+  function steerStats(spins) {
+    const tagged = spins.filter(s => s.steer != null);
+    if (tagged.length < 5) return null;
+    const steered = tagged.filter(s => s.steer), natural = tagged.filter(s => !s.steer);
+    const med = a => { if (!a.length) return null; const b = a.slice().sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
+    const wonOf = a => a.filter(s => s.won != null && !lightHit(s)).map(s => s.won);
+    const out = { n: tagged.length, steered: steered.length, share: steered.length / tagged.length, wonSteered: med(wonOf(steered)), wonNatural: med(wonOf(natural)) };
+    // Clustering: P(steered | previous tagged spin steered) vs after a natural one.
+    let aS = 0, nS = 0, aN = 0, nN = 0;
+    for (let i = 1; i < spins.length; i++) {
+      const a = spins[i - 1], b = spins[i];
+      if (a.session !== b.session || a.steer == null || b.steer == null) continue;
+      if (a.steer) { nS++; if (b.steer) aS++; } else { nN++; if (b.steer) aN++; }
+    }
+    out.afterSteered = nS ? aS / nS : null; out.afterNatural = nN ? aN / nN : null; out.nAfterSteered = nS; out.nAfterNatural = nN;
+    // After a colour streak of two or more.
+    let sS = 0, sN = 0, oS = 0, oN = 0;
+    for (let i = 2; i < spins.length; i++) {
+      const s = spins[i];
+      if (s.steer == null) continue;
+      const a = colorOf(spins[i - 2].n), b = colorOf(spins[i - 1].n);
+      const streak = a !== 'G' && a === b && spins[i - 1].session === s.session && spins[i - 2].session === s.session;
+      if (streak) { sN++; if (s.steer) sS++; } else { oN++; if (s.steer) oS++; }
+    }
+    out.afterStreak = sN ? sS / sN : null; out.noStreak = oN ? oS / oN : null; out.nStreak = sN; out.nNoStreak = oN;
+    // After a big payout (above the median of tagged spins' payouts).
+    const wons = wonOf(tagged), m = med(wons);
+    if (m != null) {
+      let bS = 0, bN = 0, lS = 0, lN = 0;
+      for (let i = 1; i < spins.length; i++) {
+        const a = spins[i - 1], b = spins[i];
+        if (b.steer == null || a.won == null || a.session !== b.session) continue;
+        if (a.won > m) { bN++; if (b.steer) bS++; } else { lN++; if (b.steer) lS++; }
+      }
+      out.afterBigWin = bN ? bS / bN : null; out.afterSmallWin = lN ? lS / lN : null; out.nBig = bN; out.nSmall = lN;
+    }
+    // By hour and by wheel quarter.
+    const hours = {};
+    tagged.filter(s => s.time != null).forEach(s => { const h = Math.floor(new Date(s.time).getUTCHours() / 4); hours[h] = hours[h] || { n: 0, s: 0 }; hours[h].n++; if (s.steer) hours[h].s++; });
+    out.byHour = Object.keys(hours).sort().map(h => ({ label: `${h * 4}–${h * 4 + 3}`, n: hours[h].n, share: hours[h].s / hours[h].n }));
+    const quarters = [0, 0, 0, 0], qAll = [0, 0, 0, 0];
+    steered.forEach(s => quarters[Math.floor(POS[s.n] * 4 / 37)]++);
+    spins.forEach(s => qAll[Math.floor(POS[s.n] * 4 / 37)]++);
+    out.quarters = quarters.map((c, i) => ({ i, steered: c, all: qAll[i] }));
+    const colors = { R: 0, B: 0, G: 0 }; steered.forEach(s => colors[colorOf(s.n)]++); out.colors = colors;
+    out.lightSteered = steered.filter(s => lightHit(s)).length;
+    return out;
+  }
+
   const api = {
     N, WHEEL, POS, colorOf, wheelDist, OUTSIDE, rng,
     chi2p, normSf, binomSf,
     parseSpins, spinsToCsv, spinsToText, parseMult, multToStr, parseTime, runTests,
     MODEL_INFO, DEFAULT_CFG, walkForward, nullRuns, train,
-    PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit,
+    PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit, steerStats,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PL = api;

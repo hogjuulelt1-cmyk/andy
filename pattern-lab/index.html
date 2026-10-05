@@ -135,6 +135,8 @@ td.num, th.num { text-align: right; }
 .chip.light { box-shadow: 0 0 0 2px var(--warn); }
 .chip.light::after { content: '⚡'; position: absolute; top: -8px; right: -6px; font-size: 11px; }
 .chip.last { outline: 3px solid var(--accent); outline-offset: 2px; }
+.chip.mag { border: 2px dashed var(--warn); }
+.chip.mag::before { content: '🧲'; position: absolute; bottom: -9px; left: -6px; font-size: 11px; }
 .session-line { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; color: var(--muted); font-size: 0.875rem; }
 
 /* prediction */
@@ -219,6 +221,10 @@ td.num, th.num { text-align: right; }
       <div><label for="lPlayers">Тоглогчийн тоо</label><input id="lPlayers" type="number" inputmode="numeric" min="0" placeholder="—"></div>
       <div><label for="lMult">Үржүүлэгчтэй тоонууд (мэдэж байвал)</label><input id="lMult" type="text" placeholder="5:100 17:2000"></div>
     </div>
+    <div class="grid2">
+      <div><label for="lSteer">Бөмбөг хэрхэн буусан</label>
+        <select id="lSteer"><option value="">Тодорхойгүй</option><option value="0">Natural (өөрөө)</option><option value="1">Соронзолсон</option></select></div>
+    </div>
     <label class="check"><input type="checkbox" id="lHit"> Буусан тоо үржүүлэгчтэй байсан</label>
     <div class="row"><button class="btn accent" id="liveSubmit">Бүртгэх</button><button class="btn ghost" id="liveUndo">Сүүлийнхийг буцаах</button></div>
     <div class="status" id="liveStatus"></div>
@@ -246,6 +252,9 @@ td.num, th.num { text-align: right; }
     <div id="trainProgress" hidden class="progress"><i></i></div>
     <div class="verdict" id="verdict" data-level="none" hidden></div>
     <div id="learnOut"></div>
+
+    <h2>Соронзны хэв маяг</h2>
+    <div id="steerOut"><p class="empty">Эргэлт бүртгэхдээ “Natural / Соронзолсон” гэж тэмдэглэвэл энд хэзээ соронзолдог нь харагдана.</p></div>
 
     <h2>Тоо бүрийн давтамж</h2>
     <div class="strip" id="strip" aria-label="Нүд бүрийн давтамж, дугуйн дарааллаар"></div>
@@ -371,12 +380,12 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 10</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 11</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=10"></script>
-<script src="ocr.js?v=10"></script>
+<script src="engine.js?v=11"></script>
+<script src="ocr.js?v=11"></script>
 <script>
 (function () {
   'use strict';
@@ -460,7 +469,7 @@ td.num, th.num { text-align: right; }
     $('sessionLine').innerHTML = `<span>Сесс: <b>${esc(cur)}</b></span><span>${num(inSession.length)} эргэлт энэ сесст</span><span>${num(state.spins.length)} нийт</span>`;
     const last = inSession.slice(-40);
     $('recentChips').innerHTML = last.length
-      ? last.map((s, i) => `<span class="chip${PL.lightHit(s) ? ' light' : ''}${i === last.length - 1 ? ' last' : ''}" style="background:${pocketColor(s.n)}" title="${s.mult && s.mult[s.n] ? s.mult[s.n] + 'x' : ''}${s.players ? ' тоглогч ' + s.players : ''}${s.winners != null ? ', хожсон ' + s.winners : ''}${s.won != null ? ', дүн ' + fmtWon(s.won) : ''}">${s.n}</span>`).join('')
+      ? last.map((s, i) => `<span class="chip${PL.lightHit(s) ? ' light' : ''}${s.steer ? ' mag' : ''}${i === last.length - 1 ? ' last' : ''}" style="background:${pocketColor(s.n)}" title="${s.steer ? 'соронзолсон ' : s.steer === false ? 'natural ' : ''}${s.mult && s.mult[s.n] ? s.mult[s.n] + 'x' : ''}${s.players ? ' тоглогч ' + s.players : ''}${s.winners != null ? ', хожсон ' + s.winners : ''}${s.won != null ? ', дүн ' + fmtWon(s.won) : ''}">${s.n}</span>`).join('')
       : '<span class="muted">Энэ сесст эргэлт бүртгээгүй байна.</span>';
     if (!$('allText').hidden) $('allText').value = PL.spinsToText(state.spins);
   }
@@ -481,7 +490,8 @@ td.num, th.num { text-align: right; }
     const won = $('lWon').value.trim() === '' ? null : (parseFloat($('lWon').value) || 0) * state.wonUnit;
     const winners = $('lWinners').value.trim() === '' ? null : parseInt($('lWinners').value, 10) || 0;
     const players = parseInt($('lPlayers').value, 10) > 0 ? parseInt($('lPlayers').value, 10) : null;
-    return { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players, won, winners, mult, light: mult && !hit ? !!mult[n] : hit, multPartial: !mult || hit, liab: null };
+    const steer = $('lSteer').value === '' ? null : $('lSteer').value === '1';
+    return { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players, won, winners, steer, mult, light: mult && !hit ? !!mult[n] : hit, multPartial: !mult || hit, liab: null };
   }
   $('liveSubmit').addEventListener('click', () => {
     const spin = readEntry();
@@ -495,7 +505,7 @@ td.num, th.num { text-align: right; }
       const ret = (spin.mult && spin.mult[n]) || state.straightRet;
       const gp = groupProbs(p);
       state.live.push({
-        i: state.spins.length + 1, n, light: !!spin.light, top: order.slice(0, 3).map(o => o.k), picks, p: p[n], bits: Math.log2(37 * p[n]),
+        i: state.spins.length + 1, n, light: !!spin.light, steer: !!spin.steer, top: order.slice(0, 3).map(o => o.k), picks, p: p[n], bits: Math.log2(37 * p[n]),
         hit1: order[0].k === n, hit3: order.slice(0, 3).some(o => o.k === n),
         bank: picks.reduce((s, k) => s + (k === n ? ret - 1 : -1), 0),
         colorOk: gp.color.has(n), parityOk: gp.parity.has(n), dozenOk: gp.dozen.has(n), sectorOk: bestWindows(p, 2, 1)[0].nums.includes(n),
@@ -504,7 +514,7 @@ td.num, th.num { text-align: right; }
     state.spins.push(spin);
     state.last = null; state.truth = null;
     ['lNumber', 'lMult', 'lWon', 'lWinners'].forEach(id => { $(id).value = ''; });
-    $('lHit').checked = false;
+    $('lHit').checked = false; $('lSteer').value = '';
     save(); renderAll(); $('lNumber').focus();
     toast(`${n} бүртгэгдлээ`);
   });
@@ -581,7 +591,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=10');
+    const r = await fetch('digits.json?v=11');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -746,7 +756,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=10'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=11'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1108,6 +1118,8 @@ td.num, th.num { text-align: right; }
     h += simple('Эгнээ 2:1', G[1].items.slice(3, 6));
     h += simple('Хосолсон шилдэг', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items));
     h += simple('Дугуйн бүс (уламжлалт)', G[7].items.slice(0, 4));
+    const sp = state.next && state.next.next.steerProb;
+    if (sp != null) h += card('Соронзлогдох магадлал', `<div class="v">${(sp * 100).toFixed(0)}%</div><div class="x">таны тэмдэглэгээнээс сурсан</div>`, sp > 0.5 ? 1.1 : 1);
     h += '</div>';
     const proven = state.last && state.last.verdict.level === 'edge';
     h += picks.length && proven
@@ -1182,12 +1194,32 @@ td.num, th.num { text-align: right; }
     let t = '<div class="scroll"><table><thead><tr><th>#</th><th>Таамаг (эхний 3)</th><th>Сонголт</th><th>Буусан</th><th class="num">Магадлал</th><th>Өнгө</th><th>Тэгш/с</th><th>12</th><th>Бүс</th></tr></thead><tbody>';
     const ok = v => v ? '<span class="pill ok">✓</span>' : '';
     L.slice(-20).reverse().forEach(e => {
-      t += `<tr><td>${e.i}</td><td>${e.top.join(', ')}${e.hit1 ? ' <span class="pill ok">1-р</span>' : e.hit3 ? ' <span class="pill ok">3-т</span>' : ''}</td><td>${e.picks.join(', ') || '—'}</td><td><b>${e.n}</b>${e.light ? ' ⚡' : ''}</td><td class="num">${(e.p * 100).toFixed(1)}%</td><td>${ok(e.colorOk)}</td><td>${ok(e.parityOk)}</td><td>${ok(e.dozenOk)}</td><td>${ok(e.sectorOk)}</td></tr>`;
+      t += `<tr><td>${e.i}</td><td>${e.top.join(', ')}${e.hit1 ? ' <span class="pill ok">1-р</span>' : e.hit3 ? ' <span class="pill ok">3-т</span>' : ''}</td><td>${e.picks.join(', ') || '—'}</td><td><b>${e.n}</b>${e.light ? ' ⚡' : ''}${e.steer ? ' 🧲' : ''}</td><td class="num">${(e.p * 100).toFixed(1)}%</td><td>${ok(e.colorOk)}</td><td>${ok(e.parityOk)}</td><td>${ok(e.dozenOk)}</td><td>${ok(e.sectorOk)}</td></tr>`;
     });
     $('liveHistory').innerHTML = t + '</tbody></table></div>';
   }
 
-  function renderAll() { renderRecent(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
+  function renderSteer() {
+    const st = PL.steerStats(state.spins);
+    if (!st) { $('steerOut').innerHTML = '<p class="empty">Эргэлт бүртгэхдээ “Natural / Соронзолсон” гэж тэмдэглэвэл энд хэзээ соронзолдог нь харагдана (5-аас дээш тэмдэглэгээ хэрэгтэй).</p>'; return; }
+    const row = (k, v, n) => `<tr><td>${k}</td><td class="num">${v == null ? '—' : pct(v)}</td><td class="num muted">${n == null ? '' : num(n)}</td></tr>`;
+    let h = `<div class="stats">
+      <div class="stat"><div class="v">${pct(st.share)}</div><div class="k">соронзолсон гэж тэмдэглэсэн (${num(st.steered)} / ${num(st.n)})</div></div>
+      <div class="stat"><div class="v">${fmtWon(st.wonSteered)}</div><div class="k">хожлын дүн, соронзолсон үед (медиан)</div></div>
+      <div class="stat"><div class="v">${fmtWon(st.wonNatural)}</div><div class="k">хожлын дүн, natural үед (медиан)</div></div></div>`;
+    h += `<div class="scroll"><table><thead><tr><th>Нөхцөл</th><th class="num">Соронзолсон хувь</th><th class="num">эргэлт</th></tr></thead><tbody>`;
+    h += row('Өмнөх эргэлт соронзолсон байсан', st.afterSteered, st.nAfterSteered);
+    h += row('Өмнөх эргэлт natural байсан', st.afterNatural, st.nAfterNatural);
+    h += row('Нэг өнгө 2+ удаа дараалсны дараа', st.afterStreak, st.nStreak);
+    h += row('Цуваагүй үед', st.noStreak, st.nNoStreak);
+    if (st.afterBigWin != null || st.afterSmallWin != null) { h += row('Том хожлын дараа (медианаас дээш)', st.afterBigWin, st.nBig); h += row('Бага хожлын дараа', st.afterSmallWin, st.nSmall); }
+    st.byHour.forEach(b => { h += row(`Цаг ${b.label}`, b.share, b.n); });
+    h += '</tbody></table></div>';
+    const qn = ['1-р (0→15)', '2-р (19→20)', '3-р (14→28)', '4-р (12→26)'];
+    h += `<p class="muted" style="margin-top:10px">Соронзолсон бөмбөг хаана буув: дугуйн дөрөвний нэгээр ${st.quarters.map(q => `${qn[q.i]} ${q.steered}`).join(', ')}; улаан ${st.colors.R}, хар ${st.colors.B}, тэг ${st.colors.G}; үржүүлэгчтэй тоонд ${st.lightSteered}. Хожлын дүн соронзолсон үед natural-аас тогтмол бага бол тэмдэглэгээ чинь бодит юм гэсэн дохио.</p>`;
+    $('steerOut').innerHTML = h;
+  }
+  function renderAll() { renderRecent(); renderSteer(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
 
   // Surface failures instead of a silently dead page.
   window.addEventListener('error', e => { toast('Алдаа: ' + (e.message || e.error)); });
