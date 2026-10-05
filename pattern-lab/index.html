@@ -180,6 +180,7 @@ td.num, th.num { text-align: right; }
 .sheet .flag[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .sheet .flag.mag[aria-pressed="true"] { background: var(--warn); border-color: var(--warn); color: #fff; }
 .sheet .wonin { width: 7.5em; padding: 6px 8px; min-height: 38px; }
+.sheet select.flag { width: auto; padding: 6px 28px 6px 12px; }
 .pad { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
 .pad button { font: inherit; font-size: 0.9375rem; font-weight: 700; color: #fff; border: 0; border-radius: 6px; min-height: 40px; cursor: pointer; padding: 0; }
 .pad button:active { transform: scale(.94); }
@@ -400,7 +401,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 13</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 14</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -408,6 +409,7 @@ td.num, th.num { text-align: right; }
     <button class="flag" id="fNatural" aria-pressed="false">Natural</button>
     <button class="flag mag" id="fMag" aria-pressed="false">🧲 Соронз</button>
     <button class="flag" id="fLight" aria-pressed="false">⚡ Үржүүлэгч</button>
+    <select class="flag" id="fMult" aria-label="Үржүүлэгчийн утга" hidden><option value="">⚡ хэд?</option><option>50</option><option>100</option><option>150</option><option>200</option><option>300</option><option>500</option><option>600</option><option>700</option><option>1000</option><option>1500</option><option>2000</option></select>
     <input class="wonin" id="fWon" type="number" inputmode="decimal" step="any" min="0" placeholder="дүн, сая" aria-label="Хожсон дүн">
     <button class="flag" id="fUndo">Буцаах</button>
   </div>
@@ -415,8 +417,8 @@ td.num, th.num { text-align: right; }
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=13"></script>
-<script src="ocr.js?v=13"></script>
+<script src="engine.js?v=14"></script>
+<script src="ocr.js?v=14"></script>
 <script>
 (function () {
   'use strict';
@@ -626,7 +628,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=13');
+    const r = await fetch('digits.json?v=14');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -791,7 +793,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=13'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=14'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1283,12 +1285,13 @@ td.num, th.num { text-align: right; }
   // ---------- bottom sheet: tap a number to record it with the toggled flags ----------
   function recordSpin(n, flags) {
     const won = flags.won == null ? null : flags.won * state.wonUnit;
-    const spin = { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players: null, won, winners: null, steer: flags.steer, mult: null, light: flags.light, multPartial: true, liab: null };
+    const mult = flags.light && flags.mult ? { [n]: flags.mult } : null;
+    const spin = { n, session: currentSession(), dealer: '', dir: null, time: Date.now(), players: null, won, winners: null, steer: flags.steer, mult, light: flags.light, multPartial: true, liab: null };
     scoreLive(spin);
     state.spins.push(spin);
     state.last = null; state.truth = null;
     save(); renderAll();
-    toast(`${n} бүртгэгдлээ${flags.steer ? ' 🧲' : ''}${flags.light ? ' ⚡' : ''}`);
+    toast(`${n} бүртгэгдлээ${flags.steer ? ' 🧲' : ''}${flags.light ? ' ⚡' + (flags.mult ? flags.mult + 'x' : '') : ''}`);
   }
   const pad = $('pad');
   pad.innerHTML = `<button class="z" style="background:var(--zero)" data-n="0">0</button>` + Array.from({ length: 36 }, (_, i) => { const n = i + 1; return `<button style="background:${pocketColor(n)}" data-n="${n}">${n}</button>`; }).join('');
@@ -1297,11 +1300,13 @@ td.num, th.num { text-align: right; }
     const steer = $('fMag').getAttribute('aria-pressed') === 'true' ? true : $('fNatural').getAttribute('aria-pressed') === 'true' ? false : null;
     const light = $('fLight').getAttribute('aria-pressed') === 'true';
     const won = $('fWon').value.trim() === '' ? null : parseFloat($('fWon').value) || 0;
-    recordSpin(parseInt(b.dataset.n, 10), { steer, light, won });
-    $('fLight').setAttribute('aria-pressed', 'false'); $('fWon').value = '';
+    const mult = parseInt($('fMult').value, 10) || null;
+    recordSpin(parseInt(b.dataset.n, 10), { steer, light, won, mult });
+    $('fLight').setAttribute('aria-pressed', 'false'); $('fMult').value = ''; $('fMult').hidden = true; $('fWon').value = '';
   });
   const toggle = (id, off) => $(id).addEventListener('click', () => { const on = $(id).getAttribute('aria-pressed') !== 'true'; $(id).setAttribute('aria-pressed', String(on)); if (on && off) $(off).setAttribute('aria-pressed', 'false'); });
   toggle('fNatural', 'fMag'); toggle('fMag', 'fNatural'); toggle('fLight');
+  $('fLight').addEventListener('click', () => { const on = $('fLight').getAttribute('aria-pressed') === 'true'; $('fMult').hidden = !on; if (on) $('fMult').focus(); else $('fMult').value = ''; });
   $('fUndo').addEventListener('click', () => $('liveUndo').click());
   const openSheet = open => { $('sheet').classList.toggle('open', open); $('sheetHandle').setAttribute('aria-expanded', String(open)); $('sheetArrow').textContent = open ? '▼' : '▲'; try { localStorage.setItem(KEY + '.sheet', open ? '1' : '0'); } catch (e) {} };
   $('sheetHandle').addEventListener('click', () => openSheet(!$('sheet').classList.contains('open')));
