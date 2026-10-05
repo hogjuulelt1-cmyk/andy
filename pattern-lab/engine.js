@@ -107,7 +107,9 @@
   }
 
   // ---------- Data parsing ----------
-  // A spin: { n, session, dealer, dir, liab: Float64Array(37) | null }
+  // A spin: { n, session, dealer, dir, time, players, won, mult, liab: Float64Array(37) | null }
+  // time: ms since epoch or null. players: how many people bet on this spin. won: total paid out.
+  // mult: { number: multiplier } for lightning-style games (multipliers are revealed after bets close).
   // dir: ball launch direction ('A' / 'B') when known. Many automatic wheels alternate it every spin.
   // liab[k] = what the house pays out if k wins (sum over all bets on the table).
   function liabilityFromStakes(stakes) {
@@ -146,6 +148,22 @@
     return out;
   }
 
+  function parseTime(v) {
+    const t = String(v == null ? '' : v).trim();
+    if (!t) return null;
+    const hm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(t);
+    if (hm) return Date.UTC(1970, 0, 2, +hm[1], +hm[2], +(hm[3] || 0)); // time of day only
+    const ms = Date.parse(t.replace(' ', 'T'));
+    return isNaN(ms) ? null : ms;
+  }
+  function parseMult(v) {
+    const out = {};
+    let any = false;
+    String(v == null ? '' : v).replace(/(\d{1,2})\s*[:x×*]\s*(\d+)/gi, (m, n, k) => { if (+n <= 36 && +k > 1) { out[+n] = +k; any = true; } return m; });
+    return any ? out : null;
+  }
+  const multToStr = m => m ? Object.keys(m).map(k => k + ':' + m[k]).join(' ') : '';
+
   function parseSpins(text) {
     const lines = String(text || '').replace(/\r/g, '').split('\n');
     const first = lines.find(l => l.trim()) || '';
@@ -159,6 +177,10 @@
       const iS = col(['session', 'сесс', 'session_id', 'table_session']);
       const iD = col(['dealer', 'дилер', 'croupier', 'machine', 'wheel']);
       const iR = col(['direction', 'dir', 'чиглэл', 'spin_direction']);
+      const iT = col(['time', 'timestamp', 'datetime', 'date', 'цаг', 'огноо']);
+      const iP = col(['players', 'player_count', 'тоглогч', 'тоглогчид']);
+      const iW = col(['won', 'total_won', 'payout', 'paid', 'хожсон']);
+      const iM = col(['multipliers', 'multiplier', 'lightning', 'mult', 'үржүүлэгч']);
       if (iN < 0) return { spins, errors: ['Толгой мөрөнд "number" багана олдсонгүй.'] };
       const stakeCols = head.map((h, i) => ({ h, i })).filter(c => /^b([0-9]|[12][0-9]|3[0-6])$/.test(c.h) || OUTSIDE[c.h]);
       const start = lines.indexOf(first) + 1;
@@ -175,6 +197,10 @@
           session: iS >= 0 ? String(cells[iS] || '').trim() || '1' : '1',
           dealer: iD >= 0 ? String(cells[iD] || '').trim() : '',
           dir: iR >= 0 ? parseDir(cells[iR]) : null,
+          time: iT >= 0 ? parseTime(cells[iT]) : null,
+          players: iP >= 0 && parseInt(cells[iP], 10) > 0 ? parseInt(cells[iP], 10) : null,
+          won: iW >= 0 && cells[iW] !== undefined && cells[iW].trim() !== '' ? parseFloat(cells[iW]) || 0 : null,
+          mult: iM >= 0 ? parseMult(cells[iM]) : null,
           liab: stakeCols.length ? liabilityFromStakes(stakes) : null,
         });
       }
@@ -187,7 +213,7 @@
       if (!line || line.startsWith('#') || /^-{3,}$/.test(line)) { if (sawNumber) { session++; sawNumber = false; } return; }
       line.split(/[^0-9]+/).filter(Boolean).forEach(tok => {
         const n = parseInt(tok, 10);
-        if (n >= 0 && n <= 36) { spins.push({ n, session: String(session), dealer: '', dir: null, liab: null }); sawNumber = true; }
+        if (n >= 0 && n <= 36) { spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null, mult: null, liab: null }); sawNumber = true; }
         else errors.push(`${li + 1}-р мөр: "${tok}" 0–36 биш.`);
       });
     });
@@ -196,14 +222,23 @@
 
   function spinsToCsv(spins) {
     const hasL = spins.some(s => s.liab);
-    const hasDir = spins.some(s => s.dir);
+    const hasDir = spins.some(s => s.dir), hasT = spins.some(s => s.time != null), hasP = spins.some(s => s.players != null);
+    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult);
     const head = ['number', 'session', 'dealer'];
     if (hasDir) head.push('direction');
+    if (hasT) head.push('time');
+    if (hasP) head.push('players');
+    if (hasW) head.push('won');
+    if (hasM) head.push('multipliers');
     if (hasL) for (let k = 0; k < N; k++) head.push('b' + k);
     const rows = [head.join(',')];
     spins.forEach(s => {
       const r = [s.n, s.session, s.dealer || ''];
       if (hasDir) r.push(s.dir === 'A' ? 'cw' : s.dir === 'B' ? 'ccw' : '');
+      if (hasT) r.push(s.time == null ? '' : new Date(s.time).toISOString().slice(0, 19));
+      if (hasP) r.push(s.players == null ? '' : s.players);
+      if (hasW) r.push(s.won == null ? '' : s.won);
+      if (hasM) r.push(multToStr(s.mult));
       // Liability is exported as an equivalent straight-up stake (liability / 36).
       if (hasL) for (let k = 0; k < N; k++) r.push(s.liab ? +(s.liab[k] / 36).toFixed(3) : 0);
       rows.push(r.join(','));
@@ -308,6 +343,53 @@
       const z = sv > 0 ? sr / Math.sqrt(sv) : 0;
       // Negative z = winners sit on low-liability pockets more than chance allows.
       out.crowd = { n: withL.length, meanRank: 0.5 + sr / withL.length, z, p: normSf(-z), low5, exp5 };
+    }
+
+    // Lightning-style games: multipliers are drawn after bets close, so on a fair wheel the ball
+    // hits a multiplier number with probability (count of multiplier numbers) / 37. A house that
+    // steers away from expensive numbers shows up as a deficit here. Normal approximation to the
+    // Poisson-binomial; negative z = the ball avoids multiplier numbers.
+    function hitBand(label, arr) {
+      let mean = 0, v = 0, obs = 0;
+      arr.forEach(s => { const q = Object.keys(s.mult).length / N; mean += q; v += q * (1 - q); if (s.mult[s.n]) obs++; });
+      const z = v > 0 ? (obs - mean) / Math.sqrt(v) : 0;
+      return { label, n: arr.length, exp: mean, obs, z, p: arr.length ? twoSided(z) : 1 };
+    }
+    const withM = spins.filter(s => s.mult);
+    if (withM.length) {
+      const maxM = s => Math.max(...Object.values(s.mult));
+      const bands = [
+        hitBand('Үржүүлэгч 100x хүртэл', withM.filter(s => maxM(s) <= 100)),
+        hitBand('Үржүүлэгч 101–500x', withM.filter(s => maxM(s) > 100 && maxM(s) <= 500)),
+        hitBand('Үржүүлэгч 500x-аас дээш', withM.filter(s => maxM(s) > 500)),
+      ].filter(b => b.n);
+      out.lightning = Object.assign(hitBand('Бүгд', withM), { bands });
+    }
+    // Context bands: do things change with the number of players or the hour of day?
+    const bandsOf = (arr, keyFn, labels) => labels.map((label, i) => { const sub = arr.filter(s => keyFn(s) === i); return { label, spins: sub }; }).filter(b => b.spins.length);
+    const describe = b => {
+      const sub = b.spins, c = new Array(N).fill(0);
+      sub.forEach(s => c[s.n]++);
+      const ee = sub.length / N;
+      let x = 0; for (let k = 0; k < N; k++) x += (c[k] - ee) ** 2 / (ee || 1);
+      const pl = sub.filter(s => s.players != null), wn = sub.filter(s => s.won != null), lm = sub.filter(s => s.mult);
+      return {
+        label: b.label, n: sub.length, uniformP: sub.length ? chi2p(x, 36) : 1,
+        players: pl.length ? pl.reduce((a, s) => a + s.players, 0) / pl.length : null,
+        won: wn.length ? wn.reduce((a, s) => a + s.won, 0) / wn.length : null,
+        lightning: lm.length ? hitBand(b.label, lm) : null,
+      };
+    };
+    const withT = spins.filter(s => s.time != null);
+    if (withT.length) {
+      const hour = s => new Date(s.time).getUTCHours();
+      out.byHour = bandsOf(withT, s => Math.floor(hour(s) / 4), ['00–03', '04–07', '08–11', '12–15', '16–19', '20–23']).map(describe);
+    }
+    const withP = spins.filter(s => s.players != null);
+    if (withP.length >= 30) {
+      const ps = withP.map(s => s.players).sort((a, b) => a - b);
+      const q1 = ps[Math.floor(ps.length / 3)], q2 = ps[Math.floor(2 * ps.length / 3)];
+      out.byPlayers = bandsOf(withP, s => (s.players < q1 ? 0 : s.players < q2 ? 1 : 2), [`Цөөн (${q1}-аас доош)`, `Дунд (${q1}–${q2 - 1})`, `Олон (${q2}+)`]).map(describe);
     }
 
     // Per-session view, so a few rigged sessions are not averaged away.
@@ -502,7 +584,8 @@
     ];
   }
 
-  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3 };
+  // straightRet: total return per unit on a winning straight-up bet (36 = standard, 20 = lightning-style).
+  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36 };
 
   // Walk-forward: every spin is predicted before the model sees it. Nothing peeks at the future.
   // scoreFrom: spins before this index train the model but are not scored (holdout evaluation).
@@ -539,8 +622,9 @@
         if (order[0].k === y) top1++;
         if (order.slice(0, 3).some(o => o.k === y)) top3++;
         // Bet one unit straight-up on each number whose expected return 36p - 1 beats the margin.
-        const picks = order.filter(o => 36 * o.v - 1 > cfg.margin).slice(0, cfg.maxBets);
-        picks.forEach(o => { bets++; expectedHits += 1 / N; if (o.k === y) { hits++; bankroll += 35; } else bankroll -= 1; });
+        // Multipliers are unknown when the bet is placed but are paid when the number hits.
+        const picks = order.filter(o => cfg.straightRet * o.v - 1 > cfg.margin).slice(0, cfg.maxBets);
+        picks.forEach(o => { bets++; expectedHits += 1 / N; if (o.k === y) { hits++; bankroll += ((s.mult && s.mult[y]) || cfg.straightRet) - 1; } else bankroll -= 1; });
         if (scored % every === 0 || t === spins.length - 1) {
           curve.push({ t, bits });
           bank.push({ t, v: bankroll });
@@ -570,7 +654,7 @@
     const r = rng(seed || 7);
     const out = [];
     for (let i = 0; i < reps; i++) {
-      const sh = spins.map(s => ({ n: Math.floor(r() * N), session: s.session, dealer: s.dealer, dir: s.dir, liab: s.liab }));
+      const sh = spins.map(s => Object.assign({}, s, { n: Math.floor(r() * N) }));
       const res = walkForward(sh, cfg, opts);
       out.push({ bits: res.bits, bitsPerSpin: res.bitsPerSpin, roi: res.betting.roi, bankroll: res.betting.bankroll });
     }
@@ -583,7 +667,8 @@
     const split = Math.floor(spins.length * (opts.trainFrac || 0.7));
     const train = spins.slice(0, split);
     const grid = [];
-    [1, 0.999, 0.99].forEach(decay => [0.002, 0.02, 0.08].forEach(share => grid.push({ decay, share, lr: 0.05 })));
+    const straightRet = opts.straightRet || 36;
+    [1, 0.999, 0.99].forEach(decay => [0.002, 0.02, 0.08].forEach(share => grid.push({ decay, share, lr: 0.05, straightRet })));
     const trials = grid.map(g => {
       const r = walkForward(train, g, { scoreFrom: Math.floor(train.length * 0.3) });
       return { cfg: r.cfg, bitsPerSpin: r.bitsPerSpin };
@@ -631,7 +716,11 @@
   };
 
   function simulate(o) {
-    o = Object.assign({ spins: 3000, sessions: 30, wheel: 'fair', bias: 0.25, house: 0.3, steer: 0.35, players: 12, seed: 42 }, o);
+    o = Object.assign({ spins: 3000, sessions: 30, wheel: 'fair', bias: 0.25, house: 0.3, steer: 0.35, players: 12, seed: 42, game: 'standard' }, o);
+    const lightning = o.game === 'lightning';
+    const straightRet = lightning ? 20 : 36;
+    const MULTS = [50, 50, 50, 100, 100, 100, 100, 200, 300, 400, 500];
+    const t0 = Date.UTC(2026, 0, 1, 18, 0, 0);
     const r = rng(o.seed);
     const typeKeys = Object.keys(PLAYER_TYPES);
     const players = Array.from({ length: o.players }, (_, i) => ({
@@ -662,6 +751,16 @@
         if (c !== streakC) break;
         streak++;
       }
+      // Lightning numbers are drawn before the ball is launched but after bets close.
+      let mult = null;
+      if (lightning) {
+        mult = {};
+        const k = 1 + Math.floor(r() * 5);
+        for (let i = 0; i < k; i++) {
+          const num = Math.floor(r() * N);
+          mult[num] = r() < 0.03 ? (r() < 0.5 ? 1000 : 2000) : MULTS[Math.floor(r() * MULTS.length)];
+        }
+      }
       const L = new Float64Array(N);
       const bets = [];
       players.forEach(p => {
@@ -686,7 +785,7 @@
           stake = p.base;
         }
         if (kind === 'color') for (let k = 0; k < N; k++) { if (colorOf(k) === pick) L[k] += 2 * stake; }
-        else L[pick] += 36 * stake;
+        else L[pick] += ((mult && mult[pick]) || straightRet) * stake;
         bets.push({ p, kind, pick, stake });
       });
       // Outcome.
@@ -705,7 +804,8 @@
       } else {
         y = pickWeighted(normalize(pr), r);
       }
-      spins.push({ n: y, session, dealer: o.wheel === 'dealer' ? 'D1' : '', liab: L });
+      // Crowd size and the hour drift over the day so the context tests have something to look at.
+      spins.push({ n: y, session, dealer: o.wheel === 'dealer' ? 'D1' : '', dir: null, time: t0 + t * 45000, players: bets.length, won: L[y], mult, liab: L });
       bets.forEach(b => {
         const win = b.kind === 'color' ? colorOf(y) === b.pick : y === b.pick;
         log.push({ round: t + 1, player: b.p.id, bet: b.kind === 'color' ? b.pick : String(b.pick), stake: b.stake, outcome: y, type: b.p.type });
@@ -719,7 +819,7 @@
       gaps[y] = 0;
       history.push(y);
     }
-    return { spins, log, truth: { players: Object.fromEntries(players.map(p => [p.id, p.type])), wheel: o.wheel, rigged: Array.from(rigged), biasPockets: Array.from(biasPockets), sigD, sigD2 } };
+    return { spins, log, truth: { players: Object.fromEntries(players.map(p => [p.id, p.type])), wheel: o.wheel, rigged: Array.from(rigged), biasPockets: Array.from(biasPockets), sigD, sigD2, game: o.game } };
   }
 
   // ---------- Player psychology ----------
@@ -844,7 +944,7 @@
   const api = {
     N, WHEEL, POS, colorOf, wheelDist, OUTSIDE, rng,
     chi2p, normSf, binomSf,
-    parseSpins, spinsToCsv, runTests,
+    parseSpins, spinsToCsv, parseMult, multToStr, parseTime, runTests,
     MODEL_INFO, DEFAULT_CFG, walkForward, nullRuns, train,
     PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers,
   };

@@ -7,6 +7,10 @@
 <meta name="description" content="Рулеткийн үр дүн, тоглогчдын зан төлөвөөс хэв маяг хайж, санамсаргүй байдлаас ялгарах эсэхийг шалгадаг судалгааны хэрэгсэл.">
 <meta name="theme-color" content="#EEF0EC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121715" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Хэв маяг">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -153,8 +157,43 @@ td.num, th.num { text-align: right; }
 
   <!-- DATA -->
   <section id="tab-data" role="tabpanel">
+    <h2>Тоглоомын төрөл</h2>
+    <div class="grid2">
+      <div><label for="gameType">Хожлын хувь</label>
+        <select id="gameType">
+          <option value="36">Стандарт: нэг тоо 36 дахин</option>
+          <option value="20">Үржүүлэгчтэй (Lightning маягийн): нэг тоо 20 дахин, үржүүлэгч 50–2000x</option>
+        </select></div>
+    </div>
+    <p class="muted" id="gameNote"></p>
+
+    <h2>Эргэлт бүрийг гараар бүртгэх</h2>
+    <p>Эргэлт дууссаны дараа дэлгэц дээр харагдсан мэдээллийг шууд оруулна. Үржүүлэгчийг <code>5:100 17:2000</code> хэлбэрээр (тоо:үржүүлэгч) бичнэ.</p>
+    <div class="grid2">
+      <div><label for="mNumber">Буусан тоо</label><input id="mNumber" type="number" inputmode="numeric" min="0" max="36" placeholder="0–36"></div>
+      <div><label for="mMult">Үржүүлэгчтэй тоонууд</label><input id="mMult" type="text" inputmode="text" placeholder="5:100 17:2000"></div>
+      <div><label for="mWon">Нийт хожсон дүн</label><input id="mWon" type="number" inputmode="decimal" min="0" placeholder="0"></div>
+      <div><label for="mPlayers">Тоглогчийн тоо</label><input id="mPlayers" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+      <div><label for="mTime">Цаг</label><input id="mTime" type="datetime-local"></div>
+      <div><label for="mSession">Сесс</label><input id="mSession" type="text" placeholder="2026-10-05 орой"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="addSpin">Эргэлт нэмэх</button>
+      <button class="btn ghost" id="undoSpin">Сүүлийнхийг буцаах</button>
+      <span class="muted" id="lastSpins"></span>
+    </div>
+
+    <h2>Дэлгэцийн зургаас унших</h2>
+    <p>Тоглоомын түүхийн дэлгэцийн зургийг сонгоход тоонуудыг нь уншиж доорх талбарт бичнэ. Уншсан тоог заавал нүдээр шалгаж засаад дараа нь ачаална. Эхний удаад 3 МБ орчим уншигч татагдана.</p>
+    <div class="row">
+      <span class="btn ghost file" role="button">Зураг сонгох<input type="file" id="shotFile" accept="image/*" aria-label="Дэлгэцийн зураг сонгох"></span>
+      <label class="check" style="margin:0"><input type="checkbox" id="shotNewestFirst" checked> Зураг дээр хамгийн сүүлийн эргэлт эхэнд байна</label>
+    </div>
+    <div id="shotProgress" hidden class="progress"><i></i></div>
+    <p class="muted" id="shotStatus"></p>
+
     <h2>Эргэлтийн үр дүн оруулах</h2>
-    <p>Тоонуудыг таслал, зай, мөрөөр тусгаарлаад буулгана. Хоосон мөр эсвэл <code>---</code> шинэ сесс эхлүүлнэ. CSV бол толгой мөрөнд <code>number</code>, хүсвэл <code>session</code>, <code>dealer</code> (эсвэл машины дугаар), бөмбөг шидсэн чиглэл <code>direction</code> (cw/ccw), нүд бүрийн бооцоо <code>b0…b36</code>, гадна бооцоо <code>red, black, even, odd, low, high, d1–d3, c1–c3</code> байж болно.</p>
+    <p>Тоонуудыг таслал, зай, мөрөөр тусгаарлаад буулгана. Хоосон мөр эсвэл <code>---</code> шинэ сесс эхлүүлнэ. CSV бол толгой мөрөнд <code>number</code>, хүсвэл <code>session</code>, <code>dealer</code> (эсвэл машины дугаар), бөмбөг шидсэн чиглэл <code>direction</code> (cw/ccw), <code>time</code>, тоглогчийн тоо <code>players</code>, нийт хожсон дүн <code>won</code>, үржүүлэгч <code>multipliers</code> (жишээ: <code>5:100 17:2000</code>), нүд бүрийн бооцоо <code>b0…b36</code>, гадна бооцоо <code>red, black, even, odd, low, high, d1–d3, c1–c3</code> байж болно.</p>
     <label for="spinText">Өгөгдөл</label>
     <textarea id="spinText" placeholder="17, 32, 0, 5, 23, 14 …"></textarea>
     <label class="check"><input type="checkbox" id="appendMode"> Одоогийн өгөгдөл дээр нэмэх (загвар хуучин өгөгдлөөсөө үргэлжлүүлж сурна)</label>
@@ -169,6 +208,11 @@ td.num, th.num { text-align: right; }
     <h2>Туршилтын өгөгдөл үүсгэх</h2>
     <p>Жинхэнэ өгөгдлөө оруулахаас өмнө апп юу илрүүлж чадах, юу чадахгүйг мэдэхийн тулд хариу нь мэдэгдэж байгаа өгөгдөл дээр туршина. Ширээнд бооцоо тавих тоглогчдыг сэтгэл зүйн хэв маягтай нь хамт загварчилна.</p>
     <div class="grid2">
+      <div><label for="simGame">Тоглоом</label>
+        <select id="simGame">
+          <option value="standard">Стандарт (36x)</option>
+          <option value="lightning">Үржүүлэгчтэй (20x, 50–2000x)</option>
+        </select></div>
       <div><label for="simWheel">Дугуй</label>
         <select id="simWheel">
           <option value="fair">Шударга</option>
@@ -242,6 +286,8 @@ td.num, th.num { text-align: right; }
       <li>Wagenaar (1988), <i>Paradoxes of Gambling Behaviour</i>: тоглогчид санамсаргүй тоглоомд ур чадвар, систем байгаа гэж итгэх хэвшил.</li>
       <li>Reid (1986), Clark нар (2009, <i>Neuron</i>): “бараг ялсан” (near miss) мэдрэмж тоглолтыг үргэлжлүүлэх хүслийг өдөөдөг.</li>
     </ul>
+    <h3>Үржүүлэгчтэй рулетк (Lightning маягийн)</h3>
+    <p>Evolution-ы Lightning Roulette, XXXtreme Lightning Roulette зэрэг тоглоомд нэг тоон дээрх бооцоо стандарт 36-ын оронд 30 эсвэл 20 дахин төлдөг бөгөөд эргэлт бүрт санамсаргүй сонгосон 1–5 тоо 50–500x, гинжин үржүүлэгчтэй бол 2000x хүртэл төлдөг [шалгах: тухайн тоглоомын дүрэм]. Үржүүлэгч бооцоо хаагдсаны дараа тодордог тул үүнийг урьдчилан ашиглах арга байхгүй. Шударга бол бөмбөг үржүүлэгчтэй тоонд “үржүүлэгчийн тоо ÷ 37” магадлалаар бууна. Казино үр дүнг удирдаж байвал хамгийн их төлбөртэй тооноос зайлсхийх учраас энэ хувь буурна, апп үүнийг биномын тестээр шалгана. Нийт хожсон дүн, тоглогчийн тоо, цаг нь удирдлага хэзээ илүү их байдгийг харахад тусална.</p>
     <h3>Казино үр дүнг удирдвал</h3>
     <p>Лицензтэй казинод үр дүнг удирдах нь хууль бус бөгөөд хяналтын байгууллага дугуйг тогтмол шалгадаг. Гэхдээ хяналтгүй орчинд, эсвэл онлайн “амьд” ширээнд ийм зүйл болж байгаа эсэхийг шалгах боломжтой: казино ашгаа нэмэхийн тулд ширээн дээр хамгийн бага мөнгө тавьсан нүдийг сонгох байх. Тиймээс “Олны эсрэг” загвар эргэлт бүрийн бооцоог харж, хожсон тоо хямд нүд дээр санамсаргүйгээс илүү олон удаа буусан эсэхийг сесс бүрээр шалгана. Энэ шалгуурт бооцооны мэдээлэл заавал хэрэгтэй.</p>
     <h3>Арга зүй</h3>
@@ -262,13 +308,14 @@ td.num, th.num { text-align: right; }
   'use strict';
   const $ = id => document.getElementById(id);
   const KEY = 'patternlab.v1';
-  const state = { spins: [], players: [], log: [], truth: null, last: null, playerLog: '' };
+  const state = { spins: [], players: [], log: [], truth: null, last: null, playerLog: '', straightRet: 36 };
 
   // ---------- storage (per-browser; the page still works if it is blocked) ----------
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
         spins: PL.spinsToCsv(state.spins), playerLog: state.playerLog, log: state.log.slice(-50), truth: state.truth,
+        straightRet: state.straightRet,
       }));
     } catch (e) { toast('Өгөгдөл хэт том тул хөтөч дээр хадгалагдсангүй. CSV татаж хадгална уу.'); }
   }
@@ -281,6 +328,7 @@ td.num, th.num { text-align: right; }
       state.playerLog = d.playerLog || '';
       state.log = d.log || [];
       state.truth = d.truth || null;
+      state.straightRet = d.straightRet === 20 ? 20 : 36;
     } catch (e) { /* storage unavailable */ }
   }
 
@@ -362,7 +410,9 @@ td.num, th.num { text-align: right; }
       <div class="stat"><div class="v">${num(s.length)}</div><div class="k">эргэлт</div></div>
       <div class="stat"><div class="v">${new Set(s.map(x => x.session)).size}</div><div class="k">сесс</div></div>
       <div class="stat"><div class="v">${pct(withBets / s.length)}</div><div class="k">бооцооны мэдээлэлтэй</div></div>
-      <div class="stat"><div class="v">${dealers || '—'}</div><div class="k">дилер, машин</div></div></div>
+      <div class="stat"><div class="v">${dealers || '—'}</div><div class="k">дилер, машин</div></div>
+      <div class="stat"><div class="v">${pct(s.filter(x => x.mult).length / s.length)}</div><div class="k">үржүүлэгчтэй</div></div>
+      <div class="stat"><div class="v">${pct(s.filter(x => x.time != null).length / s.length)}</div><div class="k">цагтай</div></div></div>
       ${withBets ? '' : '<p class="muted">Бооцооны мэдээлэл байхгүй тул казиногийн удирдлагыг шалгах “Олны эсрэг” загвар ажиллахгүй.</p>'}`;
   }
   $('loadSpins').addEventListener('click', () => {
@@ -383,13 +433,115 @@ td.num, th.num { text-align: right; }
     $('playerText').value = '';
     save(); renderAll(); toast('Устгалаа');
   });
+  function setGame(ret) {
+    state.straightRet = ret;
+    $('gameType').value = String(ret);
+    $('gameNote').textContent = ret === 20
+      ? 'Нэг тоо 20 дахин төлдөг тул үржүүлэгчгүй үед казиногийн давуу тал 46% болно. Үржүүлэгч бооцоо хаагдсаны дараа тодордог тул урьдчилан ашиглах боломжгүй, харин бөмбөг үржүүлэгчтэй тооноос зайлсхийдэг эсэхийг “Шалгуур” хэсэгт шалгана.'
+      : 'Нэг тоо 36 дахин төлнө, казиногийн давуу тал 2.7%.';
+    save();
+  }
+  $('gameType').addEventListener('change', () => { setGame(parseInt($('gameType').value, 10) === 20 ? 20 : 36); state.last = null; renderLearn(); renderVerdict(); });
+
+  function localNow() {
+    const d = new Date(); d.setSeconds(0, 0);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+  function renderLastSpins() {
+    const last = state.spins.slice(-6).map(s => s.n);
+    $('lastSpins').textContent = last.length ? 'Сүүлийн: ' + last.join(', ') : '';
+  }
+  $('addSpin').addEventListener('click', () => {
+    const n = parseInt($('mNumber').value, 10);
+    if (!(n >= 0 && n <= 36)) { toast('Буусан тоо 0–36 байх ёстой.'); $('mNumber').focus(); return; }
+    const t = $('mTime').value ? Date.parse($('mTime').value) : Date.now();
+    const won = $('mWon').value.trim() === '' ? null : parseFloat($('mWon').value) || 0;
+    const players = parseInt($('mPlayers').value, 10) > 0 ? parseInt($('mPlayers').value, 10) : null;
+    const session = $('mSession').value.trim() || new Date(t).toISOString().slice(0, 10);
+    state.spins.push({ n, session, dealer: '', dir: null, time: t, players, won, mult: PL.parseMult($('mMult').value), liab: null });
+    state.last = null; state.truth = null;
+    $('mNumber').value = ''; $('mMult').value = ''; $('mWon').value = '';
+    $('mTime').value = localNow();
+    save(); renderAll(); $('mNumber').focus();
+    toast(`${n} нэмэгдлээ, нийт ${num(state.spins.length)}`);
+  });
+  $('undoSpin').addEventListener('click', () => {
+    if (!state.spins.length) return;
+    const s = state.spins.pop();
+    state.last = null; save(); renderAll(); toast(`${s.n} буцаалаа`);
+  });
+
+  // Screenshot OCR: Tesseract.js is loaded only when first needed.
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script'); el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Уншигч татагдсангүй, интернэт холболтоо шалгана уу.'));
+      document.head.appendChild(el);
+    });
+  }
+  function prepImage(file, invert) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.max(1, Math.min(3, 1600 / img.width));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
+        const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+        for (let i = 0; i < px.length; i += 4) {
+          const l = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          // Game screens show light digits on coloured tiles; invert them to dark-on-light for the reader.
+          const v = invert ? (l > 170 ? 0 : 255) : (l < 110 ? 0 : 255);
+          px[i] = px[i + 1] = px[i + 2] = v;
+        }
+        g.putImageData(d, 0, 0);
+        URL.revokeObjectURL(img.src);
+        resolve(c);
+      };
+      img.onerror = () => reject(new Error('Зураг нээгдсэнгүй.'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  // Lines that carry a number above 36 are multiplier legends ("17 100x"), not results.
+  const tokensFrom = text => text.split('\n').flatMap(line => {
+    const t = (line.match(/\d+/g) || []).map(Number);
+    return t.some(n => n > 36) ? [] : t;
+  });
+  async function readScreenshot(file) {
+    $('shotProgress').hidden = false; $('shotStatus').textContent = 'Уншигч бэлдэж байна…';
+    try {
+      if (!window.Tesseract) {
+        try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js'); }
+        catch (e) { await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'); }
+      }
+      const worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') $('shotStatus').textContent = `Уншиж байна… ${Math.round(m.progress * 100)}%`; } });
+      await worker.setParameters({ tessedit_char_whitelist: '0123456789 ', preserve_interword_spaces: '1' });
+      let best = [];
+      for (const invert of [true, false]) {
+        const canvas = await prepImage(file, invert);
+        const { data } = await worker.recognize(canvas);
+        const toks = tokensFrom(data.text);
+        if (toks.length > best.length) best = toks;
+      }
+      await worker.terminate();
+      if (!best.length) { $('shotStatus').textContent = 'Тоо олдсонгүй. Зургийг томруулж авах эсвэл гараар оруулна уу.'; return; }
+      if ($('shotNewestFirst').checked) best.reverse();
+      $('spinText').value = best.join(', ');
+      $('shotStatus').textContent = `${best.length} тоо уншлаа. Доорх талбарт шалгаад “Өгөгдөл ачаалах” дарна уу.`;
+      $('spinText').focus();
+    } catch (err) {
+      $('shotStatus').textContent = 'Алдаа: ' + (err && err.message || err);
+    } finally { $('shotProgress').hidden = true; }
+  }
+  $('shotFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) readScreenshot(f); e.target.value = ''; });
+
   $('runSim').addEventListener('click', () => {
     const v = id => parseFloat($(id).value);
     const sim = PL.simulate({
       wheel: $('simWheel').value, spins: Math.min(50000, Math.max(200, v('simSpins') | 0)),
       sessions: Math.max(1, v('simSessions') | 0), players: Math.max(1, Math.min(60, v('simPlayers') | 0)),
       bias: v('simStrength'), steer: v('simStrength'), house: v('simHouse'), seed: v('simSeed') | 0,
+      game: $('simGame').value,
     });
+    setGame($('simGame').value === 'lightning' ? 20 : 36);
     state.truth = sim.truth;
     state.playerLog = PL.playerLogToCsv(sim.log);
     $('playerText').value = state.playerLog.length < 400000 ? state.playerLog : '';
@@ -439,6 +591,21 @@ td.num, th.num { text-align: right; }
     } else {
       h += `<div class="test"><span class="name">Хямд нүд хожих уу</span><span class="p muted">—</span><span class="why">Бооцооны мэдээлэл (b0…b36 эсвэл red/black…) оруулбал казино үр дүнг удирддаг эсэхийг шалгана.</span></div>`;
     }
+    if (r.lightning) {
+      const L = r.lightning;
+      h += testRow('Үржүүлэгчтэй тоонд буух уу', L.p,
+        `Үржүүлэгч бооцоо хаагдсаны дараа тодордог тул шударга бол бөмбөг үржүүлэгчтэй тоонд (үржүүлэгчийн тоо ÷ 37) магадлалаар буух ёстой. ${num(L.n)} эргэлтэд хүлээгдсэн ${num(L.exp, 1)}, бодитоор ${num(L.obs)} удаа буув (z ${L.z.toFixed(2)}). Сөрөг z = бөмбөг үржүүлэгчтэй тооноос зайлсхийж байна.`,
+        L.bands.map(b => `${b.label}: ${b.obs}/${num(b.exp, 1)} (z ${b.z.toFixed(1)})`).join('; ') + '.');
+    } else if (state.straightRet === 20) {
+      h += `<div class="test"><span class="name">Үржүүлэгчтэй тоонд буух уу</span><span class="p muted">—</span><span class="why">Эргэлт бүрийн үржүүлэгчтэй тоонуудыг (<code>multipliers</code> багана эсвэл гараар бүртгэх маягт) оруулбал бөмбөг тэднээс зайлсхийдэг эсэхийг шалгана. Энэ тоглоомд казиногийн удирдлагыг илрүүлэх гол шалгуур нь энэ.</span></div>`;
+    }
+    const bandTable = (title, intro, bands) => {
+      let t = `<h3>${title}</h3><p class="muted">${intro}</p><div class="scroll"><table><thead><tr><th>Бүлэг</th><th class="num">Эргэлт</th><th class="num">Тоглогч</th><th class="num">Дундаж хожил</th><th class="num">Тархалт p</th><th class="num">Үржүүлэгч z</th></tr></thead><tbody>`;
+      bands.forEach(b => { t += `<tr><td>${esc(b.label)}</td><td class="num">${num(b.n)}</td><td class="num">${b.players == null ? '—' : num(b.players, 1)}</td><td class="num">${b.won == null ? '—' : num(b.won)}</td><td class="num">${fmtP(b.uniformP)}</td><td class="num">${b.lightning ? b.lightning.z.toFixed(2) : '—'}</td></tr>`; });
+      return t + '</tbody></table></div>';
+    };
+    if (r.byHour) h += bandTable('Өдрийн цагаар', 'Тоглогч олонтой, мөнгө ихтэй цагт тоглоом өөрөөр ажилладаг эсэх. Цагийг оруулсан хэлбэрээр нь авна.', r.byHour);
+    if (r.byPlayers) h += bandTable('Тоглогчийн тоогоор', 'Эргэлтүүдийг тоглогчийн тоогоор гурван тэнцүү бүлэгт хуваав.', r.byPlayers);
     const flagged = r.sessions.filter(s => s.flag);
     h += `<h3>Сесс бүрээр</h3><p class="muted">Ганц нэг сессийг удирдсан бол нийт өгөгдөлд уусаад алга болдог тул сесс тус бүрийг тусад нь шалгана. Бонферронийн засвартай.${flagged.length ? ` Сэжигтэй: <b>${flagged.map(s => esc(s.id)).join(', ')}</b>.` : ' Сэжигтэй сесс алга.'}</p>`;
     h += `<div class="scroll"><table><thead><tr><th>Сесс</th><th class="num">Эргэлт</th><th class="num">Тархалт p</th><th class="num">Хямд нүд z</th><th></th></tr></thead><tbody>`;
@@ -460,7 +627,8 @@ td.num, th.num { text-align: right; }
     return new Promise((resolve, reject) => {
       const w = getWorker();
       const id = ++jobId;
-      if (!w) { setTimeout(() => { try { resolve(PL.train(spins, {})); } catch (e) { reject(e); } }, 30); return; }
+      const opts = { straightRet: state.straightRet };
+      if (!w) { setTimeout(() => { try { resolve(PL.train(spins, opts)); } catch (e) { reject(e); } }, 30); return; }
       const onMsg = e => {
         if (e.data.id !== id) return;
         if (e.data.progress) { $('trainStatus').textContent = 'Шударга дугуйтай харьцуулж байна…'; return; }
@@ -469,7 +637,7 @@ td.num, th.num { text-align: right; }
       };
       w.addEventListener('message', onMsg);
       w.onerror = err => { w.removeEventListener('message', onMsg); worker = false; reject(err); };
-      w.postMessage({ id, spins, opts: {} });
+      w.postMessage({ id, spins, opts });
     });
   }
   $('trainBtn').addEventListener('click', () => {
@@ -533,7 +701,7 @@ td.num, th.num { text-align: right; }
     h += `<h3>Шударга дугуйтай харьцуулалт</h3><div class="chart">${dotPlot(res.nulls.map(x => x.bitsPerSpin), t.bitsPerSpin)}</div>
       <p class="muted">Саарал цэг бүр нь ижил бооцоо, сесстэй боловч тоог нь шударга дугуйгаар дахин эргүүлсэн өгөгдөл дээрх үр дүн. Цэнхэр цэг тэднээс тод баруун талд гарсан үед л хэв маяг бодит байна.</p>`;
     h += `<h3>Бооцооны туршилт</h3>
-      <p>Нэг нүдэнд 1 нэгж тавьж, хүлээгдэж буй өгөөж нь ${Math.round(t.cfg.margin * 100)}%-аас дээш гэж үзсэн үедээ л (дээд тал нь ${t.cfg.maxBets} нүд) бооцоо тавив. ${num(b.bets)} бооцооноос ${num(b.hits)} нь онож (санамсаргүй бол ~${num(b.expectedHits, 1)}), ${b.bankroll >= 0 ? '+' : ''}${num(b.bankroll)} нэгж гарлаа, нэг бооцоонд ${b.roi >= 0 ? '+' : ''}${(b.roi * 100).toFixed(1)}%. Биномын тестийн p ${fmtP(b.p)}.</p>`;
+      <p>Нэг нүдэнд 1 нэгж тавьж (хожвол ${t.cfg.straightRet} дахин, үржүүлэгчтэй бол үржүүлэгчээр), хүлээгдэж буй өгөөж нь ${Math.round(t.cfg.margin * 100)}%-аас дээш гэж үзсэн үедээ л (дээд тал нь ${t.cfg.maxBets} нүд) бооцоо тавив. ${num(b.bets)} бооцооноос ${num(b.hits)} нь онож (санамсаргүй бол ~${num(b.expectedHits, 1)}), ${b.bankroll >= 0 ? '+' : ''}${num(b.bankroll)} нэгж гарлаа, нэг бооцоонд ${b.roi >= 0 ? '+' : ''}${(b.roi * 100).toFixed(1)}%. Биномын тестийн p ${fmtP(b.p)}.</p>`;
     if (t.bank.length > 1) h += `<div class="chart">${lineChart(t.bank.map(p => ({ x: p.t + 1, y: p.v })), { label: 'Бооцооны үлдэгдэл', xLabel: 'эргэлт', color: b.bankroll >= 0 ? 'var(--good)' : 'var(--bad)' })}</div>`;
     h += `<h3>Аль загвар жин авав</h3><div class="bars">`;
     t.models.slice().sort((a, c) => c.weight - a.weight).forEach(m => {
@@ -605,9 +773,11 @@ td.num, th.num { text-align: right; }
   });
   $('exportPlayers').addEventListener('click', () => state.playerLog ? download('players.csv', state.playerLog) : toast('Татах бүртгэл алга.'));
 
-  function renderAll() { renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); }
+  function renderAll() { renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); renderLastSpins(); }
 
   load();
+  setGame(state.straightRet);
+  $('mTime').value = localNow();
   renderAll();
   if (state.playerLog) { $('playerText').value = state.playerLog.length < 400000 ? state.playerLog : ''; analyzePlayersFromText(state.playerLog); }
   try { const t = localStorage.getItem(KEY + '.tab'); if (t) { const b = document.querySelector(`.tab[data-tab="${t}"]`); if (b) b.click(); } } catch (e) {}
