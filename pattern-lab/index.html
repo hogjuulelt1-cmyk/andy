@@ -230,7 +230,13 @@ td.num, th.num { text-align: right; }
     <details id="wonBox"><summary>Хожлын дүнгүүд</summary><div id="wonOut"></div></details>
 
     <h2>Дараагийн эргэлт</h2>
+    <div class="row">
+      <button class="btn ghost small" id="overlayBtn" aria-pressed="false">🗗 Давхарлах</button>
+      <span class="muted" id="overlayHint">Таамгийг жижиг цонхонд хөвүүлж, өөр апп дээр ч харна. Асаалттай үед тоо бүртгэх бүрд цонх дахин нээгдэнэ.</span>
+    </div>
     <div id="liveSummary"><p class="empty">Таамаг 30 эргэлтээс эхэлнэ.</p></div>
+    <canvas id="overlayCanvas" width="360" height="440" hidden></canvas>
+    <video id="overlayVideo" muted playsinline autoplay style="position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none" aria-hidden="true"></video>
 
     <details><summary>Дэлгэрэнгүй бүртгэх (хожсон хүн, тоглогч, үржүүлэгчийн тоонууд)</summary>
     <p class="muted">Энгийн бүртгэлд доорх “Бүртгэх” самбараас тоон дээр дарахад хангалттай. Энэ маягт нэмэлт мэдээлэлтэй үед.</p>
@@ -403,7 +409,7 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 17</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 18</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -421,8 +427,8 @@ td.num, th.num { text-align: right; }
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=17"></script>
-<script src="ocr.js?v=17"></script>
+<script src="engine.js?v=18"></script>
+<script src="ocr.js?v=18"></script>
 <script>
 (function () {
   'use strict';
@@ -632,7 +638,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=17');
+    const r = await fetch('digits.json?v=18');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -797,7 +803,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=17'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=18'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1163,6 +1169,101 @@ td.num, th.num { text-align: right; }
     });
     return h + '</tbody></table></div></details>';
   }
+  let lastSummary = null;
+  // The best bet in every family, as the summary cards and the floating overlay both show them.
+  function summaryRows(p) {
+    const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
+    const best = items => items.map(it => { const q = sum(it.has); return { it, q, ratio: q / (it.count / 37) }; }).sort((a, b) => b.ratio - a.ratio)[0];
+    const G = GROUPS, row = (k, items) => { const b = best(items); return { k, label: b.it.label, q: b.q, ratio: b.ratio }; };
+    const w = bestWindows(p, 2, 1)[0];
+    return [
+      row('Өнгө', G[0].items.slice(0, 2)), row('Тэгш / сондгой', G[0].items.slice(3, 5)), row('Бага / их', G[0].items.slice(5, 7)),
+      row('Арван хоёр', G[1].items.slice(0, 3)), row('Эгнээ 2:1', G[1].items.slice(3, 6)),
+      row('Хосолсон', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items)),
+      { k: 'Дугуйн бүс', label: w.nums.join(' '), q: w.q, ratio: w.ratio },
+    ];
+  }
+
+  // ---------- floating overlay (picture-in-picture) ----------
+  // The forecast is drawn on a canvas, streamed into a video and shown in the system PiP window,
+  // which stays on top of other apps. Opening it needs a tap, so overlay mode re-opens it on every keypad tap.
+  const ovCanvas = $('overlayCanvas'), ovVideo = $('overlayVideo');
+  let ovStream = null, ovTimer = null;
+  const pipSupported = () => !!(ovCanvas.captureStream && ((document.pictureInPictureEnabled && ovVideo.requestPictureInPicture) || (ovVideo.webkitSupportsPresentationMode && ovVideo.webkitSupportsPresentationMode('picture-in-picture'))));
+  const pipActive = () => document.pictureInPictureElement === ovVideo || ovVideo.webkitPresentationMode === 'picture-in-picture';
+  function drawOverlay() {
+    const c = ovCanvas.getContext('2d'), W = ovCanvas.width, H = ovCanvas.height;
+    c.fillStyle = '#15171a'; c.fillRect(0, 0, W, H);
+    c.textBaseline = 'middle';
+    const dim = '#9aa0a6', good = '#4ade80', bad = '#f87171', fg = '#f5f5f5';
+    const font = (px, bold) => { c.font = `${bold ? '700 ' : ''}${px}px -apple-system, system-ui, sans-serif`; };
+    font(15); c.fillStyle = dim; c.textAlign = 'left';
+    const recent = state.spins.slice(-5).map(s => s.n);
+    c.fillText('Сүүлийн: ' + (recent.join(' ') || '—'), 16, 22);
+    c.textAlign = 'right'; c.fillText(new Date().toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), W - 16, 22);
+    const S = lastSummary;
+    if (!S) { font(20, true); c.fillStyle = fg; c.textAlign = 'center'; c.fillText(state.spins.length < 30 ? `Таамаг 30 эргэлтээс (одоо ${state.spins.length})` : 'Тооцоолж байна…', W / 2, H / 2); return; }
+    // Numbers
+    font(15); c.fillStyle = dim; c.textAlign = 'left'; c.fillText(S.flat ? 'Тоо: тодорхой дохио алга' : 'Тоо', 16, 56);
+    S.order.forEach((o, i) => {
+      const x = 40 + i * 64, y = 96;
+      c.globalAlpha = S.flat ? 0.45 : 1;
+      c.fillStyle = o.k === 0 ? '#2e7d4f' : PL.colorOf(o.k) === 'R' ? '#c0392b' : '#3a3a3a';
+      c.beginPath(); c.arc(x, y, 24, 0, Math.PI * 2); c.fill();
+      c.strokeStyle = '#8a8a8a'; c.lineWidth = 1.5; c.stroke();
+      font(20, true); c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText(String(o.k), x, y);
+      c.globalAlpha = 1;
+      font(12); c.fillStyle = dim; c.fillText('×' + (o.v * 37).toFixed(2), x, y + 36);
+    });
+    if (S.steerProb != null) { font(15); c.textAlign = 'right'; c.fillStyle = S.steerProb > 0.5 ? bad : dim; c.fillText('🧲 ' + (S.steerProb * 100).toFixed(0) + '%', W - 16, 96); }
+    // Groups
+    let y = 160;
+    S.rows.forEach(r => {
+      font(14); c.fillStyle = dim; c.textAlign = 'left'; c.fillText(r.k, 16, y);
+      font(18, true); c.fillStyle = fg; c.fillText(r.label.replace(/\s*\(.*\)$/, ''), 16, y + 22);
+      font(15, true); c.textAlign = 'right'; c.fillStyle = r.ratio > 1.03 ? good : r.ratio < 0.97 ? bad : dim;
+      c.fillText('×' + r.ratio.toFixed(2) + '  ' + (r.q * 100).toFixed(0) + '%', W - 16, y + 22);
+      y += 40;
+    });
+  }
+  async function openOverlay() {
+    if (!pipSupported()) { toast('Энэ хөтөч хөвөгч цонх дэмжихгүй. iPhone дээр Safari, Android дээр Chrome ашигла.'); return false; }
+    try {
+      drawOverlay();
+      if (!ovStream) { ovStream = ovCanvas.captureStream(2); ovVideo.srcObject = ovStream; }
+      if (ovVideo.paused) await ovVideo.play();
+      if (!ovTimer) ovTimer = setInterval(drawOverlay, 1000);
+      if (document.pictureInPictureEnabled && ovVideo.requestPictureInPicture) { if (!pipActive()) await ovVideo.requestPictureInPicture(); }
+      else ovVideo.webkitSetPresentationMode('picture-in-picture');
+      return true;
+    } catch (e) { toast('Хөвөгч цонх нээгдсэнгүй: ' + (e && e.message || e)); return false; }
+  }
+  function closeOverlay() {
+    try { if (document.pictureInPictureElement === ovVideo) document.exitPictureInPicture(); else if (ovVideo.webkitPresentationMode === 'picture-in-picture') ovVideo.webkitSetPresentationMode('inline'); } catch (e) {}
+    if (ovTimer) { clearInterval(ovTimer); ovTimer = null; }
+  }
+  function setOverlayMode(on) {
+    state.overlay = on;
+    $('overlayBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
+    $('overlayBtn').textContent = on ? '🗗 Давхарлах: асаалттай' : '🗗 Давхарлах';
+    try { localStorage.setItem(KEY + '.overlay', on ? '1' : '0'); } catch (e) {}
+  }
+  $('overlayBtn').addEventListener('click', async () => {
+    if (state.overlay) { setOverlayMode(false); closeOverlay(); return; }
+    if (await openOverlay()) setOverlayMode(true);
+  });
+  // Re-open after a keypad tap only; leaving via the system control turns the mode off.
+  let reopening = false;
+  ovVideo.addEventListener('leavepictureinpicture', () => { if (!reopening) setOverlayMode(false); });
+  ovVideo.addEventListener('webkitpresentationmodechanged', () => { if (ovVideo.webkitPresentationMode !== 'picture-in-picture' && !reopening) setOverlayMode(false); });
+  function reopenOverlay() {
+    if (!state.overlay || pipActive()) return;
+    reopening = true;
+    openOverlay().finally(() => { reopening = false; });
+  }
+  if (!pipSupported()) $('overlayHint').textContent = 'Энэ хөтөч хөвөгч цонх (Picture in Picture) дэмжихгүй. iPhone дээр Safari, Android дээр Chrome ашигла.';
+  try { if (localStorage.getItem(KEY + '.overlay') === '1') { state.overlay = true; $('overlayBtn').setAttribute('aria-pressed', 'true'); $('overlayBtn').textContent = '🗗 Давхарлах: асаалттай'; } } catch (e) {}
+
   function renderSummary(p, order, picks) {
     const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
     const best = (items) => items.map(it => { const q = sum(it.has); return { it, q, ratio: q / (it.count / 37) }; }).sort((a, b) => b.ratio - a.ratio)[0];
@@ -1171,6 +1272,7 @@ td.num, th.num { text-align: right; }
     const G = GROUPS;
     let h = '<div class="sum">';
     const topLift = order[0].v * 37, flat = topLift < 1.1;
+    lastSummary = { order: order.slice(0, 3), flat, rows: summaryRows(p), steerProb: state.next && state.next.next.steerProb };
     const why = pickReason(order[0].k);
     h += `<div class="c ${flat ? 'flat' : topLift > 1.03 ? 'up' : ''}"><div class="k">${flat ? 'Тоо: тодорхой дохио алга' : 'Тоо (эхний 3)'}</div><div class="v">${order.slice(0, 3).map(o => `<span class="n" style="background:${pocketColor(o.k)}">${o.k}</span>`).join('')}</div><div class="x">${flat ? `хамгийн өндөр нь ×${topLift.toFixed(2)}: санамсаргүйгээс ялгаагүй` : order.slice(0, 3).map(o => '×' + (o.v * 37).toFixed(2)).join(' · ') + (why ? ' · ' + why : '')}</div></div>`;
     const w = bestWindows(p, 2, 1)[0];
@@ -1234,6 +1336,7 @@ td.num, th.num { text-align: right; }
     }
     $('liveOut').innerHTML = h;
     renderLiveChart();
+    if (ovTimer) drawOverlay();
   }
   function renderLiveChart() {
     const L = state.live;
@@ -1334,6 +1437,7 @@ td.num, th.num { text-align: right; }
     const players = parseInt($('fPlayers').value, 10) || null;
     const winners = $('fWinners').value === '' ? null : parseInt($('fWinners').value, 10);
     recordSpin(parseInt(b.dataset.n, 10), { steer, light, won, mult, players, winners });
+    reopenOverlay();
     $('fWinners').value = '';
     $('fLight').setAttribute('aria-pressed', 'false'); $('fMult').value = ''; $('fMult').hidden = true; $('fWon').value = '';
   });
