@@ -244,7 +244,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
       <span class="muted" id="overlayHint">Таамгийг жижиг цонхонд хөвүүлж, өөр апп дээр ч харна. Асаалттай үед тоо бүртгэх бүрд цонх дахин нээгдэнэ.</span>
     </div>
     <div id="liveSummary"><p class="empty">Таамаг 30 эргэлтээс эхэлнэ.</p></div>
-    <canvas id="overlayCanvas" width="360" height="440" hidden></canvas>
+    <canvas id="overlayCanvas" width="360" height="480" hidden></canvas>
     <video id="overlayVideo" muted playsinline autoplay style="position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none" aria-hidden="true"></video>
 
     <details><summary>Дэлгэрэнгүй бүртгэх (хожсон хүн, тоглогч, үржүүлэгчийн тоонууд)</summary>
@@ -420,7 +420,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 22</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 23</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -438,8 +438,8 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=22"></script>
-<script src="ocr.js?v=22"></script>
+<script src="engine.js?v=23"></script>
+<script src="ocr.js?v=23"></script>
 <script>
 (function () {
   'use strict';
@@ -649,7 +649,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=22');
+    const r = await fetch('digits.json?v=23');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -814,7 +814,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=22'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=23'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1050,6 +1050,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     { label: 'Voisins du zéro (0-ийн хөрш, 17 нүд)', has: SECTOR(VOISINS) }, { label: 'Tiers du cylindre (эсрэг тал, 12 нүд)', has: SECTOR(TIERS) },
     { label: 'Orphelins (8 нүд)', has: SECTOR(ORPHELINS) }, { label: 'Jeu zéro (7 нүд)', has: SECTOR(ZERO) },
     { label: 'Дугуйн 1-р дөрөвний нэг (0→15)', has: QUARTER(0) }, { label: '2-р дөрөвний нэг (19→20)', has: QUARTER(1) }, { label: '3-р дөрөвний нэг (14→28)', has: QUARTER(2) }, { label: '4-р дөрөвний нэг (12→26)', has: QUARTER(3) } ] });
+  GROUPS.push({ title: 'Мөр (3 тоо)', items: Array.from({ length: 12 }, (_, i) => ({ label: `Мөр ${i + 1} (${3 * i + 1}–${3 * i + 3})`, has: (n => n >= 3 * i + 1 && n <= 3 * i + 3), ret: 12 })) });
   GROUPS.forEach(g => g.items.forEach(it => { it.count = 0; for (let k = 0; k < 37; k++) if (it.has(k)) it.count++; }));
   // Best neighbour windows on the wheel: a number and the pockets either side of it.
   function bestWindows(p, half, top) {
@@ -1145,7 +1146,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
   function freqTable() {
     const sizes = [50, 100, 200, 0].filter(n => !n || state.spins.length >= n);
     if (state.spins.length < 20) return '';
-    const items = GROUPS[0].items.concat(GROUPS[1].items, GROUPS[GROUPS.length - 1].items);
+    const items = GROUPS[0].items.concat(GROUPS[1].items, GROUPS[8].items, GROUPS[7].items);
     let h = `<p class="muted">Санамсаргүй түвшнээс хоёр стандарт хазайлтаас илүү зөрсөн нь тодорсон. Богино цонхны хэлбэлзэл том байдаг тул 50-ийн баганад тод үзүүлэлт их гарна.</p><div class="scroll"><table class="freq"><thead><tr><th>Бооцоо</th><th class="num">санамсаргүй</th>${sizes.map(n => `<th class="num">${n ? 'сүүлийн ' + n : 'бүгд'}</th>`).join('')}</tr></thead><tbody>`;
     items.forEach(it => {
       const chance = it.count / 37;
@@ -1191,13 +1192,27 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     const win = state.window ? state.spins.slice(-state.window) : state.spins;
     const emp = PL.groupGapStats(win, familyId);
     const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
-    let h = `<p class="muted">Хувь = загварын таамаг, санамсаргүй ${pct(emp.base)}. Доор нь одоогийн байдал ба ийм байдлаас түүхэнд хэр бууж байсан.</p><div class="cols">` + items.map((it, i) => {
+    const rowOf = (it, i) => {
       const q = sum(it.has), ratio = q / (it.count / 37), nw = now[i];
       const own = nw && nw.state ? emp.perCat[nw.cat][nw.state] : null, pooled = nw && nw.state ? emp.states.find(x => x.state === nw.state) : null;
       const e = own && own.tries >= 10 ? own : pooled;
-      const hist = e && e.tries >= 10 ? `түүхэнд ${e === own ? 'энэ эгнээ' : 'эгнээнүүд'} ийм үед ${pct(e.rate)} (${num(e.tries)} удаа)` : 'ийм үеийн түүх цөөн';
+      return { q, ratio, nw, e, own: e === own };
+    };
+    if (items.length > 4) {
+      const rows = items.map((it, i) => Object.assign({ it }, rowOf(it, i))).sort((a, b) => b.ratio - a.ratio);
+      let t = `<p class="muted">Хувь = загварын таамаг, санамсаргүй ${pct(emp.base)}; түүх = ийм байдлаас дараагийнхад хэр бууж байсан. Магадлалаар эрэмбэлсэн.</p><div class="scroll"><table><thead><tr><th>${title}</th><th class="num">таамаг</th><th class="num">×</th><th>байдал</th><th class="num">түүх</th></tr></thead><tbody>`;
+      rows.forEach(r => { t += `<tr><td>${shortLabel(r.it.label)}</td><td class="num">${(r.q * 100).toFixed(1)}%</td><td class="num ${r.ratio > 1.05 ? 'good' : r.ratio < 0.95 ? 'bad' : ''}">×${r.ratio.toFixed(2)}</td><td>${stateText(r.nw)}</td><td class="num">${r.e && r.e.tries >= 10 ? `${pct(r.e.rate)} <small class="muted">(${num(r.e.tries)})</small>` : '—'}</td></tr>`; });
+      return t + '</tbody></table></div>' + gapHistory(emp, win, title, familyId, items);
+    }
+    let h = `<p class="muted">Хувь = загварын таамаг, санамсаргүй ${pct(emp.base)}. Доор нь одоогийн байдал ба ийм байдлаас түүхэнд хэр бууж байсан.</p><div class="cols">` + items.map((it, i) => {
+      const { q, ratio, nw, e, own } = rowOf(it, i);
+      const hist = e && e.tries >= 10 ? `түүхэнд ${own ? 'энэ бүлэг' : 'бүлгүүд'} ийм үед ${pct(e.rate)} (${num(e.tries)} удаа)` : 'ийм үеийн түүх цөөн';
       return `<div class="col ${ratio > 1.03 ? 'up' : ratio < 0.97 ? 'down' : ''}"><div class="k">${shortLabel(it.label)}</div><div class="v">${(q * 100).toFixed(1)}%</div><div class="x">×${ratio.toFixed(2)}</div><div class="s">${stateText(nw)}</div><div class="s muted">${hist}</div></div>`;
     }).join('') + '</div>';
+    return h + gapHistory(emp, win, title, familyId, items);
+  }
+  function gapHistory(emp, win, title, familyId, items) {
+    let h = '';
     const rows = emp.states.filter(x => x.tries > 0).map(x => `<tr><td>${x.label}</td><td class="num">${num(x.hits)} / ${num(x.tries)}</td><td class="num ${x.tries >= 20 && x.rate > emp.base * 1.15 ? 'good' : x.tries >= 20 && x.rate < emp.base * 0.85 ? 'bad' : ''}">${pct(x.rate)}</td><td class="num muted">×${(x.rate / emp.base).toFixed(2)}</td></tr>`).join('');
     // Streak continuation per group: after 1, 2, 3+ in a row, how often it hit again (window and the last 50).
     const last50 = PL.groupGapStats(state.spins.slice(-50), familyId);
@@ -1206,6 +1221,26 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     h += `<details><summary>${title} тус бүрийн цуваа</summary><p class="muted">Бүлэг буусны дараа дахин буусан хувь: 1 удаа буусны дараа, 2 дараалсны дараа, 3+ дараалсны дараа. Эхний тоо сонгосон цонх, хоёр дахь нь сүүлийн 50 эргэлт: “яг одоо” цуваа урт явж байгаа эсэхийг харуул. Санамсаргүй ${pct(emp.base)}.</p><div class="scroll"><table><thead><tr><th></th><th class="num">1-ийн дараа</th><th class="num">2-ын дараа</th><th class="num">3+-ын дараа</th></tr></thead><tbody>` +
       fam.cats.map((c, i) => `<tr><td>${shortLabel(items[i].label)}</td>${[['r1'], ['r2'], ['r3', 'r4']].map(keys => `<td class="num">${cell(emp, c, keys)}<br>${cell(last50, c, keys)}</td>`).join('')}</tr>`).join('') + '</tbody></table></div></details>';
     h += `<details><summary>${title}: завсрын түүх (${state.window ? 'сүүлийн ' + num(win.length) : 'бүх ' + num(win.length)} эргэлт)</summary><p class="muted">Бүлэг тухайн байдалд байхад дараагийн эргэлтэд хэр бууж байсан бэ. Санамсаргүй бол ${pct(emp.base)}. 20-оос дээш тохиолдолтой, ×1.15-аас дээш эсвэл ×0.85-аас доош мөр л анхаарал татна; загвар үүнийг “Бүлгийн завсар” хэв маягаар өөрөө сурдаг.</p><div class="scroll"><table><thead><tr><th>Байдал</th><th class="num">буусан / нийт</th><th class="num">хувь</th><th class="num">×</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+    return h;
+  }
+  // House side: where the crowd's money probably is (fixed habit strengths), and the opposite of it.
+  const HOUSE_FAMILIES = [['Өнгө', () => GROUPS[0].items.slice(0, 2)], ['Тэгш / сондгой', () => GROUPS[0].items.slice(3, 5)], ['Бага / их', () => GROUPS[0].items.slice(5, 7)], ['Арван хоёр', () => GROUPS[1].items.slice(0, 3)], ['Эгнээ 2:1', () => GROUPS[1].items.slice(3, 6)], ['Мөр', () => GROUPS[8].items]];
+  function housePanel(p) {
+    if (state.spins.length < 10) return '';
+    const ce = PL.crowdEstimate(state.spins), share = ce.share;
+    const sum = (v, has) => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += v[k]; return q; };
+    const anti = state.next && state.next.models.find(m => m.id === 'anti'), beta = anti ? anti.param : 0;
+    const verdict = beta > 0.15 ? `<b>Өгөгдөл дэмжиж байна:</b> бөмбөг олны мөнгөнөөс холдож буудаг (β = +${beta.toFixed(2)}).` : beta < -0.15 ? `<b>Эсрэгээрээ:</b> бөмбөг олны тавьсан тал руу буудаг (β = ${beta.toFixed(2)}), казинод ашигтай тал руу биш.` : `Одоогоор олны эсрэг ч, талд ч гэсэн дохио алга (β = ${beta.toFixed(2)}). Доорх “казинод ашигтай” багана нь зөвхөн тооцоолол.`;
+    let h = `<p class="muted">Тоглогчдын баримтжсан зуршлаас (цувааны дараа эсрэг өнгө, удсан тоо, халуун тоо, алдартай тоо, саяхан буусан, өмнөхийн хөрш) олны мөнгө хаана байхыг тооцоолов. Казинод ашигтай нь олон хамгийн бага тавьсан бүлэг. ${verdict}</p>`;
+    h += `<div class="scroll"><table><thead><tr><th>Бүлэг</th><th>Олон их тавих</th><th>Казинод ашигтай</th><th class="num">загвар ×</th></tr></thead><tbody>`;
+    HOUSE_FAMILIES.forEach(([name, get]) => {
+      const items = get().map(it => ({ it, crowd: sum(share, it.has) / (it.count / 37), model: sum(p, it.has) / (it.count / 37) })).sort((a, b) => b.crowd - a.crowd);
+      const most = items[0], least = items[items.length - 1];
+      h += `<tr><td>${name}</td><td>${shortLabel(most.it.label)} <small class="muted">×${most.crowd.toFixed(2)}</small></td><td><b>${shortLabel(least.it.label)}</b> <small class="muted">×${least.crowd.toFixed(2)}</small></td><td class="num ${least.model > 1.05 ? 'good' : least.model < 0.95 ? 'bad' : ''}">×${least.model.toFixed(2)}</td></tr>`;
+    });
+    h += '</tbody></table></div>';
+    const ord = share.map((v, k) => ({ v, k })).sort((a, b) => a.v - b.v);
+    h += `<p class="muted">Олон хамгийн бага тавих тоо (казинод хамгийн хямд): ${ord.slice(0, 5).map(o => `<span class="n" style="background:${pocketColor(o.k)};display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.8rem">${o.k}</span>`).join(' ')} · хамгийн их тавих: ${ord.slice(-3).reverse().map(o => o.k).join(', ')}. “Олны эсрэг, тооцоолсон” хэв маяг энэ тооцооллоос сурдаг; бодит бооцооны тархалт (тоглогчийн бүртгэл) орвол “Олны эсрэг” загвар илүү нарийн болно.</p>`;
     return h;
   }
   // The best bet in every family, as the summary cards and the floating overlay both show them.
@@ -1218,7 +1253,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     const colNow = PL.groupGapStats(state.spins, 'column').now[colItems.findIndex(it => it.label === colRow.label)];
     colRow.label = shortLabel(colRow.label).replace(' 2:1', '') + ' · ' + stateText(colNow).replace(' эргэлт', '').replace(' буусан', '');
     return [
-      colRow, row('Арван хоёр', G[1].items.slice(0, 3)),
+      colRow, row('Мөр', G[8].items), row('Арван хоёр', G[1].items.slice(0, 3)),
       row('Өнгө', G[0].items.slice(0, 2)), row('Тэгш / сондгой', G[0].items.slice(3, 5)), row('Бага / их', G[0].items.slice(5, 7)),
       row('Хосолсон', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items)),
       { k: 'Дугуйн бүс', label: w.nums.join(' '), q: w.q, ratio: w.ratio },
@@ -1379,6 +1414,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     h += simple('Тэгш / сондгой', G[0].items.slice(3, 5));
     h += simple('Бага / их', G[0].items.slice(5, 7));
     h += simple('Арван хоёр', G[1].items.slice(0, 3));
+    h += simple('Мөр (3 тоо)', G[8].items);
     h += simple('Хосолсон шилдэг', G[2].items.concat(G[3].items, G[4].items, G[5].items, G[6].items));
     h += simple('Дугуйн бүс (уламжлалт)', G[7].items.slice(0, 4));
     const sp = state.next && state.next.next.steerProb;
@@ -1405,6 +1441,8 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
       : `<div class="advice none">Нэг тоон дээр давуу тал алга: аль ч тоо босгыг (${state.straightRet} × магадлал − 1 > ${Math.round(margin * 100)}%) давахгүй. Шударга тоглоом дээр энэ хэвийн.</div>`;
     h += `<h3>Эгнээ 2:1</h3>` + groupPanel(p, 'column', GROUPS[1].items.slice(3, 6), 'Эгнээ');
     h += `<details><summary>Арван хоёр: мөн адил</summary>${groupPanel(p, 'dozen', GROUPS[1].items.slice(0, 3), 'Арван хоёр')}</details>`;
+    h += `<h3>Мөр (3 тоо)</h3>` + groupPanel(p, 'street', GROUPS[8].items, 'Мөр');
+    h += `<h3>Казинод ашигтай тал</h3>` + housePanel(p);
     h += `<h3>Тоо</h3><div class="picks${order[0].v * 37 < 1.1 ? ' flat' : ''}">${order.slice(0, 5).map(o => `<span class="pick"><span class="n" style="background:${pocketColor(o.k)}">${o.k}</span><span>${(o.v * 100).toFixed(1)}%<br><small>×${(o.v * 37).toFixed(2)}</small></span></span>`).join('')}</div>`;
     if (order[0].v * 37 < 1.1) h += `<p class="muted">Бүх тоо ×1.10-аас доош: загвар аль ч тоог ялгахгүй байна. Өгөгдөл цөөн үед сая буусан тоонууд жагсаалтын эхэнд гарах нь хэвийн, энэ нь таамаг биш. Доорх бүлгийн (өнгө, арван хоёр, эгнээ) таамаг болон хэв маяг бүрийн хүснэгтийг хар.</p>`;
     h += renderModels(r);
