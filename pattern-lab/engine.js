@@ -169,7 +169,8 @@
     const first = lines.find(l => l.trim()) || '';
     const errors = [];
     const spins = [];
-    if (/[a-zа-я]/i.test(first) && /,|;|\t/.test(first)) {
+    // A CSV header: every cell starts with a letter ("number,session,b0"), unlike "(5x100), 17".
+    if (/^\s*[a-zа-яөү_][\w\-]*(\s*[,;\t]\s*[a-zа-яөү_][\w\-]*)+\s*$/i.test(first)) {
       const sep = first.includes('\t') ? '\t' : first.includes(';') ? ';' : ',';
       const head = first.split(sep).map(h => h.trim().toLowerCase());
       const col = names => head.findIndex(h => names.includes(h));
@@ -181,6 +182,8 @@
       const iP = col(['players', 'player_count', 'тоглогч', 'тоглогчид']);
       const iW = col(['won', 'total_won', 'payout', 'paid', 'хожсон']);
       const iM = col(['multipliers', 'multiplier', 'lightning', 'mult', 'үржүүлэгч']);
+      const iH = col(['hit', 'lightning_hit', 'mult_hit', 'буусан']);
+      const iPart = col(['mult_partial', 'partial']);
       if (iN < 0) return { spins, errors: ['Толгой мөрөнд "number" багана олдсонгүй.'] };
       const stakeCols = head.map((h, i) => ({ h, i })).filter(c => /^b([0-9]|[12][0-9]|3[0-6])$/.test(c.h) || OUTSIDE[c.h]);
       const start = lines.indexOf(first) + 1;
@@ -201,21 +204,32 @@
           players: iP >= 0 && parseInt(cells[iP], 10) > 0 ? parseInt(cells[iP], 10) : null,
           won: iW >= 0 && cells[iW] !== undefined && cells[iW].trim() !== '' ? parseFloat(cells[iW]) || 0 : null,
           mult: iM >= 0 ? parseMult(cells[iM]) : null,
+          light: iH >= 0 && String(cells[iH] || '').trim() !== '' ? /^(1|true|yes|y|да|тийм)$/i.test(String(cells[iH]).trim()) : null,
+          multPartial: iPart >= 0 ? /^(1|true|yes)$/i.test(String(cells[iPart] || '').trim()) : false,
           liab: stakeCols.length ? liabilityFromStakes(stakes) : null,
         });
       }
       return { spins, errors };
     }
     // Plain list: numbers separated by anything; a blank line, '#' or '---' starts a new session.
+    // A number in parentheses landed on a multiplier number; when any parentheses are used, the
+    // other numbers are taken as "no multiplier hit".
+    const hasParens = /\(\s*\d/.test(text);
     let session = 1, sawNumber = false;
     lines.forEach((raw, li) => {
       const line = raw.trim();
       if (!line || line.startsWith('#') || /^-{3,}$/.test(line)) { if (sawNumber) { session++; sawNumber = false; } return; }
-      line.split(/[^0-9]+/).filter(Boolean).forEach(tok => {
-        const n = parseInt(tok, 10);
-        if (n >= 0 && n <= 36) { spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null, mult: null, liab: null }); sawNumber = true; }
-        else errors.push(`${li + 1}-р мөр: "${tok}" 0–36 биш.`);
-      });
+      const re = /\(\s*(\d{1,2})\s*(?:[x×:*]\s*(\d+))?\s*\)|(\d+)/g;
+      let m;
+      while ((m = re.exec(line))) {
+        const inParens = m[1] != null;
+        const n = parseInt(inParens ? m[1] : m[3], 10);
+        if (!(n >= 0 && n <= 36)) { errors.push(`${li + 1}-р мөр: "${m[0]}" 0–36 биш.`); continue; }
+        const k = m[2] ? parseInt(m[2], 10) : 0;
+        spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null,
+          light: inParens ? true : (hasParens ? false : null), mult: k > 1 ? { [n]: k } : null, multPartial: inParens, liab: null });
+        sawNumber = true;
+      }
     });
     return { spins, errors };
   }
@@ -223,13 +237,15 @@
   function spinsToCsv(spins) {
     const hasL = spins.some(s => s.liab);
     const hasDir = spins.some(s => s.dir), hasT = spins.some(s => s.time != null), hasP = spins.some(s => s.players != null);
-    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult);
+    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult), hasH = spins.some(s => s.light != null), hasPart = spins.some(s => s.multPartial);
     const head = ['number', 'session', 'dealer'];
     if (hasDir) head.push('direction');
     if (hasT) head.push('time');
     if (hasP) head.push('players');
     if (hasW) head.push('won');
     if (hasM) head.push('multipliers');
+    if (hasH) head.push('hit');
+    if (hasPart) head.push('mult_partial');
     if (hasL) for (let k = 0; k < N; k++) head.push('b' + k);
     const rows = [head.join(',')];
     spins.forEach(s => {
@@ -239,6 +255,8 @@
       if (hasP) r.push(s.players == null ? '' : s.players);
       if (hasW) r.push(s.won == null ? '' : s.won);
       if (hasM) r.push(multToStr(s.mult));
+      if (hasH) r.push(s.light == null ? '' : s.light ? 1 : 0);
+      if (hasPart) r.push(s.multPartial ? 1 : 0);
       // Liability is exported as an equivalent straight-up stake (liability / 36).
       if (hasL) for (let k = 0; k < N; k++) r.push(s.liab ? +(s.liab[k] / 36).toFixed(3) : 0);
       rows.push(r.join(','));
@@ -258,7 +276,11 @@
     return v / N;
   }
 
-  function runTests(spins) {
+  const lightHit = s => (s.mult && !s.multPartial) ? !!s.mult[s.n] : s.light;
+
+  function runTests(spins, opts) {
+    opts = opts || {};
+    const avgLightning = opts.avgLightning || 3;
     const out = {};
     const n = spins.length;
     const counts = new Array(N).fill(0);
@@ -349,19 +371,27 @@
     // hits a multiplier number with probability (count of multiplier numbers) / 37. A house that
     // steers away from expensive numbers shows up as a deficit here. Normal approximation to the
     // Poisson-binomial; negative z = the ball avoids multiplier numbers.
+    // When only "did it land on a multiplier number" is known, the count of multiplier numbers
+    // that round is unknown and the configured average (default 3 of 37) stands in for it.
     function hitBand(label, arr) {
-      let mean = 0, v = 0, obs = 0;
-      arr.forEach(s => { const q = Object.keys(s.mult).length / N; mean += q; v += q * (1 - q); if (s.mult[s.n]) obs++; });
+      let mean = 0, v = 0, obs = 0, assumed = 0;
+      arr.forEach(s => {
+        const full = s.mult && !s.multPartial;
+        const q = (full ? Object.keys(s.mult).length : avgLightning) / N;
+        if (!full) assumed++;
+        mean += q; v += q * (1 - q); if (lightHit(s)) obs++;
+      });
       const z = v > 0 ? (obs - mean) / Math.sqrt(v) : 0;
-      return { label, n: arr.length, exp: mean, obs, z, p: arr.length ? twoSided(z) : 1 };
+      return { label, n: arr.length, exp: mean, obs, z, assumed, p: arr.length ? twoSided(z) : 1 };
     }
-    const withM = spins.filter(s => s.mult);
+    const withM = spins.filter(s => lightHit(s) != null);
     if (withM.length) {
+      const full = withM.filter(s => s.mult && !s.multPartial);
       const maxM = s => Math.max(...Object.values(s.mult));
       const bands = [
-        hitBand('Үржүүлэгч 100x хүртэл', withM.filter(s => maxM(s) <= 100)),
-        hitBand('Үржүүлэгч 101–500x', withM.filter(s => maxM(s) > 100 && maxM(s) <= 500)),
-        hitBand('Үржүүлэгч 500x-аас дээш', withM.filter(s => maxM(s) > 500)),
+        hitBand('Үржүүлэгч 100x хүртэл', full.filter(s => maxM(s) <= 100)),
+        hitBand('Үржүүлэгч 101–500x', full.filter(s => maxM(s) > 100 && maxM(s) <= 500)),
+        hitBand('Үржүүлэгч 500x-аас дээш', full.filter(s => maxM(s) > 500)),
       ].filter(b => b.n);
       out.lightning = Object.assign(hitBand('Бүгд', withM), { bands });
     }
@@ -372,7 +402,7 @@
       sub.forEach(s => c[s.n]++);
       const ee = sub.length / N;
       let x = 0; for (let k = 0; k < N; k++) x += (c[k] - ee) ** 2 / (ee || 1);
-      const pl = sub.filter(s => s.players != null), wn = sub.filter(s => s.won != null), lm = sub.filter(s => s.mult);
+      const pl = sub.filter(s => s.players != null), wn = sub.filter(s => s.won != null), lm = sub.filter(s => lightHit(s) != null);
       return {
         label: b.label, n: sub.length, uniformP: sub.length ? chi2p(x, 36) : 1,
         players: pl.length ? pl.reduce((a, s) => a + s.players, 0) / pl.length : null,
@@ -449,6 +479,53 @@
     return q;
   }
 
+  // Where the crowd's money probably sits, estimated from the outcome history alone with
+  // the habits the gambling literature documents. Each feature is a 37-vector, standardized.
+  const POPULAR = new Float64Array(N);
+  [17, 7, 23, 24, 3, 11, 0, 13, 20, 8].forEach((n, i) => { POPULAR[n] += 1 - i * 0.07; });
+  for (let k = 1; k <= 31; k++) POPULAR[k] += 0.4; // birthdays
+  const PSYCH_FEATURES = [
+    { id: 'colorStreak', label: 'Өнгөний цуваа', hint: 'Нэг өнгө 2+ удаа дараалсны дараа олон эсрэг өнгөнд тавьдаг.' },
+    { id: 'halfStreak', label: 'Бага/их цуваа', hint: '1–18 эсвэл 19–36 дараалсны дараа эсрэг талд тавьдаг.' },
+    { id: 'parityStreak', label: 'Тэгш/сондгой цуваа', hint: 'Тэгш эсвэл сондгой дараалсны дараа эсрэгт нь тавьдаг.' },
+    { id: 'recent', label: 'Саяхан буусан тоо', hint: 'Сүүлийн 5 эргэлтэд буусан тоонд “давтана” гэж тавьдаг.' },
+    { id: 'overdue', label: '“Удсан” тоо', hint: 'Удаан буугаагүй тоонд “ээлж нь ирлээ” гэж тавьдаг.' },
+    { id: 'hot', label: 'Халуун тоо', hint: 'Сүүлийн 37 эргэлтэд олон буусан тоонд тавьдаг.' },
+    { id: 'popular', label: 'Алдартай тоо', hint: '17, 7, 23, 24, 0 болон төрсөн өдрийн тоонууд (1–31).' },
+    { id: 'neighbors', label: 'Өмнөх тооны хөрш', hint: 'Дугуй дээр өмнөх тооны хажуугийн нүднүүдэд тавьдаг.' },
+  ];
+  function streakOf(hist, fn) {
+    let c = null, L = 0;
+    for (let i = hist.length - 1; i >= 0; i--) {
+      const v = fn(hist[i]);
+      if (v == null) break;
+      if (c == null) c = v;
+      if (v !== c) break;
+      L++;
+    }
+    return { c, L };
+  }
+  function psychFeatures(ctx) {
+    const hist = ctx.hist || [];
+    const F = [];
+    const streakFeature = fn => {
+      const st = streakOf(hist, fn), f = new Float64Array(N);
+      if (st.L >= 2) { const L = Math.min(st.L, 6); for (let k = 0; k < N; k++) { const v = fn(k); if (v != null) f[k] = v === st.c ? -L : L; } }
+      return f;
+    };
+    F.push(streakFeature(n => (n === 0 ? null : colorOf(n))));
+    F.push(streakFeature(n => (n === 0 ? null : n >= 19 ? 'H' : 'L')));
+    F.push(streakFeature(n => (n === 0 ? null : n % 2 ? 'O' : 'E')));
+    const recent = new Float64Array(N); hist.slice(-5).forEach(n => { recent[n] = 1; }); F.push(recent);
+    const overdue = new Float64Array(N); for (let k = 0; k < N; k++) overdue[k] = Math.log1p(ctx.gaps[k]); F.push(overdue);
+    const hot = new Float64Array(N); hist.slice(-37).forEach(n => { hot[n] += 1; }); F.push(hot);
+    F.push(POPULAR);
+    const nb = new Float64Array(N);
+    if (ctx.prev != null) for (let k = 0; k < N; k++) { const d = wheelDist(ctx.prev, k); if (k !== ctx.prev && (d <= 2 || d >= N - 2)) nb[k] = 1; }
+    F.push(nb);
+    return F.map(standardize);
+  }
+
   const MODEL_INFO = {
     uniform: { label: 'Шударга дугуй', hint: '37 нүд бүгд 1/37. Харьцуулах суурь.' },
     freq: { label: 'Давтамж', hint: 'Олон буусан тоо дахин бууна гэж үзнэ (хазгай дугуй).' },
@@ -458,6 +535,7 @@
     markov: { label: 'Дараалал', hint: 'Өмнөх тоо дараагийнхыг тодорхойлдог эсэх.' },
     crowd: { label: 'Олны эсрэг', hint: 'Их бооцоотой нүд буухгүй гэж таана (казино удирддаг бол).' },
     overdue: { label: '“Удсан тоо”', hint: 'Тоглогчдын итгэл: удаан буугаагүй тоо удахгүй бууна. Жин нь хасах бол эсрэгээрээ.' },
+    psych: { label: 'Олны сэтгэл зүй', hint: 'Тоглогчид хаана их тавьж байгааг зуршлаас нь тооцоолж, үр дүн тэдний талд уу, эсрэг үү гэдгийг сурна.' },
   };
 
   function makeModels(cfg) {
@@ -473,6 +551,7 @@
     const Msum = new Float64Array(N);
     const KERNEL = [1, 0.7, 0.4, 0.15];
     let rhoG = 0.02, rhoS = 0.02, gamma = 0;
+    const pw = new Float64Array(PSYCH_FEATURES.length);
     const lr = cfg.lr;
     return [
       { id: 'uniform', predict: () => uniformP(), update() {} },
@@ -568,6 +647,27 @@
         param: () => rhoG,
       },
       {
+        id: 'psych',
+        predict(ctx) {
+          const F = ctx._psychF || (ctx._psychF = psychFeatures(ctx));
+          const p = new Float64Array(N);
+          let mx = -Infinity;
+          for (let k = 0; k < N; k++) { let v = 0; for (let j = 0; j < F.length; j++) v += pw[j] * F[j][k]; p[k] = v; if (v > mx) mx = v; }
+          for (let k = 0; k < N; k++) p[k] = Math.exp(p[k] - mx);
+          return normalize(p);
+        },
+        update(ctx, y) {
+          const F = ctx._psychF || psychFeatures(ctx), p = this.predict(ctx);
+          // Log-loss gradient; the step shrinks as evidence accumulates.
+          const step = Math.max(0.01, 0.05 / Math.sqrt(1 + ctx.step / 200));
+          for (let j = 0; j < F.length; j++) {
+            let ez = 0; for (let k = 0; k < N; k++) ez += p[k] * F[j][k];
+            pw[j] = Math.max(-3, Math.min(3, pw[j] + step * (F[j][y] - ez)));
+          }
+        },
+        param: () => Array.from(pw),
+      },
+      {
         id: 'overdue',
         predict(ctx) {
           const g = new Float64Array(N); for (let k = 0; k < N; k++) g[k] = -Math.log1p(ctx.gaps[k]);
@@ -604,11 +704,11 @@
     let bankroll = 0, bets = 0, hits = 0, expectedHits = 0;
     const every = Math.max(1, Math.floor(spins.length / 300));
     const dirs = directions(spins);
-    let prev = null, prevSession = null;
+    let prev = null, prevSession = null, hist = [];
     for (let t = 0; t < spins.length; t++) {
       const s = spins[t];
-      if (s.session !== prevSession) prev = null;
-      const ctx = { prev, liab: s.liab, gaps, step: t, dir: dirs[t], newSession: s.session !== prevSession };
+      if (s.session !== prevSession) { prev = null; hist = []; }
+      const ctx = { prev, liab: s.liab, gaps, step: t, dir: dirs[t], hist, newSession: s.session !== prevSession };
       const preds = models.map(m => m.predict(ctx));
       const p = new Float64Array(N);
       for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
@@ -639,9 +739,20 @@
       for (let k = 0; k < N; k++) gaps[k]++;
       gaps[y] = 0;
       prev = y; prevSession = s.session;
+      hist.push(y); if (hist.length > 120) hist.shift();
+    }
+    // Forecast for the spin that has not happened yet (same session, stakes unknown).
+    let next = null;
+    if (opts.next) {
+      const t = spins.length, dir = t && spins[t - 1].dir ? null : (t % 2 ? 'B' : 'A');
+      const ctx = { prev, liab: null, gaps, step: t, dir: dir || 'A', hist, newSession: t === 0 };
+      const preds = models.map(m => m.predict(ctx));
+      const p = new Float64Array(N);
+      for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
+      next = { p: Array.from(p), models: models.map((m, i) => ({ id: m.id, weight: w[i], p: Array.from(preds[i]) })) };
     }
     return {
-      cfg, scored, bits, bitsPerSpin: scored ? bits / scored : 0,
+      next, cfg, scored, bits, bitsPerSpin: scored ? bits / scored : 0,
       top1, top3, curve, bank, weightsHist,
       models: models.map((m, i) => ({ id: m.id, bits: modelBits[i], weight: w[i], param: m.param ? m.param() : null })),
       betting: { bets, hits, expectedHits, bankroll, roi: bets ? bankroll / bets : 0, p: bets ? binomSf(hits, bets, 1 / N) : 1 },
@@ -946,7 +1057,7 @@
     chi2p, normSf, binomSf,
     parseSpins, spinsToCsv, parseMult, multToStr, parseTime, runTests,
     MODEL_INFO, DEFAULT_CFG, walkForward, nullRuns, train,
-    PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers,
+    PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PL = api;
