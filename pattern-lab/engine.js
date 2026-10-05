@@ -107,7 +107,8 @@
   }
 
   // ---------- Data parsing ----------
-  // A spin: { n, session, dealer, liab: Float64Array(37) | null }
+  // A spin: { n, session, dealer, dir, liab: Float64Array(37) | null }
+  // dir: ball launch direction ('A' / 'B') when known. Many automatic wheels alternate it every spin.
   // liab[k] = what the house pays out if k wins (sum over all bets on the table).
   function liabilityFromStakes(stakes) {
     const L = new Float64Array(N);
@@ -126,6 +127,25 @@
     return any ? L : null;
   }
 
+  function parseDir(v) {
+    const t = String(v == null ? '' : v).trim().toLowerCase();
+    if (['cw', 'r', 'right', '1', '+', '+1', 'a', 'clockwise'].includes(t)) return 'A';
+    if (['ccw', 'acw', 'l', 'left', '-1', '-', '0', 'b', 'counterclockwise', 'anticlockwise'].includes(t)) return 'B';
+    return null;
+  }
+  // Launch direction for every spin: the recorded one, else alternate within the session
+  // (the usual behaviour of automatic wheels).
+  function directions(spins) {
+    const out = new Array(spins.length);
+    let k = 0;
+    for (let i = 0; i < spins.length; i++) {
+      if (i === 0 || spins[i].session !== spins[i - 1].session) k = 0;
+      out[i] = spins[i].dir || (k % 2 ? 'B' : 'A');
+      k++;
+    }
+    return out;
+  }
+
   function parseSpins(text) {
     const lines = String(text || '').replace(/\r/g, '').split('\n');
     const first = lines.find(l => l.trim()) || '';
@@ -137,7 +157,8 @@
       const col = names => head.findIndex(h => names.includes(h));
       const iN = col(['number', 'n', 'result', 'outcome', 'тоо', 'үр дүн']);
       const iS = col(['session', 'сесс', 'session_id', 'table_session']);
-      const iD = col(['dealer', 'дилер', 'croupier']);
+      const iD = col(['dealer', 'дилер', 'croupier', 'machine', 'wheel']);
+      const iR = col(['direction', 'dir', 'чиглэл', 'spin_direction']);
       if (iN < 0) return { spins, errors: ['Толгой мөрөнд "number" багана олдсонгүй.'] };
       const stakeCols = head.map((h, i) => ({ h, i })).filter(c => /^b([0-9]|[12][0-9]|3[0-6])$/.test(c.h) || OUTSIDE[c.h]);
       const start = lines.indexOf(first) + 1;
@@ -153,6 +174,7 @@
           n,
           session: iS >= 0 ? String(cells[iS] || '').trim() || '1' : '1',
           dealer: iD >= 0 ? String(cells[iD] || '').trim() : '',
+          dir: iR >= 0 ? parseDir(cells[iR]) : null,
           liab: stakeCols.length ? liabilityFromStakes(stakes) : null,
         });
       }
@@ -165,7 +187,7 @@
       if (!line || line.startsWith('#') || /^-{3,}$/.test(line)) { if (sawNumber) { session++; sawNumber = false; } return; }
       line.split(/[^0-9]+/).filter(Boolean).forEach(tok => {
         const n = parseInt(tok, 10);
-        if (n >= 0 && n <= 36) { spins.push({ n, session: String(session), dealer: '', liab: null }); sawNumber = true; }
+        if (n >= 0 && n <= 36) { spins.push({ n, session: String(session), dealer: '', dir: null, liab: null }); sawNumber = true; }
         else errors.push(`${li + 1}-р мөр: "${tok}" 0–36 биш.`);
       });
     });
@@ -174,11 +196,14 @@
 
   function spinsToCsv(spins) {
     const hasL = spins.some(s => s.liab);
+    const hasDir = spins.some(s => s.dir);
     const head = ['number', 'session', 'dealer'];
+    if (hasDir) head.push('direction');
     if (hasL) for (let k = 0; k < N; k++) head.push('b' + k);
     const rows = [head.join(',')];
     spins.forEach(s => {
       const r = [s.n, s.session, s.dealer || ''];
+      if (hasDir) r.push(s.dir === 'A' ? 'cw' : s.dir === 'B' ? 'ccw' : '');
       // Liability is exported as an equivalent straight-up stake (liability / 36).
       if (hasL) for (let k = 0; k < N; k++) r.push(s.liab ? +(s.liab[k] / 36).toFixed(3) : 0);
       rows.push(r.join(','));
@@ -220,13 +245,28 @@
     const Z = n * R * R;
     out.rayleigh = { R, Z, p: n ? Math.min(1, Math.exp(-Z) * (1 + (2 * Z - Z * Z) / (4 * n))) : 1, angle: Math.atan2(cy, cx) };
 
-    // Dealer signature: distance on the wheel between consecutive results in the same session.
+    // Launch signature (dealer's hand or the machine): wheel distance between consecutive results in a session.
     const dc = new Array(N).fill(0);
     let dn = 0;
     for (let i = 1; i < n; i++) if (spins[i].session === spins[i - 1].session) { dc[wheelDist(spins[i - 1].n, spins[i].n)]++; dn++; }
     let dchi = 0;
     for (let d = 0; d < N; d++) dchi += (dc[d] - dn / N) ** 2 / ((dn / N) || 1);
     out.signature = { counts: dc, n: dn, stat: dchi, p: dn ? chi2p(dchi, 36) : 1, top: dc.map((c, d) => ({ d, c })).sort((a, b) => b.c - a.c).slice(0, 3) };
+    // Same, but separately for each launch direction; a machine that alternates direction can hide
+    // two sharp patterns inside one flat-looking distribution.
+    const dirs = directions(spins);
+    const byDir = { A: new Array(N).fill(0), B: new Array(N).fill(0) };
+    for (let i = 1; i < n; i++) if (spins[i].session === spins[i - 1].session) byDir[dirs[i]][wheelDist(spins[i - 1].n, spins[i].n)]++;
+    let schi = 0, sdf = 0;
+    const tops = {};
+    ['A', 'B'].forEach(k => {
+      const c = byDir[k], m = c.reduce((a, b) => a + b, 0);
+      if (!m) return;
+      for (let d = 0; d < N; d++) schi += (c[d] - m / N) ** 2 / (m / N);
+      sdf += 36;
+      tops[k] = c.map((v, d) => ({ d, c: v })).sort((a, b) => b.c - a.c).slice(0, 2);
+    });
+    out.signatureDir = { stat: schi, df: sdf, p: sdf ? chi2p(schi, sdf) : 1, top: tops, recorded: spins.some(s => s.dir) };
 
     // Wald–Wolfowitz runs test on red/black (zeros dropped).
     const cs = spins.map(s => colorOf(s.n)).filter(c => c !== 'G');
@@ -331,7 +371,8 @@
     uniform: { label: 'Шударга дугуй', hint: '37 нүд бүгд 1/37. Харьцуулах суурь.' },
     freq: { label: 'Давтамж', hint: 'Олон буусан тоо дахин бууна гэж үзнэ (хазгай дугуй).' },
     sector: { label: 'Дугуйн хэсэг', hint: 'Дугуй дээр зэргэлдээ нүднүүдийн давтамжийг нэгтгэнэ (налуу, элэгдэл).' },
-    signature: { label: 'Дилерийн гар', hint: 'Өмнөх тооноос дугуй дээр хэдэн нүд алгасахыг сурна.' },
+    signature: { label: 'Шидэлтийн зай', hint: 'Өмнөх тооноос дугуй дээр хэдэн нүд алгасахыг сурна (дилер эсвэл машин).' },
+    signatureDir: { label: 'Чиглэлтэй шидэлт', hint: 'Мөн адил, гэхдээ бөмбөгийг шидсэн чиглэл бүрээр тусад нь сурна (автомат дугуй).' },
     markov: { label: 'Дараалал', hint: 'Өмнөх тоо дараагийнхыг тодорхойлдог эсэх.' },
     crowd: { label: 'Олны эсрэг', hint: 'Их бооцоотой нүд буухгүй гэж таана (казино удирддаг бол).' },
     overdue: { label: '“Удсан тоо”', hint: 'Тоглогчдын итгэл: удаан буугаагүй тоо удахгүй бууна. Жин нь хасах бол эсрэгээрээ.' },
@@ -344,6 +385,7 @@
     const freqP = () => { const p = new Float64Array(N); for (let k = 0; k < N; k++) p[k] = (freqRaw[k] + a) / (freqSum + N * a); return p; };
     const decayFreq = y => { for (let k = 0; k < N; k++) freqRaw[k] *= decay; freqSum = freqSum * decay + 1; freqRaw[y] += 1; };
     const sigRaw = new Float64Array(N);
+    const sigDir = { A: new Float64Array(N), B: new Float64Array(N) };
     let sigSum = 0;
     const M = Array.from({ length: N }, () => new Float64Array(N));
     const Msum = new Float64Array(N);
@@ -384,6 +426,26 @@
           for (let d = 0; d < N; d++) sigRaw[d] *= decay;
           sigSum = sigSum * decay + 1;
           sigRaw[wheelDist(ctx.prev, y)] += 1;
+        },
+      },
+      {
+        id: 'signatureDir',
+        predict(ctx) {
+          if (ctx.prev == null) return uniformP();
+          const t = sigDir[ctx.dir], p = new Float64Array(N);
+          for (let k = 0; k < N; k++) {
+            const d = wheelDist(ctx.prev, k);
+            let s = 0;
+            for (let o = -2; o <= 2; o++) s += KERNEL[Math.abs(o)] * t[(d + o + N) % N];
+            p[k] = s / 2.8 + a;
+          }
+          return normalize(p);
+        },
+        update(ctx, y) {
+          if (ctx.prev == null) return;
+          const t = sigDir[ctx.dir];
+          for (let d = 0; d < N; d++) t[d] *= decay;
+          t[wheelDist(ctx.prev, y)] += 1;
         },
       },
       {
@@ -458,11 +520,12 @@
     const curve = [], weightsHist = [], bank = [];
     let bankroll = 0, bets = 0, hits = 0, expectedHits = 0;
     const every = Math.max(1, Math.floor(spins.length / 300));
+    const dirs = directions(spins);
     let prev = null, prevSession = null;
     for (let t = 0; t < spins.length; t++) {
       const s = spins[t];
       if (s.session !== prevSession) prev = null;
-      const ctx = { prev, liab: s.liab, gaps, step: t, newSession: s.session !== prevSession };
+      const ctx = { prev, liab: s.liab, gaps, step: t, dir: dirs[t], newSession: s.session !== prevSession };
       const preds = models.map(m => m.predict(ctx));
       const p = new Float64Array(N);
       for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
@@ -507,7 +570,7 @@
     const r = rng(seed || 7);
     const out = [];
     for (let i = 0; i < reps; i++) {
-      const sh = spins.map(s => ({ n: Math.floor(r() * N), session: s.session, dealer: s.dealer, liab: s.liab }));
+      const sh = spins.map(s => ({ n: Math.floor(r() * N), session: s.session, dealer: s.dealer, dir: s.dir, liab: s.liab }));
       const res = walkForward(sh, cfg, opts);
       out.push({ bits: res.bits, bitsPerSpin: res.bitsPerSpin, roi: res.betting.roi, bankroll: res.betting.bankroll });
     }
@@ -582,7 +645,7 @@
     players.forEach(p => { p.stake = p.base; });
     const per = Math.ceil(o.spins / o.sessions);
     const biasPockets = new Set([WHEEL[5], WHEEL[6], WHEEL[7], WHEEL[8]]);
-    const sigD = 1 + Math.floor(r() * 35);
+    const sigD = 1 + Math.floor(r() * 35), sigD2 = 1 + Math.floor(r() * 35);
     const rigged = new Set();
     for (let s = 1; s <= o.sessions; s++) if (o.wheel === 'house' && r() < o.house) rigged.add(String(s));
     const spins = [], log = [], history = [];
@@ -630,8 +693,10 @@
       let y;
       const pr = new Float64Array(N).fill(1);
       if (o.wheel === 'biased') biasPockets.forEach(k => { pr[k] *= 1 + o.bias * 4; });
-      if (o.wheel === 'dealer' && sameSession && r() < o.bias) {
-        const d = (sigD + Math.round((r() - 0.5) * 4) + N) % N;
+      const dir = (t % per) % 2 ? 'B' : 'A';
+      if ((o.wheel === 'dealer' || o.wheel === 'machine') && sameSession && r() < o.bias) {
+        const base = o.wheel === 'machine' && dir === 'B' ? sigD2 : sigD;
+        const d = (base + Math.round((r() - 0.5) * 4) + N) % N;
         y = WHEEL[(POS[spins[t - 1].n] + d) % N];
       } else if (o.wheel === 'house' && rigged.has(session) && r() < o.steer) {
         // The house picks among the five pockets that would cost it least.
@@ -654,7 +719,7 @@
       gaps[y] = 0;
       history.push(y);
     }
-    return { spins, log, truth: { players: Object.fromEntries(players.map(p => [p.id, p.type])), wheel: o.wheel, rigged: Array.from(rigged), biasPockets: Array.from(biasPockets), sigD } };
+    return { spins, log, truth: { players: Object.fromEntries(players.map(p => [p.id, p.type])), wheel: o.wheel, rigged: Array.from(rigged), biasPockets: Array.from(biasPockets), sigD, sigD2 } };
   }
 
   // ---------- Player psychology ----------

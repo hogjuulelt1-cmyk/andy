@@ -154,7 +154,7 @@ td.num, th.num { text-align: right; }
   <!-- DATA -->
   <section id="tab-data" role="tabpanel">
     <h2>Эргэлтийн үр дүн оруулах</h2>
-    <p>Тоонуудыг таслал, зай, мөрөөр тусгаарлаад буулгана. Хоосон мөр эсвэл <code>---</code> шинэ сесс эхлүүлнэ. CSV бол толгой мөрөнд <code>number</code>, хүсвэл <code>session</code>, <code>dealer</code>, нүд бүрийн бооцоо <code>b0…b36</code>, гадна бооцоо <code>red, black, even, odd, low, high, d1–d3, c1–c3</code> байж болно.</p>
+    <p>Тоонуудыг таслал, зай, мөрөөр тусгаарлаад буулгана. Хоосон мөр эсвэл <code>---</code> шинэ сесс эхлүүлнэ. CSV бол толгой мөрөнд <code>number</code>, хүсвэл <code>session</code>, <code>dealer</code> (эсвэл машины дугаар), бөмбөг шидсэн чиглэл <code>direction</code> (cw/ccw), нүд бүрийн бооцоо <code>b0…b36</code>, гадна бооцоо <code>red, black, even, odd, low, high, d1–d3, c1–c3</code> байж болно.</p>
     <label for="spinText">Өгөгдөл</label>
     <textarea id="spinText" placeholder="17, 32, 0, 5, 23, 14 …"></textarea>
     <label class="check"><input type="checkbox" id="appendMode"> Одоогийн өгөгдөл дээр нэмэх (загвар хуучин өгөгдлөөсөө үргэлжлүүлж сурна)</label>
@@ -173,13 +173,14 @@ td.num, th.num { text-align: right; }
         <select id="simWheel">
           <option value="fair">Шударга</option>
           <option value="biased">Хазгай (4 зэргэлдээ нүд илүү бууна)</option>
+          <option value="machine">Автомат машин (2 чиглэлд ээлжлэн шиднэ)</option>
           <option value="dealer">Дилерийн гар (тогтмол зай алгасна)</option>
           <option value="house" selected>Казино зарим сесст удирдана</option>
         </select></div>
       <div><label for="simSpins">Эргэлтийн тоо</label><input id="simSpins" type="number" inputmode="numeric" min="200" max="50000" value="4000"></div>
       <div><label for="simSessions">Сессийн тоо</label><input id="simSessions" type="number" inputmode="numeric" min="1" max="500" value="30"></div>
       <div><label for="simPlayers">Тоглогчийн тоо</label><input id="simPlayers" type="number" inputmode="numeric" min="1" max="60" value="12"></div>
-      <div><label for="simStrength">Хүч (хазгай, гар, удирдлага)</label><input id="simStrength" type="number" inputmode="decimal" step="0.05" min="0" max="1" value="0.5"></div>
+      <div><label for="simStrength">Хүч (хазгай, шидэлт, удирдлага)</label><input id="simStrength" type="number" inputmode="decimal" step="0.05" min="0" max="1" value="0.5"></div>
       <div><label for="simHouse">Удирдсан сессийн хувь</label><input id="simHouse" type="number" inputmode="decimal" step="0.05" min="0" max="1" value="0.3"></div>
       <div><label for="simSeed">Санамсаргүй үр (seed)</label><input id="simSeed" type="number" inputmode="numeric" value="42"></div>
     </div>
@@ -197,7 +198,7 @@ td.num, th.num { text-align: right; }
   <!-- LEARN -->
   <section id="tab-learn" role="tabpanel" hidden>
     <h2>Загвар сургах</h2>
-    <p>Долоон загвар эргэлт бүрийг урьдчилж таана, дараа нь жинхэнэ үр дүнг харж, сайн таасан нь жин нэмж, муу таасан нь жин алдана. Тохиргоог өгөгдлийн эхний 70% дээр туршиж сонгоод, загвар хэзээ ч харж байгаагүй сүүлийн 30% дээр шалгана. Үр дүнг шударга дугуйгаар 19 удаа давтан үүсгэсэн өгөгдөлтэй харьцуулна.</p>
+    <p>Найман загвар эргэлт бүрийг урьдчилж таана, дараа нь жинхэнэ үр дүнг харж, сайн таасан нь жин нэмж, муу таасан нь жин алдана. Тохиргоог өгөгдлийн эхний 70% дээр туршиж сонгоод, загвар хэзээ ч харж байгаагүй сүүлийн 30% дээр шалгана. Үр дүнг шударга дугуйгаар 19 удаа давтан үүсгэсэн өгөгдөлтэй харьцуулна.</p>
     <div class="row"><button class="btn accent" id="trainBtn">Сургаж шалгах</button><span class="muted" id="trainStatus"></span></div>
     <div id="trainProgress" hidden class="progress"><i></i></div>
     <div id="learnOut"></div>
@@ -229,6 +230,7 @@ td.num, th.num { text-align: right; }
       <li>1873 онд Жозеф Жаггер Монте-Карлогийн дугуйнуудын үр дүнг хөлсний хүмүүсээр бичүүлж, нэг дугуй нь хазгай болохыг олж ашигласан гэж ярьдаг.</li>
       <li>Hibbs, Walford (1947): Рено, Лас Вегасын хазгай дугуйг статистикаар илрүүлж ашигласан. Апп-ын “Давтамж”, “Дугуйн хэсэг” загвар энэ санаан дээр тулгуурлана.</li>
       <li>Thorp, Shannon (1961): бөмбөгний хурдыг хэмжих өмсдөг компьютер хийжээ. Small, Tse (2012, <i>Chaos</i> 22) энэ аргаар 18%-ийн хүртэл давуу тал гаргаж болохыг харуулсан ч энэ нь эргэлтийн дугаарын жагсаалт биш, бөмбөгний физик хэмжилт шаарддаг.</li>
+      <li>Автомат дугуй (бөмбөгийг агаараар шиддэг) дээр дилер байхгүй ч машин өөрөө хэв маяг үүсгэж болно: шидэлтийн хүч, роторын хурд тогтмол, олон машин чиглэлээ ээлжлэн сольдог. Үйлдвэрлэгчид үүнийг хүч, хурдыг санамсаргүй хэлбэлзүүлж нуудаг тул илрэх эсэхийг өгөгдөл л харуулна. Мөн машин бүх эргэлтийг автоматаар бүртгэдэг тул их хэмжээний өгөгдөл цуглуулахад хялбар.</li>
       <li>Дилерийн гарын хэв маяг (dealer signature): дилер ижил хүчээр эргүүлбэл бөмбөг өмнөх нүднээс тогтмол зайд буух хандлагатай гэсэн таамаглал. Орчин үеийн казино дилерийг сэлгэж, чиглэлийг өөрчилдөг тул ихэвчлэн илэрдэггүй.</li>
     </ul>
     <h3>Тоглогчийн сэтгэл зүй</h3>
@@ -360,7 +362,7 @@ td.num, th.num { text-align: right; }
       <div class="stat"><div class="v">${num(s.length)}</div><div class="k">эргэлт</div></div>
       <div class="stat"><div class="v">${new Set(s.map(x => x.session)).size}</div><div class="k">сесс</div></div>
       <div class="stat"><div class="v">${pct(withBets / s.length)}</div><div class="k">бооцооны мэдээлэлтэй</div></div>
-      <div class="stat"><div class="v">${dealers || '—'}</div><div class="k">дилер</div></div></div>
+      <div class="stat"><div class="v">${dealers || '—'}</div><div class="k">дилер, машин</div></div></div>
       ${withBets ? '' : '<p class="muted">Бооцооны мэдээлэл байхгүй тул казиногийн удирдлагыг шалгах “Олны эсрэг” загвар ажиллахгүй.</p>'}`;
   }
   $('loadSpins').addEventListener('click', () => {
@@ -403,6 +405,7 @@ td.num, th.num { text-align: right; }
       fair: 'Дугуй шударга. Зөв ажиллаж байгаа апп “хэв маяг илэрсэнгүй” гэж дүгнэх ёстой.',
       biased: `Дугуй хазгай: ${t.biasPockets.join(', ')} нүд илүү бууна.`,
       dealer: `Дилер өмнөх нүднээс ойролцоогоор ${t.sigD} нүд алгасдаг.`,
+      machine: `Машин нэг чиглэлд шидэхэд ойролцоогоор ${t.sigD}, нөгөө чиглэлд ${t.sigD2} нүд алгасдаг.`,
       house: `Казино ${t.rigged.length ? t.rigged.join(', ') + '-р сесст' : 'аль ч сесст'} хамгийн бага бооцоотой нүдийг сонгодог.`,
     };
     $('simTruth').innerHTML = `<div class="panel"><b>Нууц хариу:</b> ${esc(what[t.wheel])}</div>`;
@@ -420,8 +423,13 @@ td.num, th.num { text-align: right; }
     h += testRow('Тоо бүр ижил буух уу', r.uniform.p, 'Хи-квадрат тест, 36 чөлөөний зэрэг. Бага p нь зарим тоо бусдаасаа илүү буудгийг илтгэнэ.',
       `Хамгийн их: ${r.hot.slice(0, 3).map(x => `${x.k} (z ${x.z.toFixed(1)})`).join(', ')}.`);
     h += testRow('Дугуйн нэг тал руу хазайх уу', r.rayleigh.p, 'Рэйлийн тест. Дугуй налуу эсвэл элэгдсэн бол бөмбөг дугуйн нэг хэсэгт илүү бууна.');
-    h += testRow('Дилерийн гар', r.signature.p, `Нэг сессийн дараалсан хоёр үр дүнгийн дугуй дээрх зайн тархалт (${num(r.signature.n)} хос).`,
+    h += testRow('Шидэлтийн зай', r.signature.p, `Нэг сессийн дараалсан хоёр үр дүнгийн дугуй дээрх зайн тархалт (${num(r.signature.n)} хос). Дилер эсвэл машин бөмбөгийг тогтмол хүчээр шидвэл энд илэрнэ.`,
       `Хамгийн түгээмэл зай: ${r.signature.top.map(x => x.d + ' нүд').join(', ')}.`);
+    const sd = r.signatureDir, tops = ['A', 'B'].filter(k => sd.top[k]).map(k => `${k === 'A' ? 'нэг' : 'нөгөө'} чиглэлд ${sd.top[k].map(x => x.d).join(', ')} нүд`).join(', ');
+    h += testRow('Чиглэлээр салгасан шидэлт', sd.p, sd.recorded
+      ? 'Бөмбөг шидсэн чиглэл бүрээр зайн тархалтыг тусад нь шалгав.'
+      : 'Чиглэл бичигдээгүй тул автомат дугуйн нийтлэг горимоор, сесс бүрт ээлжилдэг гэж үзэв. Хоёр чиглэлийн хэв маяг нийлээд жигд мэт харагдаж болох тул тусад нь шалгана.',
+      tops ? `Түгээмэл зай: ${tops}.` : '');
     h += testRow('Улаан, харын ээлжлэл', r.runs.p, `Вальд–Волфовицын тест: ${num(r.runs.runs)} цуваа, хүлээгдэж буй ${num(r.runs.expected)}. Хамгийн урт цуваа ${r.runs.longest}.`);
     h += testRow('Дараагийн арван хоёрт хамаарах уу', r.markov.p, 'Өмнөх эргэлтийн арван хоёрт (1–12, 13–24, 25–36) дараагийнх нь хамаардаг эсэх.');
     if (r.crowd) {
