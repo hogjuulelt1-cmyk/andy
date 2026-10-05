@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Хэв маягийн лаборатори</title>
+<meta name="description" content="Рулеткийн үр дүн, тоглогчдын зан төлөвөөс хэв маяг хайж, санамсаргүй байдлаас ялгарах эсэхийг шалгадаг судалгааны хэрэгсэл.">
+<meta name="theme-color" content="#EEF0EC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121715" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Хэв маяг">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #EEF0EC; --surface: #F8F9F6; --ink: #18211D; --muted: #56625B; --rule: #C9D0C8;
+  --red: #B3202A; --black: #1D2320; --zero: #1F7A4D; --accent: #2B59C3; --accent-ink: #fff;
+  --good: #1F7A4D; --warn: #9A6200; --bad: #B3202A;
+  --radius-s: 6px; --radius-m: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121715; --surface: #1A211E; --ink: #E4EAE5; --muted: #9AA69F; --rule: #2E3934;
+    --red: #E2555E; --black: #9AA7A0; --zero: #3FB27A; --accent: #82A6F2; --accent-ink: #0E1512;
+    --good: #3FB27A; --warn: #E0A642; --bad: #E2555E; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121715; --surface: #1A211E; --ink: #E4EAE5; --muted: #9AA69F; --rule: #2E3934;
+  --red: #E2555E; --black: #9AA7A0; --zero: #3FB27A; --accent: #82A6F2; --accent-ink: #0E1512;
+  --good: #3FB27A; --warn: #E0A642; --bad: #E2555E; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 400 16px/1.55 "Golos Text", system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 16px 64px; }
+h1 { font-size: 1.75rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; margin: 28px 0 6px; }
+h2 { font-size: 1.25rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; margin: 32px 0 8px; }
+h3 { font-size: 1rem; font-weight: 600; margin: 22px 0 6px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+.lede { color: var(--muted); margin-bottom: 18px; }
+small, .muted { color: var(--muted); }
+a { color: var(--accent); }
+
+/* Signature element: the 37 pockets in wheel order, bar = deviation from a fair wheel. */
+.strip { margin: 8px 0 4px; }
+.strip svg { display: block; width: 100%; height: auto; overflow: visible; }
+.strip .axis { stroke: var(--rule); }
+.strip .lbl { fill: var(--muted); font-size: 8px; font-weight: 500; }
+.strip-cap { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 0.8125rem; }
+.verdict { border-left: 4px solid var(--rule); padding: 10px 0 10px 14px; margin: 16px 0 4px; }
+.verdict[data-level="edge"] { border-color: var(--good); }
+.verdict[data-level="signal"] { border-color: var(--warn); }
+.verdict[data-level="none"] { border-color: var(--muted); }
+.verdict b { display: block; font-weight: 600; }
+
+nav.tabs {
+  position: sticky; top: 0; z-index: 5; background: var(--bg);
+  display: flex; gap: 4px; padding: 10px 0; overflow-x: auto; scrollbar-width: none;
+  border-bottom: 1px solid var(--rule);
+}
+nav.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: 0 0 auto; font: inherit; font-size: 0.9375rem; font-weight: 500; color: var(--muted);
+  background: none; border: 0; padding: 8px 12px; border-radius: 999px; cursor: pointer; min-height: 40px;
+}
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+section[hidden] { display: none; }
+
+label { display: block; font-weight: 500; margin: 14px 0 6px; }
+textarea, input, select {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: var(--radius-s); padding: 10px 12px; width: 100%;
+}
+textarea { min-height: 140px; resize: vertical; font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 14px; }
+button.btn {
+  font: inherit; font-weight: 600; font-size: 0.9375rem; border-radius: var(--radius-s); cursor: pointer;
+  padding: 10px 16px; min-height: 44px; border: 1px solid var(--ink); background: var(--ink); color: var(--bg);
+}
+button.btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+button.btn.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.btn:disabled { opacity: 0.5; cursor: default; }
+.check { display: flex; gap: 8px; align-items: center; font-weight: 400; margin: 10px 0; }
+.check input { width: 20px; height: 20px; }
+.file { position: relative; }
+.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius-m); padding: 14px 16px; margin: 12px 0; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 12px 0; }
+.stat .v { font-size: 1.5rem; font-weight: 600; line-height: 1.2; }
+.stat .k { color: var(--muted); font-size: 0.8125rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+th, td { text-align: left; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 0.8125rem; }
+td.num, th.num { text-align: right; }
+.scroll { overflow-x: auto; }
+.test { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.test .name { font-weight: 600; }
+.test .p { font-weight: 600; text-align: right; }
+.test .why { grid-column: 1 / -1; color: var(--muted); font-size: 0.9375rem; }
+.pill { display: inline-block; font-size: 0.8125rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.ok { color: var(--muted); }
+.pill.hit { color: var(--bad); }
+.pill.mid { color: var(--warn); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 6px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart .grid { stroke: var(--rule); }
+.chart text { fill: var(--muted); font-size: 11px; }
+.bars .bar { display: grid; grid-template-columns: 9.5em 1fr 3.2em; gap: 8px; align-items: center; margin: 8px 0; }
+.bars .track { height: 10px; background: color-mix(in srgb, var(--rule) 60%, transparent); border-radius: 5px; overflow: hidden; }
+.bars .fill { height: 100%; background: var(--accent); border-radius: 5px; }
+.bars .hint { grid-column: 1 / -1; color: var(--muted); font-size: 0.8125rem; margin-top: -6px; }
+.progress { height: 4px; background: var(--rule); border-radius: 2px; overflow: hidden; margin: 10px 0; }
+.progress i { display: block; height: 100%; width: 40%; background: var(--accent); animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 0.9375rem;
+  transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100% - 32px); }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.refs li { margin-bottom: 8px; }
+.empty { color: var(--muted); padding: 20px 0; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .progress i { width: 100%; opacity: .6; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Хэв маягийн лаборатори</h1>
+  <p class="lede">Рулеткийн үр дүн ба тоглогчдын бооцооноос хэв маяг хайж, олдсон зүйл нь жинхэнэ үү эсвэл азын хэлбэлзэл үү гэдгийг шударга дугуйтай харьцуулан шалгана.</p>
+
+  <div class="strip" id="strip" aria-label="Нүд бүрийн давтамж, дугуйн дарааллаар"></div>
+  <div class="strip-cap"><span id="stripLeft">Өгөгдөл ороогүй байна</span><span>Баганын өндөр = шударга дугуйнаас хазайлт (z)</span></div>
+  <div class="verdict" id="verdict" data-level="none" hidden></div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="data" aria-selected="true">Өгөгдөл</button>
+    <button class="tab" role="tab" data-tab="tests" aria-selected="false">Шалгуур</button>
+    <button class="tab" role="tab" data-tab="learn" aria-selected="false">Сургалт</button>
+    <button class="tab" role="tab" data-tab="players" aria-selected="false">Тоглогчид</button>
+    <button class="tab" role="tab" data-tab="research" aria-selected="false">Судалгаа</button>
+  </nav>
+
+  <!-- DATA -->
+  <section id="tab-data" role="tabpanel">
+    <h2>Тоглоомын төрөл</h2>
+    <div class="grid2">
+      <div><label for="gameType">Хожлын хувь</label>
+        <select id="gameType">
+          <option value="36">Стандарт: нэг тоо 36 дахин</option>
+          <option value="20">Үржүүлэгчтэй (Lightning маягийн): нэг тоо 20 дахин, үржүүлэгч 50–2000x</option>
+        </select></div>
+    </div>
+    <p class="muted" id="gameNote"></p>
+
+    <h2>Эргэлт бүрийг гараар бүртгэх</h2>
+    <p>Эргэлт дууссаны дараа дэлгэц дээр харагдсан мэдээллийг шууд оруулна. Үржүүлэгчийг <code>5:100 17:2000</code> хэлбэрээр (тоо:үржүүлэгч) бичнэ.</p>
+    <div class="grid2">
+      <div><label for="mNumber">Буусан тоо</label><input id="mNumber" type="number" inputmode="numeric" min="0" max="36" placeholder="0–36"></div>
+      <div><label for="mMult">Үржүүлэгчтэй тоонууд</label><input id="mMult" type="text" inputmode="text" placeholder="5:100 17:2000"></div>
+      <div><label for="mWon">Нийт хожсон дүн</label><input id="mWon" type="number" inputmode="decimal" min="0" placeholder="0"></div>
+      <div><label for="mPlayers">Тоглогчийн тоо</label><input id="mPlayers" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+      <div><label for="mTime">Цаг</label><input id="mTime" type="datetime-local"></div>
+      <div><label for="mSession">Сесс</label><input id="mSession" type="text" placeholder="2026-10-05 орой"></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="addSpin">Эргэлт нэмэх</button>
+      <button class="btn ghost" id="undoSpin">Сүүлийнхийг буцаах</button>
+      <span class="muted" id="lastSpins"></span>
+    </div>
+
+    <h2>Дэлгэцийн зургаас унших</h2>
+    <p>Тоглоомын түүхийн дэлгэцийн зургийг сонгоход тоонуудыг нь уншиж доорх талбарт бичнэ. Уншсан тоог заавал нүдээр шалгаж засаад дараа нь ачаална. Эхний удаад 3 МБ орчим уншигч татагдана.</p>
+    <div class="row">
+      <span class="btn ghost file" role="button">Зураг сонгох<input type="file" id="shotFile" accept="image/*" aria-label="Дэлгэцийн зураг сонгох"></span>
+      <label class="check" style="margin:0"><input type="checkbox" id="shotNewestFirst" checked> Зураг дээр хамгийн сүүлийн эргэлт эхэнд байна</label>
+    </div>
+    <div id="shotProgress" hidden class="progress"><i></i></div>
+    <p class="muted" id="shotStatus"></p>
+
+    <h2>Эргэлтийн үр дүн оруулах</h2>
+    <p>Тоонуудыг таслал, зай, мөрөөр тусгаарлаад буулгана. Хоосон мөр эсвэл <code>---</code> шинэ сесс эхлүүлнэ. CSV бол толгой мөрөнд <code>number</code>, хүсвэл <code>session</code>, <code>dealer</code> (эсвэл машины дугаар), бөмбөг шидсэн чиглэл <code>direction</code> (cw/ccw), <code>time</code>, тоглогчийн тоо <code>players</code>, нийт хожсон дүн <code>won</code>, үржүүлэгч <code>multipliers</code> (жишээ: <code>5:100 17:2000</code>), нүд бүрийн бооцоо <code>b0…b36</code>, гадна бооцоо <code>red, black, even, odd, low, high, d1–d3, c1–c3</code> байж болно.</p>
+    <label for="spinText">Өгөгдөл</label>
+    <textarea id="spinText" placeholder="17, 32, 0, 5, 23, 14 …"></textarea>
+    <label class="check"><input type="checkbox" id="appendMode"> Одоогийн өгөгдөл дээр нэмэх (загвар хуучин өгөгдлөөсөө үргэлжлүүлж сурна)</label>
+    <div class="row">
+      <button class="btn" id="loadSpins">Өгөгдөл ачаалах</button>
+      <span class="btn ghost file" role="button">Файлаас сонгох<input type="file" id="spinFile" accept=".csv,.txt,.tsv" aria-label="Файлаас сонгох"></span>
+      <button class="btn ghost" id="exportSpins">CSV татах</button>
+      <button class="btn ghost" id="clearAll">Бүгдийг устгах</button>
+    </div>
+    <div id="dataSummary"></div>
+
+    <h2>Туршилтын өгөгдөл үүсгэх</h2>
+    <p>Жинхэнэ өгөгдлөө оруулахаас өмнө апп юу илрүүлж чадах, юу чадахгүйг мэдэхийн тулд хариу нь мэдэгдэж байгаа өгөгдөл дээр туршина. Ширээнд бооцоо тавих тоглогчдыг сэтгэл зүйн хэв маягтай нь хамт загварчилна.</p>
+    <div class="grid2">
+      <div><label for="simGame">Тоглоом</label>
+        <select id="simGame">
+          <option value="standard">Стандарт (36x)</option>
+          <option value="lightning">Үржүүлэгчтэй (20x, 50–2000x)</option>
+        </select></div>
+      <div><label for="simWheel">Дугуй</label>
+        <select id="simWheel">
+          <option value="fair">Шударга</option>
+          <option value="biased">Хазгай (4 зэргэлдээ нүд илүү бууна)</option>
+          <option value="machine">Автомат машин (2 чиглэлд ээлжлэн шиднэ)</option>
+          <option value="dealer">Дилерийн гар (тогтмол зай алгасна)</option>
+          <option value="house" selected>Казино зарим сесст удирдана</option>
+        </select></div>
+      <div><label for="simSpins">Эргэлтийн тоо</label><input id="simSpins" type="number" inputmode="numeric" min="200" max="50000" value="4000"></div>
+      <div><label for="simSessions">Сессийн тоо</label><input id="simSessions" type="number" inputmode="numeric" min="1" max="500" value="30"></div>
+      <div><label for="simPlayers">Тоглогчийн тоо</label><input id="simPlayers" type="number" inputmode="numeric" min="1" max="60" value="12"></div>
+      <div><label for="simStrength">Хүч (хазгай, шидэлт, удирдлага)</label><input id="simStrength" type="number" inputmode="decimal" step="0.05" min="0" max="1" value="0.5"></div>
+      <div><label for="simHouse">Удирдсан сессийн хувь</label><input id="simHouse" type="number" inputmode="decimal" step="0.05" min="0" max="1" value="0.3"></div>
+      <div><label for="simSeed">Санамсаргүй үр (seed)</label><input id="simSeed" type="number" inputmode="numeric" value="42"></div>
+    </div>
+    <div class="row"><button class="btn" id="runSim">Үүсгэх</button></div>
+    <div id="simTruth"></div>
+  </section>
+
+  <!-- TESTS -->
+  <section id="tab-tests" role="tabpanel" hidden>
+    <h2>Санамсаргүй байдлын шалгуур</h2>
+    <p>p-утга нь “дугуй шударга байсан бол ийм эсвэл үүнээс ч хачин үр дүн гарах магадлал”. 0.01-ээс бага бол анхаарах шалтгаан, гэхдээ олон шалгуур зэрэг ажиллуулахад заримдаа санамсаргүйгээр бага гардаг гэдгийг санаарай.</p>
+    <div id="testsOut"><p class="empty">Эхлээд “Өгөгдөл” хэсэгт өгөгдөл оруулна уу.</p></div>
+  </section>
+
+  <!-- LEARN -->
+  <section id="tab-learn" role="tabpanel" hidden>
+    <h2>Загвар сургах</h2>
+    <p>Найман загвар эргэлт бүрийг урьдчилж таана, дараа нь жинхэнэ үр дүнг харж, сайн таасан нь жин нэмж, муу таасан нь жин алдана. Тохиргоог өгөгдлийн эхний 70% дээр туршиж сонгоод, загвар хэзээ ч харж байгаагүй сүүлийн 30% дээр шалгана. Үр дүнг шударга дугуйгаар 19 удаа давтан үүсгэсэн өгөгдөлтэй харьцуулна.</p>
+    <div class="row"><button class="btn accent" id="trainBtn">Сургаж шалгах</button><span class="muted" id="trainStatus"></span></div>
+    <div id="trainProgress" hidden class="progress"><i></i></div>
+    <div id="learnOut"></div>
+    <h3>Туршилтын түүх</h3>
+    <div id="logOut"><p class="empty">Одоохондоо туршилт хийгээгүй байна.</p></div>
+  </section>
+
+  <!-- PLAYERS -->
+  <section id="tab-players" role="tabpanel" hidden>
+    <h2>Тоглогчийн сэтгэл зүй</h2>
+    <p>Дугуйг таах боломжгүй ч хүний зан үйл давтагддаг. Тоглогч бүрийн бооцооны түүхээс “ээлж ирнэ” гэх итгэл, ялалтын дараа бооцоо өсгөх, алдсанаа хөөх зэрэг хэв маягийг хэмжиж, дараагийн алхмыг нь хэр сайн таах вэ гэдгийг шалгана.</p>
+    <label for="playerText">Бооцооны бүртгэл (CSV)</label>
+    <textarea id="playerText" placeholder="round,player,bet,stake,outcome&#10;1,P1,R,5,17&#10;1,P2,23,2,17"></textarea>
+    <p class="muted"><code>bet</code> нь <code>R</code> (улаан), <code>B</code> (хар) эсвэл 0–36 тоо. Туршилтын өгөгдөл үүсгэхэд бүртгэл автоматаар шинжлэгдэнэ, том бол энд харагдахгүй ч “CSV татах”-аар авч болно.</p>
+    <div class="row">
+      <button class="btn" id="loadPlayers">Шинжлэх</button>
+      <span class="btn ghost file" role="button">Файлаас сонгох<input type="file" id="playerFile" accept=".csv,.txt,.tsv" aria-label="Тоглогчийн файл сонгох"></span>
+      <button class="btn ghost" id="exportPlayers">CSV татах</button>
+    </div>
+    <div id="playersOut"></div>
+  </section>
+
+  <!-- RESEARCH -->
+  <section id="tab-research" role="tabpanel" hidden>
+    <h2>Судалгааны үндэс</h2>
+    <p>Шударга дугуй дээр эргэлт бүр өмнөхөөсөө хамааралгүй тул өнгөрсөн үр дүнгээс ирээдүйг таах ямар ч загвар казиногийн 2.7%-ийн давуу талыг давж чадахгүй, энэ нь математикийн баталгаатай. Түүхэнд рулеткийг “ялсан” тохиолдол бүгд дугуйн физик доголдол эсвэл бөмбөгний хөдөлгөөнийг хэмжсэнтэй холбоотой байжээ.</p>
+    <h3>Дугуй ба физик</h3>
+    <ul class="refs">
+      <li>1873 онд Жозеф Жаггер Монте-Карлогийн дугуйнуудын үр дүнг хөлсний хүмүүсээр бичүүлж, нэг дугуй нь хазгай болохыг олж ашигласан гэж ярьдаг.</li>
+      <li>Hibbs, Walford (1947): Рено, Лас Вегасын хазгай дугуйг статистикаар илрүүлж ашигласан. Апп-ын “Давтамж”, “Дугуйн хэсэг” загвар энэ санаан дээр тулгуурлана.</li>
+      <li>Thorp, Shannon (1961): бөмбөгний хурдыг хэмжих өмсдөг компьютер хийжээ. Small, Tse (2012, <i>Chaos</i> 22) энэ аргаар 18%-ийн хүртэл давуу тал гаргаж болохыг харуулсан ч энэ нь эргэлтийн дугаарын жагсаалт биш, бөмбөгний физик хэмжилт шаарддаг.</li>
+      <li>Автомат дугуй (бөмбөгийг агаараар шиддэг) дээр дилер байхгүй ч машин өөрөө хэв маяг үүсгэж болно: шидэлтийн хүч, роторын хурд тогтмол, олон машин чиглэлээ ээлжлэн сольдог. Үйлдвэрлэгчид үүнийг хүч, хурдыг санамсаргүй хэлбэлзүүлж нуудаг тул илрэх эсэхийг өгөгдөл л харуулна. Мөн машин бүх эргэлтийг автоматаар бүртгэдэг тул их хэмжээний өгөгдөл цуглуулахад хялбар.</li>
+      <li>Дилерийн гарын хэв маяг (dealer signature): дилер ижил хүчээр эргүүлбэл бөмбөг өмнөх нүднээс тогтмол зайд буух хандлагатай гэсэн таамаглал. Орчин үеийн казино дилерийг сэлгэж, чиглэлийг өөрчилдөг тул ихэвчлэн илэрдэггүй.</li>
+    </ul>
+    <h3>Тоглогчийн сэтгэл зүй</h3>
+    <ul class="refs">
+      <li>Tversky, Kahneman (1971, 1974): “жижиг тооны хууль”, хүмүүс богино дараалал ч санамсаргүй харагдах ёстой гэж итгэдэг. Үүнээс тоглогчийн гэм буруу (gambler's fallacy) үүснэ: “улаан таван удаа буусан тул хар ээлж нь ирлээ”.</li>
+      <li>Croson, Sundali (2005, <i>Journal of Risk and Uncertainty</i>): казиногийн рулеткийн бодит бичлэгээс урт дараалалын дараа тоглогчид эсрэг өнгөнд илүү бооцоо тавьж (gambler's fallacy), ялсныхаа дараа илүү олон бооцоо тавьдаг (hot hand) болохыг баталжээ.</li>
+      <li>Thaler, Johnson (1990): ялсан мөнгөөр илүү эрсдэл гаргадаг “казиногийн мөнгөний нөлөө” (house money effect).</li>
+      <li>Lesieur (1984), DSM-5: алдсанаа нөхөх гэж бооцоо өсгөх (loss chasing) нь донтолтын гол шинж.</li>
+      <li>Wagenaar (1988), <i>Paradoxes of Gambling Behaviour</i>: тоглогчид санамсаргүй тоглоомд ур чадвар, систем байгаа гэж итгэх хэвшил.</li>
+      <li>Reid (1986), Clark нар (2009, <i>Neuron</i>): “бараг ялсан” (near miss) мэдрэмж тоглолтыг үргэлжлүүлэх хүслийг өдөөдөг.</li>
+    </ul>
+    <h3>Үржүүлэгчтэй рулетк (Lightning маягийн)</h3>
+    <p>Evolution-ы Lightning Roulette, XXXtreme Lightning Roulette зэрэг тоглоомд нэг тоон дээрх бооцоо стандарт 36-ын оронд 30 эсвэл 20 дахин төлдөг бөгөөд эргэлт бүрт санамсаргүй сонгосон 1–5 тоо 50–500x, гинжин үржүүлэгчтэй бол 2000x хүртэл төлдөг [шалгах: тухайн тоглоомын дүрэм]. Үржүүлэгч бооцоо хаагдсаны дараа тодордог тул үүнийг урьдчилан ашиглах арга байхгүй. Шударга бол бөмбөг үржүүлэгчтэй тоонд “үржүүлэгчийн тоо ÷ 37” магадлалаар бууна. Казино үр дүнг удирдаж байвал хамгийн их төлбөртэй тооноос зайлсхийх учраас энэ хувь буурна, апп үүнийг биномын тестээр шалгана. Нийт хожсон дүн, тоглогчийн тоо, цаг нь удирдлага хэзээ илүү их байдгийг харахад тусална.</p>
+    <h3>Казино үр дүнг удирдвал</h3>
+    <p>Лицензтэй казинод үр дүнг удирдах нь хууль бус бөгөөд хяналтын байгууллага дугуйг тогтмол шалгадаг. Гэхдээ хяналтгүй орчинд, эсвэл онлайн “амьд” ширээнд ийм зүйл болж байгаа эсэхийг шалгах боломжтой: казино ашгаа нэмэхийн тулд ширээн дээр хамгийн бага мөнгө тавьсан нүдийг сонгох байх. Тиймээс “Олны эсрэг” загвар эргэлт бүрийн бооцоог харж, хожсон тоо хямд нүд дээр санамсаргүйгээс илүү олон удаа буусан эсэхийг сесс бүрээр шалгана. Энэ шалгуурт бооцооны мэдээлэл заавал хэрэгтэй.</p>
+    <h3>Арга зүй</h3>
+    <ul class="refs">
+      <li>Загваруудыг Bayes/Hedge хольцоор нэгтгэж, “fixed share” (Herbster, Warmuth 1998) аргаар сесс солигдоход жинг хурдан шилжүүлнэ.</li>
+      <li>Таамаглал бүр ирээдүйг харалгүй, дарааллаар (walk-forward) хийгдэнэ. Тохиргоог зөвхөн сургалтын хэсэг дээр сонгоно.</li>
+      <li>Үр дүнг шударга дугуйгаар дахин үүсгэсэн өгөгдөлтэй харьцуулж (Монте-Карло тест), бооцооны амжилтыг биномын тестээр шалгана.</li>
+      <li>Kelly (1956): давуу тал жинхэнэ бол бооцооны хэмжээг давуу талтай нь пропорциональ байлгана. Давуу тал баталгаажаагүй бол бооцоо тавих нь зөвхөн алдагдал.</li>
+    </ul>
+    <p class="muted">Дэлгэрэнгүй тайлбар, ашигласан эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
+  </section>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const KEY = 'patternlab.v1';
+  const state = { spins: [], players: [], log: [], truth: null, last: null, playerLog: '', straightRet: 36 };
+
+  // ---------- storage (per-browser; the page still works if it is blocked) ----------
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        spins: PL.spinsToCsv(state.spins), playerLog: state.playerLog, log: state.log.slice(-50), truth: state.truth,
+        straightRet: state.straightRet,
+      }));
+    } catch (e) { toast('Өгөгдөл хэт том тул хөтөч дээр хадгалагдсангүй. CSV татаж хадгална уу.'); }
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.spins) state.spins = PL.parseSpins(d.spins).spins;
+      state.playerLog = d.playerLog || '';
+      state.log = d.log || [];
+      state.truth = d.truth || null;
+      state.straightRet = d.straightRet === 20 ? 20 : 36;
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmtP = p => p == null ? '—' : p < 0.0001 ? '< 0.0001' : p.toFixed(p < 0.01 ? 4 : 3);
+  const pct = x => x == null ? '—' : (100 * x).toFixed(1) + '%';
+  const num = (x, d = 0) => x == null ? '—' : Number(x).toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
+  const pocketColor = n => { const c = PL.colorOf(n); return c === 'R' ? 'var(--red)' : c === 'B' ? 'var(--black)' : 'var(--zero)'; };
+
+  function download(name, text) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }));
+    a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+  }
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    document.querySelectorAll('section[role=tabpanel]').forEach(s => { s.hidden = s.id !== 'tab-' + b.dataset.tab; });
+    try { localStorage.setItem(KEY + '.tab', b.dataset.tab); } catch (e) {}
+  }));
+
+  // ---------- hero strip ----------
+  function renderStrip() {
+    const n = state.spins.length;
+    const W = 370, H = 120, mid = 60, bw = W / 37;
+    const counts = new Array(37).fill(0);
+    state.spins.forEach(s => counts[s.n]++);
+    const e = n / 37, sd = Math.sqrt(e * (1 - 1 / 37)) || 1;
+    let svg = `<svg viewBox="0 -6 ${W} ${H + 18}" role="img" aria-label="Нүд бүрийн хазайлт">`;
+    svg += `<line class="axis" x1="0" x2="${W}" y1="${mid}" y2="${mid}"/>`;
+    [-2, 2].forEach(z => { const y = mid - z * 15; svg += `<line class="axis" x1="0" x2="${W}" y1="${y}" y2="${y}" stroke-dasharray="2 3"/>`; });
+    PL.WHEEL.forEach((k, i) => {
+      const z = n ? (counts[k] - e) / sd : 0;
+      const h = Math.max(-mid + 2, Math.min(mid - 2, z * 15));
+      const x = i * bw + 1;
+      const y = h >= 0 ? mid - h : mid;
+      svg += `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${(bw - 2).toFixed(2)}" height="${Math.max(1, Math.abs(h)).toFixed(2)}" rx="1" fill="${pocketColor(k)}"><title>${k}: ${counts[k]} удаа (z ${z.toFixed(2)})</title></rect>`;
+      svg += `<text class="lbl" x="${(x + bw / 2 - 1).toFixed(2)}" y="${H + 8}" text-anchor="middle">${k}</text>`;
+    });
+    svg += '</svg>';
+    $('strip').innerHTML = svg;
+    $('stripLeft').textContent = n ? `${num(n)} эргэлт, ${new Set(state.spins.map(s => s.session)).size} сесс` : 'Өгөгдөл ороогүй байна';
+  }
+
+  function renderVerdict() {
+    const v = $('verdict');
+    if (!state.last) { v.hidden = true; return; }
+    v.hidden = false;
+    v.dataset.level = state.last.verdict.level;
+    const titles = { edge: 'Давуу тал илэрлээ', signal: 'Сул дохио', none: 'Хэв маяг илэрсэнгүй', thin: 'Өгөгдөл хангалтгүй' };
+    let note = '';
+    if (state.last.verdict.level !== 'edge' && state.spins.length) {
+      const flagged = PL.runTests(state.spins).sessions.filter(s => s.flag).length;
+      if (flagged) note = ` Гэхдээ “Шалгуур” хэсэгт ${flagged} сэжигтэй сесс илэрсэн. Шалгах хэсэгт (сүүлийн 30%) ийм сесс цөөн байсан тул таамаглалд ашиглах хэмжээнд баталгаажсангүй, илүү өгөгдөл нэмээд дахин сургана уу.`;
+    }
+    v.innerHTML = `<b>${titles[state.last.verdict.level]}</b>${esc(state.last.verdict.text + note)}`;
+  }
+
+  // ---------- data tab ----------
+  function setSpins(spins, append) {
+    state.spins = append ? state.spins.concat(spins) : spins;
+    state.last = null;
+    if (!append) state.truth = null;
+    save(); renderAll();
+  }
+  function renderDataSummary() {
+    const s = state.spins;
+    if (!s.length) { $('dataSummary').innerHTML = ''; return; }
+    const withBets = s.filter(x => x.liab).length;
+    const dealers = new Set(s.map(x => x.dealer).filter(Boolean)).size;
+    $('dataSummary').innerHTML = `<div class="stats">
+      <div class="stat"><div class="v">${num(s.length)}</div><div class="k">эргэлт</div></div>
+      <div class="stat"><div class="v">${new Set(s.map(x => x.session)).size}</div><div class="k">сесс</div></div>
+      <div class="stat"><div class="v">${pct(withBets / s.length)}</div><div class="k">бооцооны мэдээлэлтэй</div></div>
+      <div class="stat"><div class="v">${dealers || '—'}</div><div class="k">дилер, машин</div></div>
+      <div class="stat"><div class="v">${pct(s.filter(x => x.mult).length / s.length)}</div><div class="k">үржүүлэгчтэй</div></div>
+      <div class="stat"><div class="v">${pct(s.filter(x => x.time != null).length / s.length)}</div><div class="k">цагтай</div></div></div>
+      ${withBets ? '' : '<p class="muted">Бооцооны мэдээлэл байхгүй тул казиногийн удирдлагыг шалгах “Олны эсрэг” загвар ажиллахгүй.</p>'}`;
+  }
+  $('loadSpins').addEventListener('click', () => {
+    const { spins, errors } = PL.parseSpins($('spinText').value);
+    if (!spins.length) { toast(errors[0] || '0–36 хооронд тоо олдсонгүй.'); return; }
+    setSpins(spins, $('appendMode').checked);
+    $('spinText').value = '';
+    toast(`${num(spins.length)} эргэлт ачааллаа` + (errors.length ? `, ${errors.length} мөр алгаслаа` : ''));
+  });
+  $('spinFile').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(t => { $('spinText').value = t; $('loadSpins').click(); e.target.value = ''; });
+  });
+  $('exportSpins').addEventListener('click', () => state.spins.length ? download('spins.csv', PL.spinsToCsv(state.spins)) : toast('Татах өгөгдөл алга.'));
+  $('clearAll').addEventListener('click', () => {
+    if (!confirm('Эргэлт, тоглогчийн бүртгэл, туршилтын түүхийг бүгдийг устгах уу?')) return;
+    state.spins = []; state.playerLog = ''; state.log = []; state.truth = null; state.last = null;
+    $('playerText').value = '';
+    save(); renderAll(); toast('Устгалаа');
+  });
+  function setGame(ret) {
+    state.straightRet = ret;
+    $('gameType').value = String(ret);
+    $('gameNote').textContent = ret === 20
+      ? 'Нэг тоо 20 дахин төлдөг тул үржүүлэгчгүй үед казиногийн давуу тал 46% болно. Үржүүлэгч бооцоо хаагдсаны дараа тодордог тул урьдчилан ашиглах боломжгүй, харин бөмбөг үржүүлэгчтэй тооноос зайлсхийдэг эсэхийг “Шалгуур” хэсэгт шалгана.'
+      : 'Нэг тоо 36 дахин төлнө, казиногийн давуу тал 2.7%.';
+    save();
+  }
+  $('gameType').addEventListener('change', () => { setGame(parseInt($('gameType').value, 10) === 20 ? 20 : 36); state.last = null; renderLearn(); renderVerdict(); });
+
+  function localNow() {
+    const d = new Date(); d.setSeconds(0, 0);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+  function renderLastSpins() {
+    const last = state.spins.slice(-6).map(s => s.n);
+    $('lastSpins').textContent = last.length ? 'Сүүлийн: ' + last.join(', ') : '';
+  }
+  $('addSpin').addEventListener('click', () => {
+    const n = parseInt($('mNumber').value, 10);
+    if (!(n >= 0 && n <= 36)) { toast('Буусан тоо 0–36 байх ёстой.'); $('mNumber').focus(); return; }
+    const t = $('mTime').value ? Date.parse($('mTime').value) : Date.now();
+    const won = $('mWon').value.trim() === '' ? null : parseFloat($('mWon').value) || 0;
+    const players = parseInt($('mPlayers').value, 10) > 0 ? parseInt($('mPlayers').value, 10) : null;
+    const session = $('mSession').value.trim() || new Date(t).toISOString().slice(0, 10);
+    state.spins.push({ n, session, dealer: '', dir: null, time: t, players, won, mult: PL.parseMult($('mMult').value), liab: null });
+    state.last = null; state.truth = null;
+    $('mNumber').value = ''; $('mMult').value = ''; $('mWon').value = '';
+    $('mTime').value = localNow();
+    save(); renderAll(); $('mNumber').focus();
+    toast(`${n} нэмэгдлээ, нийт ${num(state.spins.length)}`);
+  });
+  $('undoSpin').addEventListener('click', () => {
+    if (!state.spins.length) return;
+    const s = state.spins.pop();
+    state.last = null; save(); renderAll(); toast(`${s.n} буцаалаа`);
+  });
+
+  // Screenshot OCR: Tesseract.js is loaded only when first needed.
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement('script'); el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Уншигч татагдсангүй, интернэт холболтоо шалгана уу.'));
+      document.head.appendChild(el);
+    });
+  }
+  function prepImage(file, invert) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.max(1, Math.min(3, 1600 / img.width));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
+        const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+        for (let i = 0; i < px.length; i += 4) {
+          const l = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+          // Game screens show light digits on coloured tiles; invert them to dark-on-light for the reader.
+          const v = invert ? (l > 170 ? 0 : 255) : (l < 110 ? 0 : 255);
+          px[i] = px[i + 1] = px[i + 2] = v;
+        }
+        g.putImageData(d, 0, 0);
+        URL.revokeObjectURL(img.src);
+        resolve(c);
+      };
+      img.onerror = () => reject(new Error('Зураг нээгдсэнгүй.'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  // Lines that carry a number above 36 are multiplier legends ("17 100x"), not results.
+  const tokensFrom = text => text.split('\n').flatMap(line => {
+    const t = (line.match(/\d+/g) || []).map(Number);
+    return t.some(n => n > 36) ? [] : t;
+  });
+  async function readScreenshot(file) {
+    $('shotProgress').hidden = false; $('shotStatus').textContent = 'Уншигч бэлдэж байна…';
+    try {
+      if (!window.Tesseract) {
+        try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js'); }
+        catch (e) { await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'); }
+      }
+      const worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') $('shotStatus').textContent = `Уншиж байна… ${Math.round(m.progress * 100)}%`; } });
+      await worker.setParameters({ tessedit_char_whitelist: '0123456789 ', preserve_interword_spaces: '1' });
+      let best = [];
+      for (const invert of [true, false]) {
+        const canvas = await prepImage(file, invert);
+        const { data } = await worker.recognize(canvas);
+        const toks = tokensFrom(data.text);
+        if (toks.length > best.length) best = toks;
+      }
+      await worker.terminate();
+      if (!best.length) { $('shotStatus').textContent = 'Тоо олдсонгүй. Зургийг томруулж авах эсвэл гараар оруулна уу.'; return; }
+      if ($('shotNewestFirst').checked) best.reverse();
+      $('spinText').value = best.join(', ');
+      $('shotStatus').textContent = `${best.length} тоо уншлаа. Доорх талбарт шалгаад “Өгөгдөл ачаалах” дарна уу.`;
+      $('spinText').focus();
+    } catch (err) {
+      $('shotStatus').textContent = 'Алдаа: ' + (err && err.message || err);
+    } finally { $('shotProgress').hidden = true; }
+  }
+  $('shotFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) readScreenshot(f); e.target.value = ''; });
+
+  $('runSim').addEventListener('click', () => {
+    const v = id => parseFloat($(id).value);
+    const sim = PL.simulate({
+      wheel: $('simWheel').value, spins: Math.min(50000, Math.max(200, v('simSpins') | 0)),
+      sessions: Math.max(1, v('simSessions') | 0), players: Math.max(1, Math.min(60, v('simPlayers') | 0)),
+      bias: v('simStrength'), steer: v('simStrength'), house: v('simHouse'), seed: v('simSeed') | 0,
+      game: $('simGame').value,
+    });
+    setGame($('simGame').value === 'lightning' ? 20 : 36);
+    state.truth = sim.truth;
+    state.playerLog = PL.playerLogToCsv(sim.log);
+    $('playerText').value = state.playerLog.length < 400000 ? state.playerLog : '';
+    setSpins(sim.spins, false);
+    state.truth = sim.truth; save(); renderTruth();
+    analyzePlayersFromText(state.playerLog);
+    toast('Туршилтын өгөгдөл бэлэн. “Сургалт” хэсэгт шалгана уу.');
+  });
+  function renderTruth() {
+    const t = state.truth;
+    if (!t) { $('simTruth').innerHTML = ''; return; }
+    const what = {
+      fair: 'Дугуй шударга. Зөв ажиллаж байгаа апп “хэв маяг илэрсэнгүй” гэж дүгнэх ёстой.',
+      biased: `Дугуй хазгай: ${t.biasPockets.join(', ')} нүд илүү бууна.`,
+      dealer: `Дилер өмнөх нүднээс ойролцоогоор ${t.sigD} нүд алгасдаг.`,
+      machine: `Машин нэг чиглэлд шидэхэд ойролцоогоор ${t.sigD}, нөгөө чиглэлд ${t.sigD2} нүд алгасдаг.`,
+      house: `Казино ${t.rigged.length ? t.rigged.join(', ') + '-р сесст' : 'аль ч сесст'} хамгийн бага бооцоотой нүдийг сонгодог.`,
+    };
+    $('simTruth').innerHTML = `<div class="panel"><b>Нууц хариу:</b> ${esc(what[t.wheel])}</div>`;
+  }
+
+  // ---------- tests tab ----------
+  function testRow(name, p, why, extra) {
+    const cls = p < 0.001 ? 'hit' : p < 0.05 ? 'mid' : 'ok';
+    return `<div class="test"><span class="name">${name}</span><span class="p"><span class="pill ${cls}">p ${fmtP(p)}</span></span><span class="why">${why}${extra ? ' ' + extra : ''}</span></div>`;
+  }
+  function renderTests() {
+    if (!state.spins.length) { $('testsOut').innerHTML = '<p class="empty">Эхлээд “Өгөгдөл” хэсэгт өгөгдөл оруулна уу.</p>'; return; }
+    const r = PL.runTests(state.spins);
+    let h = '';
+    h += testRow('Тоо бүр ижил буух уу', r.uniform.p, 'Хи-квадрат тест, 36 чөлөөний зэрэг. Бага p нь зарим тоо бусдаасаа илүү буудгийг илтгэнэ.',
+      `Хамгийн их: ${r.hot.slice(0, 3).map(x => `${x.k} (z ${x.z.toFixed(1)})`).join(', ')}.`);
+    h += testRow('Дугуйн нэг тал руу хазайх уу', r.rayleigh.p, 'Рэйлийн тест. Дугуй налуу эсвэл элэгдсэн бол бөмбөг дугуйн нэг хэсэгт илүү бууна.');
+    h += testRow('Шидэлтийн зай', r.signature.p, `Нэг сессийн дараалсан хоёр үр дүнгийн дугуй дээрх зайн тархалт (${num(r.signature.n)} хос). Дилер эсвэл машин бөмбөгийг тогтмол хүчээр шидвэл энд илэрнэ.`,
+      `Хамгийн түгээмэл зай: ${r.signature.top.map(x => x.d + ' нүд').join(', ')}.`);
+    const sd = r.signatureDir, tops = ['A', 'B'].filter(k => sd.top[k]).map(k => `${k === 'A' ? 'нэг' : 'нөгөө'} чиглэлд ${sd.top[k].map(x => x.d).join(', ')} нүд`).join(', ');
+    h += testRow('Чиглэлээр салгасан шидэлт', sd.p, sd.recorded
+      ? 'Бөмбөг шидсэн чиглэл бүрээр зайн тархалтыг тусад нь шалгав.'
+      : 'Чиглэл бичигдээгүй тул автомат дугуйн нийтлэг горимоор, сесс бүрт ээлжилдэг гэж үзэв. Хоёр чиглэлийн хэв маяг нийлээд жигд мэт харагдаж болох тул тусад нь шалгана.',
+      tops ? `Түгээмэл зай: ${tops}.` : '');
+    h += testRow('Улаан, харын ээлжлэл', r.runs.p, `Вальд–Волфовицын тест: ${num(r.runs.runs)} цуваа, хүлээгдэж буй ${num(r.runs.expected)}. Хамгийн урт цуваа ${r.runs.longest}.`);
+    h += testRow('Дараагийн арван хоёрт хамаарах уу', r.markov.p, 'Өмнөх эргэлтийн арван хоёрт (1–12, 13–24, 25–36) дараагийнх нь хамаардаг эсэх.');
+    if (r.crowd) {
+      h += testRow('Хямд нүд хожих уу', r.crowd.p,
+        `Хожсон тоо ширээний бооцооны жагсаалтын хаана байсныг шалгав. Шударга бол дунджаар 0.50, энд ${r.crowd.meanRank.toFixed(3)}.`,
+        `Хамгийн хямд 5 нүдэнд ${num(r.crowd.low5)} удаа буусан, санамсаргүй бол ~${num(r.crowd.exp5)}.`);
+    } else {
+      h += `<div class="test"><span class="name">Хямд нүд хожих уу</span><span class="p muted">—</span><span class="why">Бооцооны мэдээлэл (b0…b36 эсвэл red/black…) оруулбал казино үр дүнг удирддаг эсэхийг шалгана.</span></div>`;
+    }
+    if (r.lightning) {
+      const L = r.lightning;
+      h += testRow('Үржүүлэгчтэй тоонд буух уу', L.p,
+        `Үржүүлэгч бооцоо хаагдсаны дараа тодордог тул шударга бол бөмбөг үржүүлэгчтэй тоонд (үржүүлэгчийн тоо ÷ 37) магадлалаар буух ёстой. ${num(L.n)} эргэлтэд хүлээгдсэн ${num(L.exp, 1)}, бодитоор ${num(L.obs)} удаа буув (z ${L.z.toFixed(2)}). Сөрөг z = бөмбөг үржүүлэгчтэй тооноос зайлсхийж байна.`,
+        L.bands.map(b => `${b.label}: ${b.obs}/${num(b.exp, 1)} (z ${b.z.toFixed(1)})`).join('; ') + '.');
+    } else if (state.straightRet === 20) {
+      h += `<div class="test"><span class="name">Үржүүлэгчтэй тоонд буух уу</span><span class="p muted">—</span><span class="why">Эргэлт бүрийн үржүүлэгчтэй тоонуудыг (<code>multipliers</code> багана эсвэл гараар бүртгэх маягт) оруулбал бөмбөг тэднээс зайлсхийдэг эсэхийг шалгана. Энэ тоглоомд казиногийн удирдлагыг илрүүлэх гол шалгуур нь энэ.</span></div>`;
+    }
+    const bandTable = (title, intro, bands) => {
+      let t = `<h3>${title}</h3><p class="muted">${intro}</p><div class="scroll"><table><thead><tr><th>Бүлэг</th><th class="num">Эргэлт</th><th class="num">Тоглогч</th><th class="num">Дундаж хожил</th><th class="num">Тархалт p</th><th class="num">Үржүүлэгч z</th></tr></thead><tbody>`;
+      bands.forEach(b => { t += `<tr><td>${esc(b.label)}</td><td class="num">${num(b.n)}</td><td class="num">${b.players == null ? '—' : num(b.players, 1)}</td><td class="num">${b.won == null ? '—' : num(b.won)}</td><td class="num">${fmtP(b.uniformP)}</td><td class="num">${b.lightning ? b.lightning.z.toFixed(2) : '—'}</td></tr>`; });
+      return t + '</tbody></table></div>';
+    };
+    if (r.byHour) h += bandTable('Өдрийн цагаар', 'Тоглогч олонтой, мөнгө ихтэй цагт тоглоом өөрөөр ажилладаг эсэх. Цагийг оруулсан хэлбэрээр нь авна.', r.byHour);
+    if (r.byPlayers) h += bandTable('Тоглогчийн тоогоор', 'Эргэлтүүдийг тоглогчийн тоогоор гурван тэнцүү бүлэгт хуваав.', r.byPlayers);
+    const flagged = r.sessions.filter(s => s.flag);
+    h += `<h3>Сесс бүрээр</h3><p class="muted">Ганц нэг сессийг удирдсан бол нийт өгөгдөлд уусаад алга болдог тул сесс тус бүрийг тусад нь шалгана. Бонферронийн засвартай.${flagged.length ? ` Сэжигтэй: <b>${flagged.map(s => esc(s.id)).join(', ')}</b>.` : ' Сэжигтэй сесс алга.'}</p>`;
+    h += `<div class="scroll"><table><thead><tr><th>Сесс</th><th class="num">Эргэлт</th><th class="num">Тархалт p</th><th class="num">Хямд нүд z</th><th></th></tr></thead><tbody>`;
+    r.sessions.slice(0, 300).forEach(s => {
+      h += `<tr><td>${esc(s.id)}${s.dealer ? ' <span class="muted">' + esc(s.dealer) + '</span>' : ''}</td><td class="num">${s.n}</td><td class="num">${fmtP(s.p)}</td><td class="num">${s.crowdZ == null ? '—' : s.crowdZ.toFixed(2)}</td><td>${s.flag ? '<span class="pill hit">сэжигтэй</span>' : ''}</td></tr>`;
+    });
+    h += '</tbody></table></div>';
+    $('testsOut').innerHTML = h;
+  }
+
+  // ---------- learn tab ----------
+  let worker = null, jobId = 0;
+  function getWorker() {
+    if (worker !== null) return worker;
+    try { worker = new Worker('worker.js'); } catch (e) { worker = false; }
+    return worker;
+  }
+  function trainAsync(spins) {
+    return new Promise((resolve, reject) => {
+      const w = getWorker();
+      const id = ++jobId;
+      const opts = { straightRet: state.straightRet };
+      if (!w) { setTimeout(() => { try { resolve(PL.train(spins, opts)); } catch (e) { reject(e); } }, 30); return; }
+      const onMsg = e => {
+        if (e.data.id !== id) return;
+        if (e.data.progress) { $('trainStatus').textContent = 'Шударга дугуйтай харьцуулж байна…'; return; }
+        w.removeEventListener('message', onMsg);
+        e.data.error ? reject(new Error(e.data.error)) : resolve(e.data.result);
+      };
+      w.addEventListener('message', onMsg);
+      w.onerror = err => { w.removeEventListener('message', onMsg); worker = false; reject(err); };
+      w.postMessage({ id, spins, opts });
+    });
+  }
+  $('trainBtn').addEventListener('click', () => {
+    if (state.spins.length < 300) { toast('Сургахад дор хаяж 300 эргэлт хэрэгтэй.'); return; }
+    $('trainBtn').disabled = true; $('trainProgress').hidden = false;
+    $('trainStatus').textContent = 'Тохиргоо туршиж байна…';
+    const t0 = performance.now();
+    trainAsync(state.spins).then(res => {
+      state.last = res;
+      state.log.push({
+        at: new Date().toISOString(), spins: state.spins.length, bits: res.test.bitsPerSpin, pBits: res.pBits,
+        roi: res.test.betting.roi, bets: res.test.betting.bets, level: res.verdict.level,
+        best: res.test.models.slice().sort((a, b) => b.weight - a.weight)[0].id,
+      });
+      save();
+      $('trainStatus').textContent = `Дууслаа, ${((performance.now() - t0) / 1000).toFixed(1)} сек.`;
+      renderLearn(); renderVerdict(); renderLog();
+    }).catch(err => {
+      $('trainStatus').textContent = 'Алдаа: ' + (err && err.message || err);
+    }).finally(() => { $('trainBtn').disabled = false; $('trainProgress').hidden = true; });
+  });
+
+  function lineChart(points, opts) {
+    const W = 360, H = 160, pad = { l: 40, r: 6, t: 12, b: 20 };
+    if (points.length < 2) return '';
+    const xs = points.map(p => p.x), ys = points.map(p => p.y).concat(opts.extraY || []);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
+    if (y0 === y1) y1 = y0 + 1;
+    const X = x => pad.l + (x - x0) / (x1 - x0 || 1) * (W - pad.l - pad.r);
+    const Y = y => pad.t + (1 - (y - y0) / (y1 - y0)) * (H - pad.t - pad.b);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}">`;
+    [y0, 0, y1].forEach(v => { s += `<line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${Y(v)}" y2="${Y(v)}"${v === 0 ? '' : ' stroke-dasharray="2 4"'}/><text x="${pad.l - 6}" y="${Y(v) + 4}" text-anchor="end">${num(v, opts.dec || 0)}</text>`; });
+    (opts.bands || []).forEach(b => { s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(b.y)}" y2="${Y(b.y)}" stroke="var(--muted)" stroke-dasharray="4 4"/><text x="${W - pad.r}" y="${Y(b.y) - 4}" text-anchor="end">${esc(b.label)}</text>`; });
+    s += `<polyline fill="none" stroke="${opts.color || 'var(--accent)'}" stroke-width="2" stroke-linejoin="round" points="${points.map(p => X(p.x).toFixed(1) + ',' + Y(p.y).toFixed(1)).join(' ')}"/>`;
+    s += `<text x="${pad.l}" y="${H - 4}">${esc(opts.xLabel || '')}</text></svg>`;
+    return s;
+  }
+  function dotPlot(nulls, real) {
+    const W = 360, H = 70, pad = 12;
+    const all = nulls.concat([real]);
+    let lo = Math.min(...all), hi = Math.max(...all);
+    if (hi - lo < 1e-6) { lo -= 0.01; hi += 0.01; }
+    const X = v => pad + (v - lo) / (hi - lo) * (W - 2 * pad);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Шударга дугуйтай харьцуулалт"><line class="grid" x1="${pad}" x2="${W - pad}" y1="38" y2="38"/>`;
+    nulls.forEach(v => { s += `<circle cx="${X(v).toFixed(1)}" cy="38" r="5" fill="var(--muted)" opacity=".55"/>`; });
+    s += `<circle cx="${X(real).toFixed(1)}" cy="38" r="7" fill="var(--accent)"/><text x="${X(real).toFixed(1)}" y="16" text-anchor="${X(real) > W - 60 ? 'end' : X(real) < 60 ? 'start' : 'middle'}" fill="var(--accent)">таны өгөгдөл</text>`;
+    s += `<text x="${pad}" y="${H - 4}">${lo.toFixed(4)}</text><text x="${W - pad}" y="${H - 4}" text-anchor="end">${hi.toFixed(4)} бит</text></svg>`;
+    return s;
+  }
+  function renderLearn() {
+    const res = state.last;
+    if (!res) { $('learnOut').innerHTML = ''; return; }
+    const t = res.test, b = t.betting;
+    let h = `<div class="stats">
+      <div class="stat"><div class="v">${t.bitsPerSpin >= 0 ? '+' : ''}${t.bitsPerSpin.toFixed(4)}</div><div class="k">мэдээллийн ашиг, бит/эргэлт</div></div>
+      <div class="stat"><div class="v">${fmtP(res.pBits)}</div><div class="k">шударга дугуйгаас ялгарах p</div></div>
+      <div class="stat"><div class="v">${pct(t.top1 / t.scored)}</div><div class="k">1-р таамаг онов (санамсаргүй 2.7%)</div></div>
+      <div class="stat"><div class="v">${pct(t.top3 / t.scored)}</div><div class="k">3 таамгийн нэг онов (8.1%)</div></div></div>`;
+    h += `<p class="muted">Шалгах хэсэг: ${num(t.scored)} эргэлт (${num(res.split + 1)}-р эргэлтээс хойш). Мэдээллийн ашиг 0 бол загвар шударга дугуйгаас илүү юу ч мэдэхгүй гэсэн үг.</p>`;
+    h += `<h3>Шударга дугуйтай харьцуулалт</h3><div class="chart">${dotPlot(res.nulls.map(x => x.bitsPerSpin), t.bitsPerSpin)}</div>
+      <p class="muted">Саарал цэг бүр нь ижил бооцоо, сесстэй боловч тоог нь шударга дугуйгаар дахин эргүүлсэн өгөгдөл дээрх үр дүн. Цэнхэр цэг тэднээс тод баруун талд гарсан үед л хэв маяг бодит байна.</p>`;
+    h += `<h3>Бооцооны туршилт</h3>
+      <p>Нэг нүдэнд 1 нэгж тавьж (хожвол ${t.cfg.straightRet} дахин, үржүүлэгчтэй бол үржүүлэгчээр), хүлээгдэж буй өгөөж нь ${Math.round(t.cfg.margin * 100)}%-аас дээш гэж үзсэн үедээ л (дээд тал нь ${t.cfg.maxBets} нүд) бооцоо тавив. ${num(b.bets)} бооцооноос ${num(b.hits)} нь онож (санамсаргүй бол ~${num(b.expectedHits, 1)}), ${b.bankroll >= 0 ? '+' : ''}${num(b.bankroll)} нэгж гарлаа, нэг бооцоонд ${b.roi >= 0 ? '+' : ''}${(b.roi * 100).toFixed(1)}%. Биномын тестийн p ${fmtP(b.p)}.</p>`;
+    if (t.bank.length > 1) h += `<div class="chart">${lineChart(t.bank.map(p => ({ x: p.t + 1, y: p.v })), { label: 'Бооцооны үлдэгдэл', xLabel: 'эргэлт', color: b.bankroll >= 0 ? 'var(--good)' : 'var(--bad)' })}</div>`;
+    h += `<h3>Аль загвар жин авав</h3><div class="bars">`;
+    t.models.slice().sort((a, c) => c.weight - a.weight).forEach(m => {
+      const info = PL.MODEL_INFO[m.id];
+      const extra = m.id === 'crowd' ? ` Казино удирдсан эргэлтийн тооцоолсон хувь: ${pct(m.param)}.` : m.id === 'overdue' && m.param != null ? ` Сурсан чиглэл: ${m.param > 0.05 ? '“удсан” тоо илүү бууж байна' : m.param < -0.05 ? 'саяхан буусан тоо илүү бууж байна' : 'нөлөөгүй'} (${m.param.toFixed(2)}).` : '';
+      h += `<div class="bar"><span>${info.label}</span><span class="track"><span class="fill" style="width:${(m.weight * 100).toFixed(1)}%;display:block"></span></span><span class="num">${pct(m.weight)}</span><span class="hint">${info.hint}${extra}</span></div>`;
+    });
+    h += `</div><p class="muted">Сонгосон тохиргоо: мартах хурд ${res.best.decay}, жин шилжүүлэх ${res.best.share}, бооцооны босго ${res.best.margin}. ${res.trials.length} хувилбараас сургалтын хэсэг дээр хамгийн сайныг нь авав.</p>`;
+    $('learnOut').innerHTML = h;
+  }
+  function renderLog() {
+    if (!state.log.length) { $('logOut').innerHTML = '<p class="empty">Одоохондоо туршилт хийгээгүй байна.</p>'; return; }
+    const lv = { edge: 'давуу тал', signal: 'сул дохио', none: 'илрээгүй', thin: 'хангалтгүй' };
+    let h = '<div class="scroll"><table><thead><tr><th>Огноо</th><th class="num">Эргэлт</th><th class="num">Бит/эргэлт</th><th class="num">p</th><th class="num">Өгөөж</th><th>Гол загвар</th><th>Дүгнэлт</th></tr></thead><tbody>';
+    state.log.slice().reverse().forEach(l => {
+      const d = new Date(l.at);
+      h += `<tr><td>${d.toLocaleDateString('mn-MN')} ${d.toTimeString().slice(0, 5)}</td><td class="num">${num(l.spins)}</td><td class="num">${l.bits.toFixed(4)}</td><td class="num">${fmtP(l.pBits)}</td><td class="num">${l.bets ? (l.roi * 100).toFixed(1) + '%' : '—'}</td><td>${esc(PL.MODEL_INFO[l.best].label)}</td><td>${lv[l.level]}</td></tr>`;
+    });
+    $('logOut').innerHTML = h + '</tbody></table></div>';
+  }
+
+  // ---------- players tab ----------
+  function analyzePlayersFromText(text) {
+    const { rows, errors } = PL.parsePlayerLog(text);
+    if (!rows.length) { $('playersOut').innerHTML = `<p class="empty">${esc(errors[0] || 'Бүртгэл хоосон байна.')}</p>`; return false; }
+    state.players = PL.analyzePlayers(rows);
+    renderPlayers();
+    return true;
+  }
+  function renderPlayers() {
+    const ps = state.players;
+    if (!ps.length) { $('playersOut').innerHTML = ''; return; }
+    const names = Object.assign({}, PL.PLAYER_TYPES);
+    const truthMap = state.truth && state.truth.players ? new Map(Object.entries(state.truth.players)) : null;
+    const colorAcc = ps.filter(p => p.colorTried >= 20);
+    const avgColor = colorAcc.length ? colorAcc.reduce((s, p) => s + p.colorAcc * p.colorTried, 0) / colorAcc.reduce((s, p) => s + p.colorTried, 0) : null;
+    const dirP = ps.filter(p => p.dirTried >= 20);
+    const avgDir = dirP.length ? dirP.reduce((s, p) => s + p.dirAcc * p.dirTried, 0) / dirP.reduce((s, p) => s + p.dirTried, 0) : null;
+    const avgBase = dirP.length ? dirP.reduce((s, p) => s + p.dirBaseline * p.dirTried, 0) / dirP.reduce((s, p) => s + p.dirTried, 0) : null;
+    let correct = 0, known = 0;
+    if (truthMap) ps.forEach(p => { if (truthMap.has(p.id)) { known++; if (truthMap.get(p.id) === p.label) correct++; } });
+    let h = `<div class="stats">
+      <div class="stat"><div class="v">${pct(avgColor)}</div><div class="k">дараагийн өнгийг таасан (санамсаргүй 50%)</div></div>
+      <div class="stat"><div class="v">${pct(avgDir)}</div><div class="k">бооцоо өсгөх, бууруулахыг таасан (хамгийн түгээмэлээр ${pct(avgBase)})</div></div>
+      ${known ? `<div class="stat"><div class="v">${correct}/${known}</div><div class="k">тоглогчийн төрлийг зөв ангилсан</div></div>` : ''}</div>
+      <p class="muted">Дугуйн дараагийн тоог таахад 2.7%-иас дээш гарах боломжгүй бол хүний дараагийн алхмыг ихэнхдээ үүнээс хамаагүй сайн таана. Таамаглал бүр зөвхөн тухайн мөчөөс өмнөх бооцоонд суурилсан.</p>`;
+    h += `<div class="scroll"><table><thead><tr><th>Тоглогч</th><th class="num">Бооцоо</th><th class="num">Цувааны эсрэг</th><th class="num">Алдсаны дараа өсгөсөн</th><th class="num">Өнгө таасан</th><th>Хэв маяг</th>${truthMap ? '<th>Жинхэнэ</th>' : ''}</tr></thead><tbody>`;
+    ps.slice(0, 200).forEach(p => {
+      h += `<tr><td>${esc(p.id)}</td><td class="num">${num(p.bets)}</td><td class="num">${p.streakBets ? pct(p.fallacy) : '—'}</td><td class="num">${pct(p.chase)}</td><td class="num">${p.colorTried ? pct(p.colorAcc) : '—'}</td><td>${esc(names[p.label])}</td>${truthMap ? `<td class="muted">${esc(names[truthMap.get(p.id)] || '—')}</td>` : ''}</tr>`;
+    });
+    h += `</tbody></table></div>
+      <h3>Хэв маягийн тайлбар</h3>
+      <ul class="refs">
+        <li><b>${names.fallacy}</b>: ижил өнгө 2+ удаа дараалсны дараа эсрэг өнгөнд тавьдаг (цувааны эсрэг өндөр).</li>
+        <li><b>${names.hot}</b>: дараалсан өнгийг дагадаг, ялсны дараа бооцоо өсгөдөг.</li>
+        <li><b>${names.martingale}</b>: нэг өнгөнд тавьж, алдах бүрт бооцоогоо хоёр дахин өсгөдөг.</li>
+        <li><b>${names.chaser}</b>: алдсаны дараа бооцоо өсгөж, тоо руу шилждэг.</li>
+      </ul>`;
+    $('playersOut').innerHTML = h;
+  }
+  $('loadPlayers').addEventListener('click', () => {
+    const text = $('playerText').value.trim() ? $('playerText').value : state.playerLog;
+    state.truth = null; // imported data has no known answer
+    if (analyzePlayersFromText(text)) { state.playerLog = text; save(); toast('Шинжиллээ'); }
+  });
+  $('playerFile').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(t => { $('playerText').value = t.length < 400000 ? t : ''; state.truth = null; if (analyzePlayersFromText(t)) { state.playerLog = t; save(); } e.target.value = ''; });
+  });
+  $('exportPlayers').addEventListener('click', () => state.playerLog ? download('players.csv', state.playerLog) : toast('Татах бүртгэл алга.'));
+
+  function renderAll() { renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); renderLastSpins(); }
+
+  load();
+  setGame(state.straightRet);
+  $('mTime').value = localNow();
+  renderAll();
+  if (state.playerLog) { $('playerText').value = state.playerLog.length < 400000 ? state.playerLog : ''; analyzePlayersFromText(state.playerLog); }
+  try { const t = localStorage.getItem(KEY + '.tab'); if (t) { const b = document.querySelector(`.tab[data-tab="${t}"]`); if (b) b.click(); } } catch (e) {}
+})();
+</script>
+</body>
+</html>
