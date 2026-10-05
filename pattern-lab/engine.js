@@ -184,7 +184,7 @@
       const iM = col(['multipliers', 'multiplier', 'lightning', 'mult', 'үржүүлэгч']);
       const iH = col(['hit', 'lightning_hit', 'mult_hit', 'буусан']);
       const iPart = col(['mult_partial', 'partial']);
-      if (iN < 0) return { spins, errors: ['Толгой мөрөнд "number" багана олдсонгүй.'] };
+      if (iN < 0) return parsePlainList(text);
       const stakeCols = head.map((h, i) => ({ h, i })).filter(c => /^b([0-9]|[12][0-9]|3[0-6])$/.test(c.h) || OUTSIDE[c.h]);
       const start = lines.indexOf(first) + 1;
       for (let li = start; li < lines.length; li++) {
@@ -211,6 +211,12 @@
       }
       return { spins, errors };
     }
+    return parsePlainList(text);
+  }
+
+  function parsePlainList(text) {
+    const lines = String(text || '').replace(/\r/g, '').split('\n');
+    const errors = [], spins = [];
     // Plain list: numbers separated by anything; a blank line, '#' or '---' starts a new session.
     // A number in parentheses landed on a multiplier number; when any parentheses are used, the
     // other numbers are taken as "no multiplier hit".
