@@ -358,6 +358,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
           <option value="dealer">Дилерийн гар (тогтмол зай алгасна)</option>
           <option value="house" selected>Казино зарим сесст удирдана</option>
           <option value="avoid">Буугаагүй эгнээнээс зайлсхийнэ (5+ эргэлт)</option>
+          <option value="streak">Зарим сесст эгнээний цуваа урт (буусан эгнээ дахин бууна)</option>
         </select></div>
       <div><label for="simSpins">Эргэлтийн тоо</label><input id="simSpins" type="number" inputmode="numeric" min="200" max="50000" value="4000"></div>
       <div><label for="simSessions">Сессийн тоо</label><input id="simSessions" type="number" inputmode="numeric" min="1" max="500" value="30"></div>
@@ -419,7 +420,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 21</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 22</p>
 </div>
 <div class="sheet" id="sheet">
   <div class="handle" id="sheetHandle" role="button" aria-expanded="false" tabindex="0"><span>Бүртгэх <small id="sheetLast"></small></span><span id="sheetArrow">▲</span></div>
@@ -437,8 +438,8 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=21"></script>
-<script src="ocr.js?v=21"></script>
+<script src="engine.js?v=22"></script>
+<script src="ocr.js?v=22"></script>
 <script>
 (function () {
   'use strict';
@@ -648,7 +649,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=21');
+    const r = await fetch('digits.json?v=22');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -813,7 +814,7 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=21'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=22'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1192,11 +1193,18 @@ td.good { color: var(--good); font-weight: 700; } td.bad { color: var(--bad); fo
     const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
     let h = `<p class="muted">Хувь = загварын таамаг, санамсаргүй ${pct(emp.base)}. Доор нь одоогийн байдал ба ийм байдлаас түүхэнд хэр бууж байсан.</p><div class="cols">` + items.map((it, i) => {
       const q = sum(it.has), ratio = q / (it.count / 37), nw = now[i];
-      const e = nw && nw.state ? emp.states.find(x => x.state === nw.state) : null;
-      const hist = e && e.tries >= 10 ? `түүхэнд ийм үед ${pct(e.rate)} (${num(e.tries)} удаа)` : 'ийм үеийн түүх цөөн';
+      const own = nw && nw.state ? emp.perCat[nw.cat][nw.state] : null, pooled = nw && nw.state ? emp.states.find(x => x.state === nw.state) : null;
+      const e = own && own.tries >= 10 ? own : pooled;
+      const hist = e && e.tries >= 10 ? `түүхэнд ${e === own ? 'энэ эгнээ' : 'эгнээнүүд'} ийм үед ${pct(e.rate)} (${num(e.tries)} удаа)` : 'ийм үеийн түүх цөөн';
       return `<div class="col ${ratio > 1.03 ? 'up' : ratio < 0.97 ? 'down' : ''}"><div class="k">${shortLabel(it.label)}</div><div class="v">${(q * 100).toFixed(1)}%</div><div class="x">×${ratio.toFixed(2)}</div><div class="s">${stateText(nw)}</div><div class="s muted">${hist}</div></div>`;
     }).join('') + '</div>';
     const rows = emp.states.filter(x => x.tries > 0).map(x => `<tr><td>${x.label}</td><td class="num">${num(x.hits)} / ${num(x.tries)}</td><td class="num ${x.tries >= 20 && x.rate > emp.base * 1.15 ? 'good' : x.tries >= 20 && x.rate < emp.base * 0.85 ? 'bad' : ''}">${pct(x.rate)}</td><td class="num muted">×${(x.rate / emp.base).toFixed(2)}</td></tr>`).join('');
+    // Streak continuation per group: after 1, 2, 3+ in a row, how often it hit again (window and the last 50).
+    const last50 = PL.groupGapStats(state.spins.slice(-50), familyId);
+    const cell = (src, c, keys) => { let hits = 0, tries = 0; keys.forEach(k => { hits += src.perCat[c][k].hits; tries += src.perCat[c][k].tries; }); return tries ? `${pct(hits / tries)} <small class="muted">(${num(tries)})</small>` : '—'; };
+    const fam = PL.CAT_FAMILIES.find(x => x.id === familyId);
+    h += `<details><summary>${title} тус бүрийн цуваа</summary><p class="muted">Бүлэг буусны дараа дахин буусан хувь: 1 удаа буусны дараа, 2 дараалсны дараа, 3+ дараалсны дараа. Эхний тоо сонгосон цонх, хоёр дахь нь сүүлийн 50 эргэлт: “яг одоо” цуваа урт явж байгаа эсэхийг харуул. Санамсаргүй ${pct(emp.base)}.</p><div class="scroll"><table><thead><tr><th></th><th class="num">1-ийн дараа</th><th class="num">2-ын дараа</th><th class="num">3+-ын дараа</th></tr></thead><tbody>` +
+      fam.cats.map((c, i) => `<tr><td>${shortLabel(items[i].label)}</td>${[['r1'], ['r2'], ['r3', 'r4']].map(keys => `<td class="num">${cell(emp, c, keys)}<br>${cell(last50, c, keys)}</td>`).join('')}</tr>`).join('') + '</tbody></table></div></details>';
     h += `<details><summary>${title}: завсрын түүх (${state.window ? 'сүүлийн ' + num(win.length) : 'бүх ' + num(win.length)} эргэлт)</summary><p class="muted">Бүлэг тухайн байдалд байхад дараагийн эргэлтэд хэр бууж байсан бэ. Санамсаргүй бол ${pct(emp.base)}. 20-оос дээш тохиолдолтой, ×1.15-аас дээш эсвэл ×0.85-аас доош мөр л анхаарал татна; загвар үүнийг “Бүлгийн завсар” хэв маягаар өөрөө сурдаг.</p><div class="scroll"><table><thead><tr><th>Байдал</th><th class="num">буусан / нийт</th><th class="num">хувь</th><th class="num">×</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
     return h;
   }
