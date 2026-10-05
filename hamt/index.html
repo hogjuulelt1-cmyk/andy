@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Хамт</title>
+<meta name="description" content="Найзуудтайгаа хамт зуршил тогтоож, зорилгодоо хүрэх апп">
+<link rel="manifest" href="/hamt/manifest.webmanifest">
+<link rel="icon" href="/hamt/icon-192.png">
+<link rel="apple-touch-icon" href="/hamt/icon-180.png">
+<meta name="theme-color" content="#eef1ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1513" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Хамт">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap">
+<style>
+:root{
+  --paper:#eef1ec; --card:#ffffff; --sunk:#e3e8e3; --ink:#18221f; --muted:#5b6964; --line:#d6ddd8;
+  --accent:#3346c4; --accent-ink:#ffffff; --good:#1b8a6b; --warn:#b4560f;
+  --display:"Unbounded",system-ui,sans-serif; --text:"Golos Text",system-ui,-apple-system,sans-serif;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  --spring:cubic-bezier(.34,1.56,.64,1); --ease:cubic-bezier(.2,.8,.2,1);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0f1513; --card:#18201d; --sunk:#212b27; --ink:#e6ece8; --muted:#93a29c; --line:#2a3531;
+  --accent:#8592ff; --accent-ink:#0f1513; --good:#4cc79f; --warn:#f0a35e; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#0f1513; --card:#18201d; --sunk:#212b27; --ink:#e6ece8; --muted:#93a29c; --line:#2a3531;
+  --accent:#8592ff; --accent-ink:#0f1513; --good:#4cc79f; --warn:#f0a35e; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 16px/1.5 var(--text);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+[hidden]{display:none!important}
+h1,h2,h3{margin:0;font-weight:600}
+p{margin:0}
+
+.app{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 104px)}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:22px}
+.eyebrow{color:var(--muted);font-size:15px}
+.title{font:600 30px/1.1 var(--display);letter-spacing:-.02em}
+.count{font:600 30px/1.1 var(--display);color:var(--muted);letter-spacing:-.02em;white-space:nowrap}
+.count b{color:var(--ink);font-weight:600}
+.section{margin-top:30px}
+.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:10px}
+.section-head h2{font:600 15px/1.3 var(--text);color:var(--muted)}
+.link{color:var(--accent);font-weight:600;font-size:15px;padding:6px 0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+
+/* today progress: one segment per habit */
+.segs{display:flex;gap:4px;margin:-8px 0 8px}
+.segs i{flex:1;height:6px;border-radius:3px;background:var(--sunk);transition:background .4s var(--ease)}
+.segs i.on{background:var(--me,var(--accent))}
+
+/* habit rows */
+.list{background:var(--card);border-radius:var(--r-lg);overflow:hidden}
+.row{display:flex;align-items:center;gap:14px;padding:14px 16px;min-height:72px;position:relative}
+.row+.row::before{content:"";position:absolute;top:0;left:74px;right:0;border-top:1px solid var(--line)}
+.row-main{flex:1;min-width:0;text-align:left;padding:4px 0}
+.row-title{font-weight:600;font-size:17px;line-height:1.3;overflow-wrap:anywhere}
+.row.done .row-title{color:var(--muted)}
+.row-meta{font-size:14px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere}
+.row-meta .warn{color:var(--warn);font-weight:500}
+.check{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;transition:background .25s var(--ease),border-color .25s var(--ease),transform .35s var(--spring)}
+.check svg{width:22px;height:22px;stroke:#fff;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .3s var(--ease) .05s}
+.check.on{background:var(--me,var(--accent));border-color:var(--me,var(--accent))}
+.check.on svg{stroke-dashoffset:0}
+.check:active{transform:scale(.88)}
+.ring{flex:none;width:34px;height:34px}
+.ring circle{fill:none;stroke-width:4}
+.ring .bg{stroke:var(--sunk)}
+.ring .fg{stroke:var(--me,var(--accent));stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .6s var(--ease)}
+
+.empty{background:var(--card);border-radius:var(--r-lg);padding:22px 18px}
+.empty h3{font:600 18px/1.3 var(--display);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{background:var(--sunk);border-radius:999px;padding:9px 14px;font-size:15px;font-weight:500;min-height:40px}
+.chip:active{transform:scale(.97)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 20px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:16px;transition:transform .2s var(--spring),opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:var(--sunk);color:var(--ink)}
+.btn.block{width:100%}
+.btn.danger{background:transparent;color:#c2334d}
+.btn[disabled]{opacity:.5}
+.add{position:fixed;right:max(16px,calc(50% - 264px));bottom:calc(env(safe-area-inset-bottom) + 84px);width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 8px 24px -8px rgba(30,40,120,.55);z-index:5;transition:transform .25s var(--spring)}
+.add:active{transform:scale(.9)}
+.add svg{width:26px;height:26px;stroke:currentColor;stroke-width:2.5;stroke-linecap:round}
+
+/* friends strip */
+.friends{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 6px;scrollbar-width:none;margin:0 -16px;padding-left:18px;padding-right:18px}
+.friends::-webkit-scrollbar{display:none}
+.friend{flex:none;width:64px;text-align:center;font-size:13px;color:var(--muted)}
+.friend .av-ring{position:relative;width:56px;height:56px;margin:0 auto 4px}
+.friend .av-ring svg{position:absolute;inset:0;width:56px;height:56px}
+.friend .av{display:grid;position:absolute;top:6px;left:6px;width:44px;height:44px;font-size:17px}
+.friend span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:15px;flex:none;background:var(--c,#3346c4)}
+
+.notice{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:var(--r-md);padding:12px 14px;margin-bottom:10px;font-size:15px}
+.notice .em{font-size:22px}
+
+/* group */
+.team{background:var(--card);border-radius:var(--r-lg);padding:20px 18px}
+.team-num{font:600 52px/1 var(--display);letter-spacing:-.04em}
+.team-num small{font-size:22px;color:var(--muted);letter-spacing:0}
+.bar{height:10px;border-radius:5px;background:var(--sunk);position:relative;margin:14px 0 8px;overflow:visible}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:5px;background:var(--accent);transition:width .6s var(--ease)}
+.bar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:1px}
+
+.weave{display:grid;grid-template-columns:auto repeat(7,1fr);gap:6px 6px;align-items:center;margin-top:4px}
+.weave .wh{font-size:12px;color:var(--muted);text-align:center}
+.weave .wh.now{color:var(--ink);font-weight:700}
+.weave .wn{font-size:14px;font-weight:500;padding-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92px}
+.cell{aspect-ratio:1;border-radius:7px;background:var(--sunk);position:relative;overflow:hidden}
+.cell i{position:absolute;inset:0;background:var(--c);border-radius:inherit}
+.cell.future{background:transparent;border:1.5px dashed var(--line)}
+.cell.rest{background:transparent;border:1.5px solid var(--sunk)}
+
+.rank{background:var(--card);border-radius:var(--r-lg);overflow:hidden}
+.rank .row{min-height:64px;padding:10px 12px 10px 16px}
+.rank .row+.row::before{left:16px}
+.pos{width:18px;font:600 14px var(--display);color:var(--muted);flex:none;text-align:center}
+.pct{font:600 17px var(--display);min-width:56px;text-align:right}
+.cheer{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:20px;flex:none;background:var(--sunk);transition:transform .3s var(--spring)}
+.cheer:active{transform:scale(.85)}
+.cheer.sent{opacity:.45}
+
+.stake{background:var(--card);border-radius:var(--r-lg);padding:16px 18px;display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%}
+.stake .em{font-size:24px;line-height:1.2}
+
+.feed{display:flex;flex-direction:column;gap:2px}
+.post{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.post:last-child{border-bottom:0}
+.post-body{flex:1;min-width:0}
+.post-body p{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:2px}
+.post-head{font-size:14px;color:var(--muted)}
+.post-head b{color:var(--ink);font-weight:600}
+
+.code{font:600 26px/1 var(--display);letter-spacing:.12em;background:var(--sunk);padding:16px;border-radius:var(--r-md);text-align:center;margin:12px 0;user-select:all}
+
+/* goals */
+.goal{background:var(--card);border-radius:var(--r-lg);padding:18px;margin-bottom:12px}
+.goal h3{font:600 19px/1.3 var(--display);letter-spacing:-.01em;overflow-wrap:anywhere}
+.goal .why{color:var(--muted);margin-top:6px;font-size:15px;overflow-wrap:anywhere}
+.goal-meta{display:flex;gap:10px;align-items:center;margin-top:12px;font-size:14px;color:var(--muted);flex-wrap:wrap}
+.pill{background:var(--sunk);border-radius:999px;padding:3px 10px;color:var(--ink);font-weight:500}
+.goal ul{list-style:none;padding:0;margin:12px 0 0;border-top:1px solid var(--line)}
+.goal li{display:flex;justify-content:space-between;gap:12px;padding:10px 0 0;font-size:15px}
+.goal.done h3{text-decoration:line-through;color:var(--muted)}
+
+/* me */
+.me-head{display:flex;align-items:center;gap:16px}
+.me-head .av{width:64px;height:64px;font-size:26px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:18px}
+.stat{background:var(--card);border-radius:var(--r-md);padding:14px 12px}
+.stat b{display:block;font:600 24px/1.1 var(--display)}
+.stat span{display:block;font-size:13px;line-height:1.3;color:var(--muted);margin-top:4px}
+.study{background:var(--card);border-radius:var(--r-md);margin-bottom:8px}
+.study summary{list-style:none;padding:14px 16px;cursor:pointer;display:flex;gap:12px;align-items:flex-start}
+.study summary::-webkit-details-marker{display:none}
+.study summary b{display:block;color:var(--ink);font-weight:600;line-height:1.35}
+.study summary span{font-size:14px;color:var(--muted)}
+.study .em{font-size:20px;line-height:1.3}
+.study div{padding:0 16px 14px 48px;font-size:15px}
+.study div p+p{margin-top:8px}
+.study a{color:var(--accent);font-size:14px;overflow-wrap:anywhere}
+.menu{background:var(--card);border-radius:var(--r-lg);overflow:hidden}
+.menu button,.menu a{display:flex;width:100%;align-items:center;justify-content:space-between;padding:15px 16px;min-height:52px;text-align:left;color:inherit;text-decoration:none}
+.menu > *+*{border-top:1px solid var(--line)}
+
+/* tab bar */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;justify-content:center;padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);background:color-mix(in srgb,var(--paper) 82%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(18px);backdrop-filter:saturate(1.6) blur(18px);border-top:1px solid var(--line)}
+.tabs-in{display:flex;width:100%;max-width:560px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;min-height:52px;font-size:12px;font-weight:500;color:var(--muted)}
+.tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--accent)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,16,14,.42);z-index:20;opacity:0;transition:opacity .3s var(--ease)}
+.scrim.show{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;max-height:92dvh;overflow-y:auto;overscroll-behavior:contain;background:var(--paper);border-radius:24px 24px 0 0;padding:10px 18px calc(env(safe-area-inset-bottom) + 22px);transform:translateY(105%);transition:transform .42s var(--ease)}
+.sheet.show{transform:none}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.sheet h2{font:600 22px/1.25 var(--display);letter-spacing:-.01em;margin-bottom:6px}
+.sheet .section-head h2{font:600 15px/1.3 var(--text);color:var(--muted);margin:0;letter-spacing:0}
+.sheet .lead{color:var(--muted);font-size:15px;margin-bottom:16px}
+.field{display:block;margin-bottom:16px}
+.field > span{display:block;font-weight:600;font-size:15px;margin-bottom:6px}
+.field > small{display:block;color:var(--muted);font-size:13px;margin-top:5px}
+.input{width:100%;font-size:16px;background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-md);padding:12px 14px;min-height:50px;transition:border-color .2s}
+.input:focus{outline:none;border-color:var(--accent)}
+textarea.input{min-height:110px;resize:vertical;line-height:1.45}
+.days{display:flex;gap:6px}
+.days label{flex:1}
+.days input,.colors input,.seg input{position:absolute;opacity:0;pointer-events:none}
+.days span{display:grid;place-items:center;height:44px;border-radius:12px;background:var(--card);border:1.5px solid var(--line);font-size:14px;font-weight:600}
+.days input:checked+span{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.days input:focus-visible+span,.colors input:focus-visible+span,.seg input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+.colors{display:flex;gap:10px;flex-wrap:wrap}
+.colors span{display:block;width:40px;height:40px;border-radius:50%;background:var(--c);border:3px solid var(--paper);box-shadow:0 0 0 2px transparent;transition:box-shadow .2s}
+.colors input:checked+span{box-shadow:0 0 0 2px var(--c)}
+.seg{display:flex;background:var(--sunk);border-radius:12px;padding:3px;gap:3px;flex-wrap:wrap}
+.seg label{flex:1;min-width:30%}
+.seg span{display:block;text-align:center;padding:9px 8px;border-radius:9px;font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg input:checked+span{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:8px 0 4px}
+.heat .hd{font-size:11px;color:var(--muted);text-align:center}
+.heat button,.heat i{aspect-ratio:1;border-radius:6px;background:var(--sunk);display:block}
+.heat .on{background:var(--me)}
+.heat .off{background:transparent;border:1.5px solid var(--sunk)}
+.heat .fut{background:transparent}
+.heat .today{box-shadow:inset 0 0 0 2px var(--ink)}
+.path{height:12px;border-radius:6px;background:var(--sunk);overflow:hidden;margin:8px 0 6px}
+.path i{display:block;height:100%;background:var(--me);border-radius:6px}
+
+/* celebration */
+.cele{text-align:center;padding:10px 0 6px}
+.cele .big{font:700 64px/1 var(--display);letter-spacing:-.04em;margin:8px 0 6px}
+.cele p{color:var(--muted);max-width:34ch;margin:8px auto 0}
+.reward{background:var(--card);border-radius:var(--r-md);padding:14px;margin-top:16px;text-align:left;display:flex;gap:10px}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:30;overflow:hidden}
+.confetti i{position:absolute;top:-12px;width:8px;height:14px;border-radius:2px;animation:fall var(--d,1.6s) var(--ease) forwards}
+@keyframes fall{to{transform:translate(var(--x,0),105vh) rotate(var(--r,540deg));opacity:.9}}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 152px);transform:translate(-50%,20px);background:var(--ink);color:var(--paper);padding:11px 18px;border-radius:999px;font-size:15px;font-weight:500;opacity:0;transition:opacity .25s,transform .35s var(--spring);z-index:40;max-width:calc(100vw - 32px);text-align:center;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* auth / onboarding */
+.gate{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;max-width:420px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 24px)}
+.brand{font:700 54px/1 var(--display);letter-spacing:-.05em;margin-bottom:12px}
+.brand-dots{display:flex;gap:6px;margin-bottom:22px}
+.brand-dots i{width:14px;height:14px;border-radius:4px;background:var(--c)}
+.gate .lead{color:var(--muted);font-size:17px;margin-bottom:28px;max-width:30ch}
+.err{color:#c2334d;font-size:14px;min-height:20px;margin-top:4px}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
+  .confetti{display:none}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="/hamt/config.js"></script>
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $=(s,el=document)=>el.querySelector(s);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>(crypto.randomUUID?crypto.randomUUID():"x"+Math.random().toString(36).slice(2)+Date.now().toString(36));
+const pad=n=>(n<10?"0":"")+n;
+const dk=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const pdk=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d);};
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
+const weekStart=d=>{const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-(x.getDay()+6)%7);return x;};
+const WD=["Ням","Даваа","Мягмар","Лхагва","Пүрэв","Баасан","Бямба"];
+const WS=["Ня","Да","Мя","Лх","Пү","Ба","Бя"];
+const MON_ORDER=[1,2,3,4,5,6,0];
+const COLORS=["#3346c4","#e09b1a","#1e8e7e","#d04e6f","#7b57c9","#2f86c8","#6c8a2b","#c4631f"];
+const MILESTONES=[3,7,14,21,30,50,66,100,150,200,365];
+const PRAISE=["Сайн байна!","Өөртөө өгсөн үгэндээ хүрлээ.","Нэг алхам урагшиллаа.","Ингээд л явна шүү.","Жижиг ч гэсэн тогтмол. Энэ чинь хамгийн чухал нь.","Маргаашийн чи баярлана."];
+const pctTxt=x=>Math.round(x*100)+"%";
+const initial=n=>(n||"?").trim().charAt(0).toUpperCase()||"?";
+function ago(iso){const s=(Date.now()-new Date(iso))/1000;if(s<60)return"дөнгөж сая";if(s<3600)return Math.floor(s/60)+" минутын өмнө";if(s<86400)return Math.floor(s/3600)+" цагийн өмнө";const d=Math.floor(s/86400);return d===1?"өчигдөр":d+" өдрийн өмнө";}
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("show"),2400);}
+const buzz=()=>{try{navigator.vibrate&&navigator.vibrate(12);}catch(e){}};
+const reduced=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}};
+
+/* ---------- backend: Supabase REST or local ---------- */
+const CFG=window.HAMT_CONFIG||{};
+const R={
+  url:(CFG.supabaseUrl||"").replace(/\/$/,""),key:CFG.supabaseAnonKey||"",session:null,
+  on(){return !!(this.url&&this.key);},
+  load(){try{this.session=JSON.parse(store.get("hamt-session")||"null");}catch(e){this.session=null;}},
+  keep(s){this.session=s;store.set("hamt-session",s?JSON.stringify(s):null);},
+  take(j){this.keep({access:j.access_token,refresh:j.refresh_token,exp:Date.now()+(j.expires_in||3600)*1000,uid:j.user&&j.user.id,email:j.user&&j.user.email});},
+  async authPost(path,body){
+    const r=await fetch(this.url+"/auth/v1/"+path,{method:"POST",headers:{apikey:this.key,"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error_description||j.msg||j.message||"auth");return j;
+  },
+  async login(email,password){this.take(await this.authPost("token?grant_type=password",{email,password}));},
+  async signup(email,password){const j=await this.authPost("signup",{email,password});if(j.access_token){this.take(j);return true;}return false;},
+  async token(){
+    if(!this.session)throw new Error("noauth");
+    if(Date.now()>this.session.exp-60000){try{this.take(await this.authPost("token?grant_type=refresh_token",{refresh_token:this.session.refresh}));}catch(e){this.keep(null);throw new Error("noauth");}}
+    return this.session.access;
+  },
+  async req(path,opt={}){
+    const t=await this.token();
+    const r=await fetch(this.url+"/rest/v1/"+path,Object.assign({},opt,{headers:Object.assign({apikey:this.key,Authorization:"Bearer "+t,"Content-Type":"application/json"},opt.headers||{})}));
+    if(r.status===401){this.keep(null);throw new Error("noauth");}
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.message||("http "+r.status));}
+    return r.status===204?null:r.json().catch(()=>null);
+  },
+  get(path){return this.req(path);},
+  upsert(table,row){return this.req(table,{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify(row)});},
+  patch(table,q,body){return this.req(table+"?"+q,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(body)});},
+  del(table,q){return this.req(table+"?"+q,{method:"DELETE",headers:{Prefer:"return=minimal"}});},
+  rpc(fn,args){return this.req("rpc/"+fn,{method:"POST",body:JSON.stringify(args)});}
+};
+const REMOTE=R.on();
+
+const COLS={
+  profiles:["id","name","color"],
+  goals:["id","user_id","group_id","title","why","due","done","created_at"],
+  habits:["id","user_id","group_id","goal_id","title","cue","days","reward","archived","created_at"],
+  checkins:["habit_id","user_id","day"],
+  feed:["id","group_id","user_id","to_user","kind","body","created_at"]
+};
+const KEY={checkins:r=>r.habit_id+"|"+r.day,members:r=>r.group_id+"|"+r.user_id};
+const keyOf=(t,r)=>(KEY[t]||(x=>x.id))(r);
+const pick=(t,r)=>{const o={};COLS[t].forEach(k=>{if(r[k]!==undefined)o[k]=r[k];});return o;};
+
+let S=null; // {me, profiles[], groups[], members[], goals[], habits[], checkins[], feed[]}
+let CK=new Set();
+const persist=()=>{if(!REMOTE)store.set("hamt-local-v1",JSON.stringify(S));};
+
+function seedLocal(){
+  const t=today(),me="me",now=new Date().toISOString();
+  const friends=[["f1","Анар","#e09b1a",.9],["f2","Тэмүүлэн","#1e8e7e",.72],["f3","Сарнай","#d04e6f",.55]];
+  const d={me,profiles:[{id:me,name:"",color:COLORS[0]}],groups:[{id:"demo",name:"Жишээ баг",code:"DEMO42",stake:"Долоо хоногийн эцэст хамгийн бага хувьтай нь бусаддаа кофе авч өгнө",created_by:"f1",created_at:now}],
+    members:[{group_id:"demo",user_id:me}],goals:[],habits:[],checkins:[],feed:[]};
+  const titles=[["Өглөө 20 минут гүйх","Ном 10 хуудас унших"],["Англи үг 15 минут","Усаа 2 литр уух"],["Бясалгал 10 минут","Унтахаас өмнө утасгүй 30 минут"]];
+  let seed=7;const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
+  friends.forEach(([id,name,color,p],i)=>{
+    d.profiles.push({id,name,color});d.members.push({group_id:"demo",user_id:id});
+    titles[i].forEach((title,j)=>{
+      const h={id:id+"h"+j,user_id:id,group_id:"demo",goal_id:null,title,cue:"",days:[0,1,2,3,4,5,6],reward:"",archived:false,created_at:addDays(t,-40).toISOString()};
+      d.habits.push(h);
+      for(let k=40;k>=1;k--)if(rnd()<p)d.checkins.push({habit_id:h.id,user_id:id,day:dk(addDays(t,-k))});
+      if(i===0||(i===1&&j===0))d.checkins.push({habit_id:h.id,user_id:id,day:dk(t)});
+    });
+  });
+  d.feed.push({id:uid(),group_id:"demo",user_id:"f1",to_user:null,kind:"report",body:"Энэ долоо хоног 6 өдөр гүйлээ. Ням гараг алгассан ч Даваанаас дахиад эхэлсэн. Ирэх долоо хоногт оройн хоолны дараа ном уншиж үзнэ.",created_at:new Date(Date.now()-26*3600e3).toISOString()});
+  d.feed.push({id:uid(),group_id:"demo",user_id:"f2",to_user:"f1",kind:"cheer",body:"👏",created_at:new Date(Date.now()-20*3600e3).toISOString()});
+  return d;
+}
+
+async function loadData(){
+  if(!REMOTE){
+    try{S=JSON.parse(store.get("hamt-local-v1")||"null");}catch(e){S=null;}
+    if(!S){S=seedLocal();persist();}
+  }else{
+    const since=dk(addDays(today(),-130));
+    const [profiles,groups,members,goals,habits,checkins,feed]=await Promise.all([
+      R.get("profiles?select=id,name,color"),R.get("groups?select=*"),R.get("members?select=group_id,user_id"),
+      R.get("goals?select=*&order=created_at"),R.get("habits?select=*&archived=eq.false&order=created_at"),
+      R.get("checkins?select=habit_id,user_id,day&day=gte."+since),R.get("feed?select=*&order=created_at.desc&limit=80")]);
+    S={me:R.session.uid,profiles,groups,members,goals,habits,checkins,feed};
+  }
+  if(!S.groups.some(g=>g.id===UI.group))UI.group=(S.groups[0]||{}).id||null;
+}
+
+/* every mutation updates S first so the screen reacts at once, then saves */
+async function save(table,row){
+  const k=keyOf(table,row),i=S[table].findIndex(r=>keyOf(table,r)===k);
+  if(i>=0)S[table][i]=Object.assign({},S[table][i],row);else S[table].push(row);
+  persist();
+  if(REMOTE)try{await R.upsert(table,pick(table,row));}catch(e){fail(e);}
+}
+async function remove(table,row,q){
+  const k=keyOf(table,row);S[table]=S[table].filter(r=>keyOf(table,r)!==k);persist();
+  if(REMOTE)try{await R.del(table,q);}catch(e){fail(e);}
+}
+function fail(e){
+  if(String(e.message)==="noauth"){render();return;}
+  toast("Хадгалж чадсангүй. Интернэтээ шалгаад дахин оролдоно уу.");
+  loadData().then(render).catch(()=>{});
+}
+
+/* ---------- domain ---------- */
+const prof=id=>S.profiles.find(p=>p.id===id)||{id,name:"Гишүүн",color:"#7a8580"};
+const me=()=>S.profiles.find(p=>p.id===S.me)||{id:S.me,name:"",color:COLORS[0]};
+const myColor=()=>me().color||COLORS[0];
+const habitsOf=(u,g)=>S.habits.filter(h=>!h.archived&&h.user_id===u&&(g===undefined||h.group_id===g));
+const cday=h=>dk(new Date(h.created_at));
+const sched=(h,d)=>h.days.includes(d.getDay())&&dk(d)>=cday(h);
+const done=(h,d)=>CK.has(h.id+"|"+dk(d));
+const groupMembers=g=>S.members.filter(m=>m.group_id===g).map(m=>m.user_id);
+
+// Forgiving streak: one missed day never breaks it, two in a row do ("never miss twice").
+function streak(h){
+  let d=today(),s=0,miss=0;
+  if(!done(h,d))d=addDays(d,-1);
+  const start=cday(h);
+  for(let i=0;i<500&&dk(d)>=start;i++,d=addDays(d,-1)){
+    if(!h.days.includes(d.getDay()))continue;
+    if(done(h,d)){s++;miss=0;}else if(++miss>=2)break;
+  }
+  return s;
+}
+function missedYesterday(h){
+  let d=addDays(today(),-1);
+  for(let i=0;i<7;i++,d=addDays(d,-1)){if(dk(d)<cday(h))return false;if(h.days.includes(d.getDay()))return !done(h,d);}
+  return false;
+}
+function rate(h,n){ // share of scheduled days done in the last n days (today counts only once done)
+  let s=0,c=0,d=today();
+  for(let i=0;i<n;i++,d=addDays(d,-1)){
+    if(!sched(h,d))continue;
+    if(i===0&&!done(h,d))continue;
+    s++;if(done(h,d))c++;
+  }
+  return s?c/s:0;
+}
+// Habit strength: rises toward 100% with each repetition, ~95% after 66 (Lally et al. 2010); a miss costs little.
+function strength(h){
+  let x=0,d=pdk(cday(h));const t=today();
+  for(;d<=t;d=addDays(d,1)){
+    if(!h.days.includes(d.getDay()))continue;
+    if(done(h,d))x+=(1-x)*.045;else if(d<t)x*=.985;
+  }
+  return x;
+}
+function reps(h){return S.checkins.filter(c=>c.habit_id===h.id).length;}
+function weekStat(u,g,ws){
+  ws=ws||weekStart(today());const hs=habitsOf(u,g),t=today();
+  let s=0,c=0,full=0;
+  for(let i=0;i<7;i++){
+    const d=addDays(ws,i);if(d>t)break;
+    let ds=0,dc=0;
+    hs.forEach(h=>{if(!sched(h,d))return;const ok=done(h,d);if(+d===+t&&!ok)return;ds++;if(ok)dc++;});
+    s+=ds;c+=dc;if(ds&&ds===dc)full++;
+  }
+  return{pct:s?c/s:0,done:c,sched:s,points:c*10+full*5};
+}
+function dayFrac(u,g,d){
+  const hs=habitsOf(u,g).filter(h=>sched(h,d));
+  if(!hs.length)return null;
+  return hs.filter(h=>done(h,d)).length/hs.length;
+}
+function teamStat(g,ws){
+  const ms=groupMembers(g).filter(u=>habitsOf(u,g).length);
+  if(!ms.length)return 0;
+  return ms.reduce((a,u)=>a+weekStat(u,g,ws).pct,0)/ms.length;
+}
+function teamWeeks(g){ // finished weeks in a row where the team average reached 80%
+  let n=0,ws=addDays(weekStart(today()),-7);
+  for(let i=0;i<26;i++,ws=addDays(ws,-7)){const t=teamStat(g,ws);if(t>=.8)n++;else break;}
+  return n;
+}
+
+/* ---------- UI state ---------- */
+const UI={tab:store.get("hamt-tab")||"today",group:store.get("hamt-group")};
+const ICON={
+  check:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  today:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></svg>',
+  group:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9.5" r="2.6"/><path d="M15.5 14.3c2.6-.4 4.6 1.2 5 4.2"/></svg>',
+  goal:'<svg viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 4.5h11l-2.2 3.7L17 12H6"/></svg>',
+  me:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.8 20c.9-3.8 3.7-6 7.2-6s6.3 2.2 7.2 6"/></svg>'
+};
+const av=(p,size)=>`<span class="av" style="--c:${esc(p.color)}${size?";width:"+size+"px;height:"+size+"px":""}" aria-hidden="true">${esc(initial(p.name))}</span>`;
+const ring=(v,c)=>{const r=13,L=2*Math.PI*r;return `<svg class="ring" viewBox="0 0 34 34" style="--me:${c}" aria-hidden="true"><circle class="bg" cx="17" cy="17" r="${r}"/><circle class="fg" cx="17" cy="17" r="${r}" stroke-dasharray="${L}" stroke-dashoffset="${L*(1-v)}"/></svg>`;};
+
+function render(){
+  const root=$("#root");
+  if(REMOTE&&!R.session){root.innerHTML=authView();return;}
+  if(!S){root.innerHTML='<div class="gate"><p class="muted">Ачаалж байна…</p></div>';return;}
+  if(!me().name){root.innerHTML=onboardView();return;}
+  CK=new Set(S.checkins.map(c=>c.habit_id+"|"+c.day));
+  store.set("hamt-tab",UI.tab);store.set("hamt-group",UI.group);
+  document.documentElement.style.setProperty("--me",myColor());
+  const page={today:todayView,group:groupView,goals:goalsView,me:meView}[UI.tab]||todayView;
+  const tabs=[["today","Өнөөдөр"],["group","Баг"],["goals","Зорилго"],["me","Би"]];
+  const fab=UI.tab==="today"||UI.tab==="goals"?`<button class="add" data-act="${UI.tab==="goals"?"new-goal":"new-habit"}" aria-label="${UI.tab==="goals"?"Зорилго нэмэх":"Зуршил нэмэх"}">${ICON.plus}</button>`:"";
+  root.innerHTML=`<main class="app">${page()}</main>${fab}
+  <nav class="tabs"><div class="tabs-in" role="tablist">${tabs.map(([k,l])=>`<button class="tab" role="tab" aria-selected="${UI.tab===k}" data-act="tab" data-v="${k}">${ICON[k==="goals"?"goal":k]}${l}</button>`).join("")}</div></nav>`;
+}
+
+/* ---------- views ---------- */
+function authView(){
+  const dots=COLORS.slice(0,4).map(c=>`<i style="--c:${c}"></i>`).join("");
+  return `<div class="gate"><div class="brand-dots">${dots}</div><h1 class="brand">Хамт</h1>
+  <p class="lead">Зуршлаа найзуудтайгаа хамт тогтоо. Өдөр бүр тэмдэглэж, бие биенээ дэмжинэ.</p>
+  <form id="auth" novalidate>
+   <label class="field"><span>Имэйл</span><input class="input" name="email" type="email" autocomplete="email" required></label>
+   <label class="field"><span>Нууц үг</span><input class="input" name="password" type="password" autocomplete="current-password" minlength="6" required><small>6-аас доошгүй тэмдэгт</small></label>
+   <div class="actions"><button class="btn block" name="mode" value="login">Нэвтрэх</button><button class="btn ghost block" name="mode" value="signup">Шинээр бүртгүүлэх</button></div>
+   <p class="err" id="auth-err" role="alert"></p>
+  </form></div>`;
+}
+function colorPicker(name,cur){return `<div class="colors" role="radiogroup">${COLORS.map(c=>`<label><input type="radio" name="${name}" value="${c}" ${c===cur?"checked":""} aria-label="Өнгө ${c}"><span style="--c:${c}"></span></label>`).join("")}</div>`;}
+function onboardView(){
+  return `<div class="gate"><h1 class="brand" style="font-size:40px">Сайн уу!</h1>
+  <p class="lead">Багийнхан чинь чамайг энэ нэрээр, энэ өнгөөр харна.</p>
+  <form id="onboard">
+   <label class="field"><span>Нэр</span><input class="input" name="name" maxlength="24" autocomplete="given-name" required></label>
+   <div class="field"><span>Өнгө</span>${colorPicker("color",me().color||COLORS[0])}</div>
+   <div class="actions"><button class="btn block">Эхлэх</button></div>
+  </form></div>`;
+}
+
+function todayView(){
+  const t=today(),mine=habitsOf(S.me),due=mine.filter(h=>sched(h,t)),rest=mine.filter(h=>!sched(h,t));
+  const n=due.filter(h=>done(h,t)).length;
+  const date=WD[t.getDay()]+", "+(t.getMonth()+1)+"-р сарын "+t.getDate();
+  let html=`<header class="top"><div><p class="eyebrow">${date}</p><h1 class="title">Өнөөдөр</h1></div>${due.length?`<p class="count" aria-label="${n} нь ${due.length}-аас хийгдсэн"><b>${n}</b>/${due.length}</p>`:""}</header>`;
+  if(due.length)html+=`<div class="segs" aria-hidden="true">${due.map(h=>`<i class="${done(h,t)?"on":""}"></i>`).join("")}</div>`;
+  // cheers received in the last two days
+  const recent=S.feed.filter(f=>f.kind==="cheer"&&f.to_user===S.me&&Date.now()-new Date(f.created_at)<2*864e5).slice(0,2);
+  html+=recent.map(f=>`<div class="notice"><span class="em">${esc(f.body.length<=4?f.body:"👏")}</span><p><b>${esc(prof(f.user_id).name)}</b> чамайг дэмжлээ${f.body.length>4?": “"+esc(f.body)+"”":""}</p></div>`).join("");
+  if(!mine.length){
+    html+=`<div class="empty"><h3>Эхний зуршлаа нэм</h3><p class="muted">Жижиг, тодорхой зүйлээс эхэл. 2 минутад хийж чадах хэмжээтэй байвал бүр сайн. Доорхоос сонгож болно.</p>
+    <div class="chips">${["Ном 10 хуудас унших","10 минут алхах","Бясалгал 5 минут","Англи үг 10","Ус 2 литр","Өдрийн тэмдэглэл 3 мөр"].map(s=>`<button class="chip" data-act="quick" data-v="${esc(s)}">${esc(s)}</button>`).join("")}</div></div>`;
+  }else{
+    html+=due.length?`<div class="list">${due.map(habitRow).join("")}</div>`:`<div class="empty"><h3>Өнөөдөр амрах өдөр</h3><p class="muted">Хуваарьт зуршил алга. Амар.</p></div>`;
+    if(rest.length)html+=`<div class="section"><div class="section-head"><h2>Өнөөдрийн хуваарьт ороогүй</h2></div><div class="list">${rest.map(habitRow).join("")}</div></div>`;
+  }
+  // group strip
+  const g=S.groups.find(x=>x.id===UI.group);
+  if(g){
+    const others=groupMembers(g.id).filter(u=>u!==S.me);
+    if(others.length)html+=`<div class="section"><div class="section-head"><h2>${esc(g.name)} өнөөдөр</h2><button class="link" data-act="tab" data-v="group">Баг руу</button></div>
+    <div class="friends">${others.map(u=>{const p=prof(u),f=dayFrac(u,g.id,t),v=f==null?0:f,r=25,L=2*Math.PI*r;
+      return `<button class="friend" data-act="cheer" data-v="${esc(u)}" aria-label="${esc(p.name)}: ${f==null?"өнөөдөр хуваарьгүй":pctTxt(v)}. Дэмжлэг илгээх"><span class="av-ring"><svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="${r}" fill="none" stroke="var(--sunk)" stroke-width="3.5"/><circle cx="28" cy="28" r="${r}" fill="none" stroke="${esc(p.color)}" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${L}" stroke-dashoffset="${L*(1-v)}" transform="rotate(-90 28 28)"/></svg>${av(p)}</span><span>${esc(p.name)}</span></button>`;}).join("")}</div>
+    <p class="small muted" style="margin-top:4px">Найз дээрээ дарж 👏 илгээ.</p></div>`;
+  }else if(mine.length){
+    html+=`<div class="section"><div class="empty"><h3>Хамт хийвэл амар</h3><p class="muted">Ахицаа бусдад харуулдаг хүмүүс зорилгодоо илүү хүрдэг. Найзуудаа урь.</p><div class="actions"><button class="btn" data-act="tab" data-v="group">Баг үүсгэх</button></div></div></div>`;
+  }
+  return html;
+}
+function habitRow(h){
+  const t=today(),on=done(h,t),st=streak(h),warn=sched(h,t)&&!on&&missedYesterday(h);
+  const meta=[];
+  if(h.cue)meta.push(esc(h.cue));
+  if(warn)meta.push('<span class="warn">Өчигдөр алгассан. Өнөөдөр давтахгүй!</span>');
+  else if(st)meta.push(st+" удаа дараалан");
+  if(!h.group_id)meta.push("зөвхөн би");
+  return `<div class="row ${on?"done":""}"><button class="check ${on?"on":""}" data-act="toggle" data-v="${esc(h.id)}" aria-pressed="${on}" aria-label="${esc(h.title)}: ${on?"хийсэн":"хийгээгүй"}">${ICON.check}</button>
+  <button class="row-main" data-act="habit" data-v="${esc(h.id)}"><div class="row-title">${esc(h.title)}</div>${meta.length?`<div class="row-meta">${meta.join(" · ")}</div>`:""}</button>
+  <span title="Зуршлын бат бэх">${ring(strength(h),myColor())}</span></div>`;
+}
+
+function groupView(){
+  if(!S.groups.length)return `<header class="top"><div><h1 class="title">Баг</h1></div></header>
+  <div class="empty"><h3>Хамтдаа хариуцлагатай</h3><p class="muted">3–6 хүнтэй жижиг баг хамгийн сайн. Өдөр бүрийн ахиц бүгдэд харагдана, долоо хоног бүр тайлангаа бичнэ, бие биенээ дэмжинэ.</p>
+  <div class="actions"><button class="btn" data-act="new-group">Баг үүсгэх</button><button class="btn ghost" data-act="join-group">Кодоор нэгдэх</button></div></div>`;
+  const g=S.groups.find(x=>x.id===UI.group)||S.groups[0];UI.group=g.id;
+  const ms=groupMembers(g.id),t=today(),ws=weekStart(t);
+  const team=teamStat(g.id),tw=teamWeeks(g.id);
+  const rows=ms.map(u=>({u,p:prof(u),w:weekStat(u,g.id),n:habitsOf(u,g.id).length})).sort((a,b)=>b.w.pct-a.w.pct||b.w.points-a.w.points);
+  const cheered=new Set(S.feed.filter(f=>f.kind==="cheer"&&f.user_id===S.me&&f.group_id===g.id&&dk(new Date(f.created_at))===dk(t)).map(f=>f.to_user));
+  let html=`<header class="top"><div style="min-width:0"><p class="eyebrow">${ms.length} гишүүн</p><h1 class="title" style="overflow-wrap:anywhere">${esc(g.name)}</h1></div><button class="link" data-act="group-menu">Тохиргоо</button></header>`;
+  if(S.groups.length>1)html+=`<div class="seg" style="margin:-8px 0 18px">${S.groups.map(x=>`<label><input type="radio" name="gsel" data-act="pick-group" value="${esc(x.id)}" ${x.id===g.id?"checked":""}><span>${esc(x.name)}</span></label>`).join("")}</div>`;
+  html+=`<section class="team" aria-label="Багийн энэ долоо хоног"><p class="eyebrow">Энэ долоо хоногт баг</p><p class="team-num">${Math.round(team*100)}<small>%</small></p>
+   <div class="bar" role="img" aria-label="Зорилт 80%"><i style="width:${Math.min(100,team*100)}%"></i><b style="left:80%"></b></div>
+   <p class="small muted">${team>=.8?"Багийн зорилт биелж байна. Ингээд л үргэлжлүүл!":"Багийн дундаж 80%-д хүрвэл энэ долоо хоног биелнэ."}${tw?` Өмнөх ${tw} долоо хоног дараалан биелсэн 🔥`:""}</p></section>`;
+  // the weave: one row per member, one cell per day, filled with their color
+  html+=`<div class="section"><div class="section-head"><h2>Энэ долоо хоногийн хээ</h2></div><div class="weave" role="table" aria-label="Гишүүдийн өдөр бүрийн ахиц"><span></span>${MON_ORDER.map((w,i)=>`<span class="wh ${dk(addDays(ws,i))===dk(t)?"now":""}">${WS[w]}</span>`).join("")}
+   ${rows.map(r=>`<span class="wn">${esc(r.p.name)}</span>`+MON_ORDER.map((w,i)=>{const d=addDays(ws,i);if(d>t)return '<span class="cell future"></span>';const f=dayFrac(r.u,g.id,d);if(f==null)return '<span class="cell rest"></span>';return `<span class="cell" title="${pctTxt(f)}"><i style="--c:${esc(r.p.color)};opacity:${f?(.25+.75*f).toFixed(2):0}"></i></span>`;}).join("")).join("")}
+  </div></div>`;
+  html+=`<div class="section"><div class="section-head"><h2>Чансаа</h2><span class="small muted">Даваа бүр шинээр эхэлнэ</span></div><div class="rank">${rows.map((r,i)=>`<div class="row"><span class="pos">${i+1}</span>${av(r.p)}<div class="row-main"><div class="row-title">${esc(r.p.name)}${r.u===S.me?' <span class="muted small">(би)</span>':""}</div><div class="row-meta">${r.n?r.w.points+" оноо · "+r.w.done+"/"+r.w.sched+" удаа":"Багт зуршил нэмээгүй байна"}</div></div><span class="pct">${r.n?pctTxt(r.w.pct):"–"}</span>${r.u===S.me?'<span style="width:44px"></span>':`<button class="cheer ${cheered.has(r.u)?"sent":""}" data-act="cheer" data-v="${esc(r.u)}" aria-label="${esc(r.p.name)}-д дэмжлэг илгээх">👏</button>`}</div>`).join("")}</div></div>`;
+  html+=`<div class="section"><div class="section-head"><h2>Бооцоо</h2></div><button class="stake" data-act="stake"><span class="em">🤝</span><span>${g.stake?esc(g.stake):'<span class="muted">Хүсвэл багаараа жижиг бооцоо тавь. Жишээ нь сүүлийн байрын хүн бусдадаа кофе авч өгнө.</span>'}</span></button></div>`;
+  const posts=S.feed.filter(f=>f.group_id===g.id).slice(0,30);
+  html+=`<div class="section"><div class="section-head"><h2>Мэдээ</h2><button class="link" data-act="report">Тайлан бичих</button></div>
+   ${posts.length?`<div class="feed">${posts.map(postView).join("")}</div>`:`<p class="muted">Долоо хоногийн эцэст юу сайн болсон, юу саад болсныг богино бичээд хуваалц.</p>`}</div>`;
+  return html;
+}
+function postView(f){
+  const p=prof(f.user_id);
+  if(f.kind==="cheer"){const to=prof(f.to_user);return `<div class="post">${av(p)}<div class="post-body"><p class="post-head"><b>${esc(p.name)}</b> → <b>${esc(to.name)}</b> · ${ago(f.created_at)}</p><p>${esc(f.body)}</p></div></div>`;}
+  return `<div class="post">${av(p)}<div class="post-body"><p class="post-head"><b>${esc(p.name)}</b> долоо хоногийн тайлан · ${ago(f.created_at)}</p><p>${esc(f.body)}</p>${f.user_id!==S.me?`<button class="link" data-act="cheer" data-v="${esc(f.user_id)}">👏 Дэмжих</button>`:""}</div></div>`;
+}
+
+function goalsView(){
+  const gs=S.goals.filter(g=>g.user_id===S.me).sort((a,b)=>a.done-b.done);
+  let html=`<header class="top"><div><h1 class="title">Зорилго</h1></div></header>`;
+  if(!gs.length)html+=`<div class="empty"><h3>Том зорилгоо тодорхойл</h3><p class="muted">“Илүү эрүүл болох” гэхээс “3-р сар гэхэд 5 км зогсолтгүй гүйх” гэвэл илүү үр дүнтэй. Дараа нь зорилгодоо хүргэх өдөр тутмын зуршлуудаа холбоно.</p><div class="actions"><button class="btn" data-act="new-goal">Зорилго нэмэх</button></div></div>`;
+  html+=gs.map(g=>{
+    const hs=habitsOf(S.me).filter(h=>h.goal_id===g.id);
+    let left="";if(g.due){const n=Math.ceil((pdk(g.due)-today())/864e5);left=n>0?n+" өдөр үлдсэн":n===0?"Өнөөдөр":"Хугацаа өнгөрсөн";}
+    const grp=S.groups.find(x=>x.id===g.group_id);
+    return `<article class="goal ${g.done?"done":""}"><button data-act="goal" data-v="${esc(g.id)}" style="text-align:left;width:100%"><h3>${esc(g.title)}</h3>${g.why?`<p class="why">${esc(g.why)}</p>`:""}</button>
+     <div class="goal-meta">${g.done?'<span class="pill">Биелсэн 🎉</span>':left?`<span class="pill">${left}</span>`:""}<span>${grp?esc(grp.name)+"-д харагдана":"Зөвхөн би"}</span></div>
+     ${hs.length?`<ul>${hs.map(h=>`<li><span>${esc(h.title)}</span><span class="muted">${pctTxt(rate(h,14))} · 14 хоног</span></li>`).join("")}</ul>`:g.done?"":`<p class="small muted" style="margin-top:10px"><button class="link" data-act="new-habit" data-v="${esc(g.id)}">Зуршил холбох</button></p>`}</article>`;
+  }).join("");
+  return html;
+}
+
+const STUDIES=[
+ ["🔁","Зуршил дунджаар 66 хоногт тогтдог","Lally ба бусад, 2010",["96 хүн 84 хоног өдөр бүр нэг үйлдэл хийжээ. Үйлдэл автомат болоход хүмүүсийн хооронд 18-аас 254 хоног, дунджаар 66 хоног зарцуулагдсан. “21 хоног” гэдэг нь судалгааны үндэсгүй домог.","Нэг өдөр алгасах нь ахицад бараг нөлөөлөөгүй. Тиймээс энэ апп нэг өдөр алгасахад дараалсан тоог тасалдаггүй. Харин хоёр өдөр дараалан алгасвал тасарна. Дугуй дүрс зуршлын бат бэхийг 66 давталтын замаар харуулна."],"https://doi.org/10.1002/ejsp.674"],
+ ["📍","“Хэзээ, хаана” гэж төлөвлөх","Gollwitzer & Sheeran, 2006",["94 судалгааны нэгтгэл: “X болоход би Y хийнэ” гэж урьдчилан төлөвлөсөн хүмүүс зорилгодоо мэдэгдэхүйц илүү хүрсэн (d = 0.65).","Зуршил нэмэхдээ “Хэзээ?” талбарт “Өглөөний цайны дараа” гэх мэт тодорхой мөчийг бич."],"https://doi.org/10.1016/S0065-2601(06)38002-1"],
+ ["📊","Ахицаа тэмдэглэж, бусдад харуулах","Harkin ба бусад, 2016",["138 судалгаа, 19,951 оролцогч: ахицаа хянадаг хүмүүс зорилгодоо илүү хүрдэг (d = 0.40). Ахицаа бусдад мэдэгдэх, бичиж тэмдэглэх үед нөлөө бүр их байсан.","Иймээс өдөр бүрийн тэмдэглэл чинь багийнханд шууд харагдана."],"https://doi.org/10.1037/bul0000025"],
+ ["🏁","Нөхөрсөг өрсөлдөөн","Patel ба бусад, 2019 · Zhang ба бусад, 2016",["602 хүнтэй STEP UP туршилтад өрсөлдөөнтэй бүлэг өдөрт хамгийн их буюу 920 алхам нэмж, туршилт дууссаны дараа ч ахиц нь хадгалагдсан. Зөвхөн дэмжлэг үзүүлсэн бүлгийн нөлөө бага байв.","Оюутнуудын судалгаанд бусдын ахицыг харсан хүмүүс дасгалдаа 90% орчим илүү явсан. Тиймээс багт долоо хоногийн чансаа бий."],"https://doi.org/10.1001/jamainternmed.2019.3505"],
+ ["👏","Магтаал шагналаас илүү","Deci, Koestner & Ryan, 1999",["128 туршилтын нэгтгэл: эд зүйлсийн шагнал дотоод урам зоригийг бууруулж болдог бол эерэг үг, магтаал нэмэгдүүлдэг.","Тиймээс энд шагнал гэдэг нь найзуудын 👏, ахицын тэмдэг, өөртөө амласан жижиг баяр юм."],"https://doi.org/10.1037/0033-2909.125.6.627"],
+ ["✍️","Долоо хоногийн тайлан","Matthews, 2015",["Зорилгоо бичээд, долоо хоног бүр найздаа ахицаа мэдэгдсэн бүлэг хамгийн их ахисан. Анхааруулга: энэ судалгаа рецензтэй сэтгүүлд хэвлэгдээгүй, түүвэр бага тул чиг хандлага төдий гэж ойлгоорой.","“Тайлан бичих” товч үүнд зориулагдсан."],"https://www.dominican.edu/sites/default/files/2020-02/gailmatthews-harvard-goals-researchsummary.pdf"],
+ ["🌅","Даваа гараг бол шинэ эхлэл","Dai, Milkman & Riis, 2014",["Хүмүүс долоо хоног, сар эхлэхэд шинэ зорилго эхлүүлэх магадлал өндөр. Долоо хоногийн эхэнд биеийн тамирын заал руу явах нь 33% илүү байжээ.","Чансаа, багийн хувь Даваа гараг бүр шинээр эхэлнэ. Өнгөрсөн долоо хоног муу байсан ч дахиад эхлэх боломж байна."],"https://doi.org/10.1287/mnsc.2014.1901"],
+ ["🎯","Тодорхой, хүндэвтэр зорилго","Locke & Latham, 2002",["“Чадах чинээгээрээ” гэхээс тодорхой, хүндэвтэр зорилго илүү үр дүнтэй. Гэхдээ үүнд зорилгодоо үнэнхүү тууштай байх, ахицаа байнга мэдэх хэрэгтэй.","Зорилгоо хэмжигдэхүйц бич, хугацаа тавь."],"https://doi.org/10.1037/0003-066X.57.9.705"],
+ ["🤝","Бооцоо сайн дураар","Halpern ба бусад, 2015",["Тамхинаас гарах 2,538 хүнтэй туршилтад мөнгөн барьцааг сонгосон хүмүүст маш сайн нөлөөлсөн ч ердөө 14% нь л сонгосон.","Иймээс бооцоо сонголттой, мөнгөгүй, нөхөрсөг байна."],"https://doi.org/10.1056/NEJMoa1414293"],
+ ["🎧","Дуртай зүйлтэйгээ хослуул","Milkman, Minson & Volpp, 2014",["Дуртай аудио номоо зөвхөн заалд сонсох боломжтой хүмүүс эхэндээ 51% илүү явсан. Цаг хугацааны явцад энэ нөлөө суларсан.","Зуршлын “Шагнал” талбарт хослуулах зүйлээ бичиж болно."],"https://doi.org/10.1287/mnsc.2013.1784"]
+];
+function meView(){
+  const p=me(),mine=habitsOf(S.me),total=S.checkins.filter(c=>c.user_id===S.me).length;
+  const best=mine.reduce((a,h)=>Math.max(a,streak(h)),0);
+  const wk=weekStat(S.me);
+  return `<header class="top"><div class="me-head">${av(p)}<div><h1 class="title" style="overflow-wrap:anywhere">${esc(p.name)}</h1>${REMOTE&&R.session.email?`<p class="small muted">${esc(R.session.email)}</p>`:""}</div></div></header>
+  <div class="stats"><div class="stat"><b>${total}</b><span>Нийт тэмдэглэл</span></div><div class="stat"><b>${best}</b><span>Шилдэг дараалал</span></div><div class="stat"><b>${wk.sched?pctTxt(wk.pct):"–"}</b><span>Энэ долоо хоног</span></div></div>
+  <div class="section"><div class="section-head"><h2>Яагаад ингэж бүтээсэн бэ</h2></div>
+  ${STUDIES.map(([em,t,src,ps,url])=>`<details class="study"><summary><span class="em" aria-hidden="true">${em}</span><span><b>${t}</b><span>${src}</span></span></summary><div>${ps.map(x=>`<p>${x}</p>`).join("")}<p><a href="${url}" target="_blank" rel="noopener">Эх сурвалж</a></p></div></details>`).join("")}</div>
+  <div class="section"><div class="menu">
+   <button data-act="profile">Нэр, өнгө солих<span class="muted">›</span></button>
+   <button data-act="archived">Зогсоосон зуршлууд<span class="muted">${S.habits.filter(h=>h.archived&&h.user_id===S.me).length||""} ›</span></button>
+   <button data-act="export">Өгөгдөл татах (JSON)<span class="muted">›</span></button>
+   ${REMOTE?'<button data-act="logout" style="color:#c2334d">Гарах</button>':'<button data-act="reset" style="color:#c2334d">Бүх өгөгдлийг устгах</button>'}
+  </div>${REMOTE?"":'<p class="small muted" style="margin-top:12px">Одоо зөвхөн энэ төхөөрөмж дээр хадгалагдаж байна. Найзуудтайгаа холбогдохын тулд Supabase тохируулна (README-г үз).</p>'}</div>`;
+}
+
+/* ---------- sheets ---------- */
+let sheetEl=null,scrimEl=null,lastFocus=null;
+function openSheet(html,onReady){
+  closeSheet(true);lastFocus=document.activeElement;
+  scrimEl=document.createElement("div");scrimEl.className="scrim";scrimEl.dataset.act="close";
+  sheetEl=document.createElement("div");sheetEl.className="sheet";sheetEl.setAttribute("role","dialog");sheetEl.setAttribute("aria-modal","true");
+  sheetEl.innerHTML='<div class="grab" aria-hidden="true"></div>'+html;
+  document.body.append(scrimEl,sheetEl);
+  requestAnimationFrame(()=>{scrimEl.classList.add("show");sheetEl.classList.add("show");});
+  const h=$("h2",sheetEl);if(h){h.id="sheet-t";sheetEl.setAttribute("aria-labelledby","sheet-t");h.tabIndex=-1;setTimeout(()=>h.focus({preventScroll:true}),60);}
+  onReady&&onReady(sheetEl);
+}
+function closeSheet(now){
+  if(!sheetEl)return;const s=sheetEl,c=scrimEl;sheetEl=scrimEl=null;
+  if(now){s.remove();c.remove();return;}
+  s.classList.remove("show");c.classList.remove("show");setTimeout(()=>{s.remove();c.remove();},reduced()?0:380);
+  if(lastFocus&&document.contains(lastFocus))lastFocus.focus({preventScroll:true});
+}
+
+function habitForm(h,goalId){
+  h=h||{title:"",cue:"",days:[0,1,2,3,4,5,6],reward:"",group_id:UI.group&&S.groups.some(g=>g.id===UI.group)?UI.group:null,goal_id:goalId||null};
+  const goals=S.goals.filter(g=>g.user_id===S.me&&!g.done);
+  const share=[["","Зөвхөн би"]].concat(S.groups.map(g=>[g.id,g.name]));
+  openSheet(`<h2>${h.id?"Зуршил засах":"Шинэ зуршил"}</h2><p class="lead">Жижиг, тодорхой байх тусам амархан тогтоно.</p>
+  <form id="habit-form" data-id="${esc(h.id||"")}">
+   <label class="field"><span>Юу хийх вэ?</span><input class="input" name="title" maxlength="60" required value="${esc(h.title)}" placeholder="Ном 10 хуудас унших"></label>
+   <label class="field"><span>Хэзээ, хаана?</span><input class="input" name="cue" maxlength="60" value="${esc(h.cue)}" placeholder="Өглөөний цайны дараа"><small>Өдөр бүр давтагддаг үйлдэлд уявал мартахгүй.</small></label>
+   <div class="field"><span>Аль өдрүүдэд?</span><div class="days">${MON_ORDER.map(w=>`<label><input type="checkbox" name="days" value="${w}" ${h.days.includes(w)?"checked":""}><span>${WS[w]}</span></label>`).join("")}</div></div>
+   ${S.groups.length?`<div class="field"><span>Хэнд харагдах вэ?</span><div class="seg">${share.map(([v,l])=>`<label><input type="radio" name="group" value="${esc(v)}" ${(h.group_id||"")===v?"checked":""}><span>${esc(l)}</span></label>`).join("")}</div><small>Багт харагдах зуршил л чансаанд орно.</small></div>`:""}
+   ${goals.length?`<label class="field"><span>Аль зорилгод хамаарах вэ?</span><select class="input" name="goal"><option value="">Аль нь ч биш</option>${goals.map(g=>`<option value="${esc(g.id)}" ${h.goal_id===g.id?"selected":""}>${esc(g.title)}</option>`).join("")}</select></label>`:""}
+   <label class="field"><span>Өөртөө өгөх шагнал</span><input class="input" name="reward" maxlength="80" value="${esc(h.reward)}" placeholder="Долоо хоног бүтэн хийвэл дуртай кофе"><small>Долоо хоногийн бүх өдрөө хийвэл сануулна. Заавал биш.</small></label>
+   <div class="actions"><button class="btn block">Хадгалах</button>${h.id?`<button type="button" class="btn danger block" data-act="archive" data-v="${esc(h.id)}">Зуршлыг зогсоох</button>`:""}</div>
+  </form>`);
+}
+function goalForm(g){
+  g=g||{title:"",why:"",due:"",group_id:null};
+  openSheet(`<h2>${g.id?"Зорилго засах":"Шинэ зорилго"}</h2><p class="lead">Тодорхой, хэмжиж болохуйц, бага зэрэг хэцүү зорилго хамгийн сайн ажилладаг.</p>
+  <form id="goal-form" data-id="${esc(g.id||"")}">
+   <label class="field"><span>Зорилго</span><input class="input" name="title" maxlength="80" required value="${esc(g.title)}" placeholder="3-р сар гэхэд 5 км зогсолтгүй гүйх"></label>
+   <label class="field"><span>Яагаад чухал вэ?</span><textarea class="input" name="why" maxlength="300" placeholder="Хүүтэйгээ хамт уралдаанд гармаар байна">${esc(g.why)}</textarea><small>Урам буурах үед үүнийг уншина.</small></label>
+   <label class="field"><span>Хугацаа</span><input class="input" type="date" name="due" value="${esc(g.due||"")}"></label>
+   ${S.groups.length?`<div class="field"><span>Хэнд харагдах вэ?</span><div class="seg">${[["","Зөвхөн би"]].concat(S.groups.map(x=>[x.id,x.name])).map(([v,l])=>`<label><input type="radio" name="group" value="${esc(v)}" ${(g.group_id||"")===v?"checked":""}><span>${esc(l)}</span></label>`).join("")}</div></div>`:""}
+   <div class="actions"><button class="btn block">Хадгалах</button>${g.id?`<button type="button" class="btn ghost block" data-act="goal-done" data-v="${esc(g.id)}">${g.done?"Биелээгүй гэж буцаах":"Биелсэн гэж тэмдэглэх 🎉"}</button><button type="button" class="btn danger block" data-act="goal-del" data-v="${esc(g.id)}">Устгах</button>`:""}</div>
+  </form>`);
+}
+function habitDetail(h){
+  const t=today(),st=streak(h),sv=strength(h),n=reps(h);
+  const start=addDays(weekStart(t),-7*11);
+  let cells=MON_ORDER.map(w=>`<span class="hd">${WS[w]}</span>`).join("");
+  for(let d=start;d<=addDays(weekStart(t),6);d=addDays(d,1)){
+    const k=dk(d),fut=d>t,canTap=!fut&&(t-d)/864e5<=7&&k>=cday(h);
+    const cls=fut?"fut":done(h,d)?"on":sched(h,d)?"":"off";
+    const lbl=`${d.getMonth()+1}/${d.getDate()} ${done(h,d)?"хийсэн":"хийгээгүй"}`;
+    cells+=canTap?`<button class="${cls} ${k===dk(t)?"today":""}" data-act="toggle-day" data-v="${esc(h.id)}" data-d="${k}" aria-label="${lbl}"></button>`:`<i class="${cls}" title="${lbl}"></i>`;
+  }
+  openSheet(`<h2>${esc(h.title)}</h2>${h.cue?`<p class="lead">${esc(h.cue)}</p>`:'<p class="lead"></p>'}
+   <div class="stats" style="margin-top:0"><div class="stat"><b>${st}</b><span>Дараалан</span></div><div class="stat"><b>${pctTxt(rate(h,30))}</b><span>30 хоногт</span></div><div class="stat"><b>${n}</b><span>Нийт</span></div></div>
+   <div class="section" style="margin-top:22px"><div class="section-head"><h2>Бат бэх: ${pctTxt(sv)}</h2><span class="small muted">${Math.min(n,66)}/66 давталт</span></div>
+   <div class="path"><i style="width:${Math.max(2,sv*100)}%"></i></div><p class="small muted">Давтах бүрт бат бэх нэмэгдэнэ. Нэг өдөр алгасахад бага зэрэг л буурна.</p></div>
+   <div class="section" style="margin-top:22px"><div class="section-head"><h2>Сүүлийн 12 долоо хоног</h2></div><div class="heat">${cells}</div><p class="small muted">Тэмдэглэхээ мартсан бол сүүлийн 7 хоногийн нүдэн дээр дарж засна.</p></div>
+   ${h.reward?`<div class="reward"><span>🎁</span><span>${esc(h.reward)}</span></div>`:""}
+   <div class="actions"><button class="btn ghost block" data-act="edit-habit" data-v="${esc(h.id)}">Засах</button></div>`);
+}
+function celebrate(big,title,text,reward){
+  openSheet(`<div class="cele"><h2 style="margin:0">${esc(title)}</h2><p class="big">${esc(big)}</p><p>${esc(text)}</p>${reward?`<div class="reward"><span>🎁</span><span><b>Шагналаа аваарай:</b> ${esc(reward)}</span></div>`:""}</div><div class="actions"><button class="btn block" data-act="close">Баярлалаа</button></div>`);
+  confetti();
+}
+function confetti(){
+  if(reduced())return;
+  const box=document.createElement("div");box.className="confetti";
+  const cs=[myColor()].concat(COLORS);
+  for(let i=0;i<36;i++){const e=document.createElement("i");e.style.cssText=`left:${Math.random()*100}%;background:${cs[i%cs.length]};--x:${(Math.random()-.5)*160}px;--r:${360+Math.random()*540}deg;--d:${1.2+Math.random()*1.1}s;animation-delay:${Math.random()*.25}s`;box.append(e);}
+  document.body.append(box);setTimeout(()=>box.remove(),2800);
+}
+
+/* ---------- actions ---------- */
+async function toggle(h,d,quiet){
+  const k=dk(d),on=!CK.has(h.id+"|"+k),row={habit_id:h.id,user_id:S.me,day:k};
+  if(on)save("checkins",row);else remove("checkins",row,"habit_id=eq."+h.id+"&day=eq."+k);
+  CK=new Set(S.checkins.map(c=>c.habit_id+"|"+c.day));
+  if(quiet||!on||k!==dk(today())){render();return;}
+  buzz();render();
+  const st=streak(h);
+  if(MILESTONES.includes(st)){
+    const msg=st===66?"Судалгаагаар зуршил дунджаар 66 хоногт автомат болдог. Чи тэр замыг туулчихлаа.":st>=21?"Энэ зуршил чиний нэг хэсэг болж байна.":"Эхлэл тавигдлаа. Цааш нь үргэлжлүүл.";
+    setTimeout(()=>celebrate(st,"“"+h.title+"”","удаа дараалан. "+msg,null),350);return;
+  }
+  // weekly reward: every scheduled day this week done
+  if(h.reward){const ws=weekStart(today());let all=true,any=false;for(let i=0;i<7;i++){const x=addDays(ws,i);if(!h.days.includes(x.getDay()))continue;any=true;if(x>today()||!done(h,x)){all=false;break;}}
+    const lastSched=MON_ORDER.slice().reverse().find(w=>h.days.includes(w));
+    if(any&&all&&today().getDay()===lastSched){setTimeout(()=>celebrate("7/7","Долоо хоног бүтэн!","Энэ долоо хоногийн бүх өдрөө хийлээ.",h.reward),350);return;}}
+  const due=habitsOf(S.me).filter(x=>sched(x,today()));
+  if(due.length>1&&due.every(x=>done(x,today()))){toast("Өнөөдрийнхөө бүгдийг хийлээ! +5 оноо");confetti();return;}
+  if(Math.random()<.35)toast(PRAISE[Math.floor(Math.random()*PRAISE.length)]);
+}
+async function sendCheer(u,body){
+  const g=S.groups.find(x=>x.id===UI.group&&groupMembers(x.id).includes(u))||S.groups.find(x=>groupMembers(x.id).includes(u));
+  if(!g)return;
+  buzz();
+  await save("feed",{id:uid(),group_id:g.id,user_id:S.me,to_user:u,kind:"cheer",body:body||"👏",created_at:new Date().toISOString()});
+  toast(prof(u).name+"-д "+(body&&body.length>4?"зурвас":"👏")+" илгээлээ");render();
+}
+function cheerSheet(u){
+  const p=prof(u),f=dayFrac(u,UI.group,today());
+  const msgs=["👏","🔥","💪","Өнөөдөр чадна шүү!","Чамаар бахархаж байна","Маргааш хамт хийцгээе"];
+  openSheet(`<h2>${esc(p.name)}</h2><p class="lead">${f==null?"Өнөөдөр хуваарьт зуршилгүй.":f===1?"Өнөөдрийнхөө бүгдийг хийсэн байна.":"Өнөөдөр "+pctTxt(f)+" хийсэн."} Дэмжлэг илгээх үү?</p>
+  <div class="chips">${msgs.map(m=>`<button class="chip" data-act="send-cheer" data-v="${esc(u)}" data-m="${esc(m)}" style="${m.length<=2?"font-size:22px;min-width:56px":""}">${esc(m)}</button>`).join("")}</div>`);
+}
+
+const handlers={
+  tab:(el)=>{UI.tab=el.dataset.v;render();scrollTo(0,0);},
+  close:()=>closeSheet(),
+  "new-habit":(el)=>habitForm(null,el.dataset.v),
+  quick:(el)=>habitForm({title:el.dataset.v,cue:"",days:[0,1,2,3,4,5,6],reward:"",group_id:UI.group||null,goal_id:null}),
+  habit:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);h&&habitDetail(h);},
+  "edit-habit":(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);h&&habitForm(h);},
+  toggle:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);h&&toggle(h,today());},
+  "toggle-day":(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;toggle(h,pdk(el.dataset.d),true);habitDetail(h);},
+  archive:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;save("habits",Object.assign({},h,{archived:true}));closeSheet();render();toast("Зогсоолоо. “Би” хэсгээс сэргээнэ.");},
+  archived:()=>{const hs=S.habits.filter(h=>h.archived&&h.user_id===S.me);
+    openSheet(`<h2>Зогсоосон зуршлууд</h2>${hs.length?`<div class="menu">${hs.map(h=>`<button data-act="unarchive" data-v="${esc(h.id)}">${esc(h.title)}<span class="link">Сэргээх</span></button>`).join("")}</div>`:'<p class="lead">Одоогоор алга.</p>'}`);},
+  unarchive:(el)=>{const h=S.habits.find(x=>x.id===el.dataset.v);if(!h)return;save("habits",Object.assign({},h,{archived:false}));closeSheet();render();toast("Сэргээлээ");},
+  cheer:(el)=>cheerSheet(el.dataset.v),
+  "send-cheer":(el)=>{closeSheet();sendCheer(el.dataset.v,el.dataset.m);},
+  "new-goal":()=>goalForm(),
+  goal:(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);g&&goalForm(g);},
+  "goal-done":(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);if(!g)return;const d=!g.done;save("goals",Object.assign({},g,{done:d}));render();if(d)celebrate("🎉","Зорилго биеллээ!","“"+g.title+"”. Баяраа багийнхантайгаа хуваалцаарай.",null);else closeSheet();},
+  "goal-del":(el)=>{const g=S.goals.find(x=>x.id===el.dataset.v);if(!g||!confirm("Энэ зорилгыг устгах уу?"))return;S.habits.forEach(h=>{if(h.goal_id===g.id)h.goal_id=null;});remove("goals",g,"id=eq."+g.id);closeSheet();render();},
+  "new-group":()=>openSheet(`<h2>Баг үүсгэх</h2><p class="lead">Дараа нь урилгын кодоо найзууддаа илгээнэ.</p><form id="group-form"><label class="field"><span>Багийн нэр</span><input class="input" name="name" maxlength="40" required placeholder="Өглөөний клуб"></label><label class="field"><span>Бооцоо (заавал биш)</span><input class="input" name="stake" maxlength="120" placeholder="Сүүлийн байрын хүн кофе авч өгнө"></label><div class="actions"><button class="btn block">Үүсгэх</button></div></form>`),
+  "join-group":()=>openSheet(`<h2>Багт нэгдэх</h2><p class="lead">Найзаасаа 6 тэмдэгттэй код ав.</p><form id="join-form"><label class="field"><span>Урилгын код</span><input class="input" name="code" maxlength="6" required autocapitalize="characters" autocomplete="off" style="letter-spacing:.2em;text-transform:uppercase"></label><p class="err" id="join-err" role="alert"></p><div class="actions"><button class="btn block">Нэгдэх</button></div></form>`),
+  "pick-group":(el)=>{UI.group=el.value;render();},
+  "group-menu":()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;const link=location.origin+location.pathname+"?join="+g.code;
+    openSheet(`<h2>${esc(g.name)}</h2><p class="lead">Энэ кодоор найзууд чинь нэгдэнэ.</p><p class="code">${esc(g.code)}</p>
+    <div class="actions"><button class="btn block" data-act="share" data-v="${esc(link)}">Урилга илгээх</button><button class="btn ghost block" data-act="stake">Бооцоо засах</button><button class="btn ghost block" data-act="new-group">Өөр баг үүсгэх</button><button class="btn ghost block" data-act="join-group">Өөр багт нэгдэх</button><button class="btn danger block" data-act="leave">Багаас гарах</button></div>`);},
+  share:async(el)=>{const url=el.dataset.v,text="Хамт апп дээр манай багт нэгдээрэй! Урилгын холбоос:";
+    try{if(navigator.share){await navigator.share({title:"Хамт",text,url});return;}await navigator.clipboard.writeText(text+" "+url);toast("Холбоос хуулагдлаа");}catch(e){}},
+  stake:()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;openSheet(`<h2>Бооцоо</h2><p class="lead">Нөхөрсөг, жижиг байвал сайн. Мөнгөгүй бооцоо ч ажилладаг.</p><form id="stake-form"><label class="field"><span>Долоо хоногийн бооцоо</span><textarea class="input" name="stake" maxlength="120" placeholder="Сүүлийн байрын хүн бусдадаа кофе авч өгнө">${esc(g.stake)}</textarea></label><div class="actions"><button class="btn block">Хадгалах</button></div></form>`);},
+  leave:async()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g||!confirm("“"+g.name+"” багаас гарах уу? Таны зуршлууд хувийн болно."))return;
+    S.habits.forEach(h=>{if(h.user_id===S.me&&h.group_id===g.id){h.group_id=null;if(REMOTE)R.patch("habits","id=eq."+h.id,{group_id:null}).catch(()=>{});}});
+    S.goals.forEach(x=>{if(x.user_id===S.me&&x.group_id===g.id){x.group_id=null;if(REMOTE)R.patch("goals","id=eq."+x.id,{group_id:null}).catch(()=>{});}});
+    S.members=S.members.filter(m=>!(m.group_id===g.id&&m.user_id===S.me));S.groups=S.groups.filter(x=>x.id!==g.id);UI.group=(S.groups[0]||{}).id||null;persist();
+    if(REMOTE)try{await R.del("members","group_id=eq."+g.id+"&user_id=eq."+S.me);}catch(e){fail(e);}
+    closeSheet();render();},
+  report:()=>{const w=weekStat(S.me,UI.group);openSheet(`<h2>Долоо хоногийн тайлан</h2><p class="lead">Энэ долоо хоногт ${w.sched?pctTxt(w.pct)+" ("+w.done+"/"+w.sched+")":"тэмдэглэл алга"}. Багийнхандаа товч бич.</p><form id="report-form"><label class="field"><span>Тайлан</span><textarea class="input" name="body" maxlength="600" required placeholder="Юу сайн болов? Юу саад болов? Ирэх долоо хоногт юуг өөрчлөх вэ?"></textarea></label><div class="actions"><button class="btn block">Нийтлэх</button></div></form>`);},
+  profile:()=>openSheet(`<h2>Нэр, өнгө</h2><form id="profile-form"><label class="field"><span>Нэр</span><input class="input" name="name" maxlength="24" required value="${esc(me().name)}"></label><div class="field"><span>Өнгө</span>${colorPicker("color",myColor())}</div><div class="actions"><button class="btn block">Хадгалах</button></div></form>`),
+  export:()=>{const blob=new Blob([JSON.stringify(S,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="hamt-"+dk(today())+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);},
+  logout:()=>{if(!confirm("Гарах уу?"))return;R.keep(null);S=null;render();},
+  reset:()=>{if(!confirm("Энэ төхөөрөмж дээрх бүх өгөгдлийг устгах уу?"))return;store.set("hamt-local-v1",null);S=null;loadData().then(render);}
+};
+document.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]");if(!el||el.tagName==="INPUT")return;
+  const f=handlers[el.dataset.act];if(f){e.preventDefault();f(el);}
+});
+document.addEventListener("change",e=>{if(e.target.dataset.act==="pick-group")handlers["pick-group"](e.target);});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&sheetEl)closeSheet();});
+
+const forms={
+  auth:async(f,fd,sub)=>{
+    const email=fd.get("email").trim(),pw=fd.get("password"),err=$("#auth-err");
+    if(!email||pw.length<6){err.textContent="Имэйл болон 6-аас доошгүй тэмдэгттэй нууц үгээ оруулна уу.";return;}
+    err.textContent="";f.querySelectorAll("button").forEach(b=>b.disabled=true);
+    try{
+      if(sub&&sub.value==="signup"){const ok=await R.signup(email,pw);if(!ok){err.textContent="Имэйл рүү чинь баталгаажуулах холбоос илгээлээ. Түүнийг нээгээд энд нэвтэрнэ үү.";f.querySelectorAll("button").forEach(b=>b.disabled=false);return;}}
+      else await R.login(email,pw);
+      await boot();
+    }catch(e){err.textContent=/invalid/i.test(e.message)?"Имэйл эсвэл нууц үг буруу байна.":/registered|exists/i.test(e.message)?"Энэ имэйлээр бүртгэл байна. Нэвтэрнэ үү.":"Алдаа гарлаа: "+e.message;f.querySelectorAll("button").forEach(b=>b.disabled=false);}
+  },
+  onboard:async(f,fd)=>{const name=fd.get("name").trim();if(!name)return;await save("profiles",{id:S.me,name,color:fd.get("color")||COLORS[0]});await joinFromLink();render();},
+  "profile-form":async(f,fd)=>{const name=fd.get("name").trim();if(!name)return;save("profiles",{id:S.me,name,color:fd.get("color")||myColor()});closeSheet();render();},
+  "habit-form":async(f,fd)=>{
+    const title=fd.get("title").trim(),days=fd.getAll("days").map(Number).sort();
+    if(!title)return;if(!days.length){toast("Дор хаяж нэг өдөр сонгоно уу");return;}
+    const old=S.habits.find(h=>h.id===f.dataset.id);
+    const row=Object.assign({},old||{id:uid(),user_id:S.me,archived:false,created_at:new Date().toISOString()},
+      {title,cue:fd.get("cue").trim(),days,reward:fd.get("reward").trim(),group_id:fd.has("group")?(fd.get("group")||null):(old?old.group_id:null),goal_id:fd.has("goal")?(fd.get("goal")||null):(old?old.goal_id:null)});
+    save("habits",row);closeSheet();UI.tab=UI.tab==="goals"?"goals":"today";render();if(!old)toast("Нэмлээ. Өнөөдрөөс эхэлцгээе!");
+  },
+  "goal-form":async(f,fd)=>{
+    const title=fd.get("title").trim();if(!title)return;
+    const old=S.goals.find(g=>g.id===f.dataset.id);
+    save("goals",Object.assign({},old||{id:uid(),user_id:S.me,done:false,created_at:new Date().toISOString()},{title,why:fd.get("why").trim(),due:fd.get("due")||null,group_id:fd.has("group")?(fd.get("group")||null):(old?old.group_id:null)}));
+    closeSheet();render();
+    if(!old&&!S.habits.some(h=>h.goal_id===S.goals[S.goals.length-1].id))setTimeout(()=>habitForm(null,S.goals[S.goals.length-1].id),420);
+  },
+  "group-form":async(f,fd)=>{
+    const name=fd.get("name").trim(),stake=fd.get("stake").trim();if(!name)return;
+    f.querySelector("button").disabled=true;
+    try{
+      let id;
+      if(REMOTE){id=await R.rpc("create_group",{p_name:name,p_stake:stake});await loadData();}
+      else{id=uid();S.groups.push({id,name,code:Math.random().toString(36).slice(2,8).toUpperCase(),stake,created_by:S.me,created_at:new Date().toISOString()});S.members.push({group_id:id,user_id:S.me});persist();}
+      UI.group=id;UI.tab="group";closeSheet();render();toast("Баг үүслээ. Одоо найзуудаа урь!");setTimeout(()=>handlers["group-menu"](),450);
+    }catch(e){f.querySelector("button").disabled=false;fail(e);}
+  },
+  "join-form":async(f,fd)=>{
+    const code=fd.get("code").trim().toUpperCase(),err=$("#join-err");
+    if(!REMOTE){err.textContent="Энэ төхөөрөмж дээр л ажиллаж байгаа тул нэгдэх боломжгүй. Эхлээд Supabase холбоно уу.";return;}
+    f.querySelector("button").disabled=true;
+    try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";closeSheet();render();toast("Багт нэгдлээ!");}
+    catch(e){err.textContent=/not found/i.test(e.message)?"Ийм код олдсонгүй. Дахин шалгана уу.":"Алдаа: "+e.message;f.querySelector("button").disabled=false;}
+  },
+  "stake-form":async(f,fd)=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;g.stake=fd.get("stake").trim();persist();closeSheet();render();
+    if(REMOTE)try{await R.patch("groups","id=eq."+g.id,{stake:g.stake});}catch(e){fail(e);}},
+  "report-form":async(f,fd)=>{const body=fd.get("body").trim();if(!body||!UI.group)return;save("feed",{id:uid(),group_id:UI.group,user_id:S.me,to_user:null,kind:"report",body,created_at:new Date().toISOString()});S.feed.sort((a,b)=>b.created_at<a.created_at?-1:1);closeSheet();render();toast("Нийтэллээ");}
+};
+document.addEventListener("submit",e=>{const f=e.target,h=forms[f.id];if(!h)return;e.preventDefault();h(f,new FormData(f),e.submitter);});
+
+async function joinFromLink(){
+  const code=new URLSearchParams(location.search).get("join");if(!code||!REMOTE)return;
+  history.replaceState(null,"",location.pathname);
+  try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";toast("Багт нэгдлээ!");}catch(e){toast("Урилгын код олдсонгүй");}
+}
+async function boot(){
+  if(REMOTE){R.load();if(!R.session){render();return;}}
+  try{await loadData();}catch(e){if(e.message==="noauth"){render();return;}$("#root").innerHTML='<div class="gate"><h1 class="brand" style="font-size:32px">Холбогдож чадсангүй</h1><p class="lead">Интернэтээ шалгаад дахин нээнэ үү.</p><button class="btn" onclick="location.reload()">Дахин оролдох</button></div>';return;}
+  if(me().name)await joinFromLink();
+  render();
+}
+let lastSync=Date.now();
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState!=="visible"||!S)return;
+  if(REMOTE&&R.session&&Date.now()-lastSync>20000){lastSync=Date.now();loadData().then(()=>{if(!sheetEl)render();}).catch(()=>{});}
+  else if(!sheetEl)render(); // the date may have changed overnight
+});
+setInterval(()=>{if(REMOTE&&R.session&&S&&document.visibilityState==="visible"&&!sheetEl){lastSync=Date.now();loadData().then(render).catch(()=>{});}},60000);
+boot();
+</script>
+</body>
+</html>

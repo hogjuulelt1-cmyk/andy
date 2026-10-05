@@ -4,6 +4,10 @@ Static PWA (no build step): `index.html` holds all CSS/JS, `config.js` the Supab
 URL + anon key, `supabase/schema.sql` the database. Deployed by Vercel on every push
 to `main`. UI text is Mongolian; talk to the user in Mongolian.
 
+`hamt/` is a second, separate app ("Хамт", group habit tracker): `hamt/index.html` holds all
+CSS/JS, `hamt/config.js` its own Supabase project (empty = local demo mode), `supabase/hamt.sql`
+its schema with row level security per group. Test it at `/hamt/`.
+
 `tools/build.py` regenerates `index.html` from an old artifact file that is no longer
 in the repo — edit `index.html` directly.
 
