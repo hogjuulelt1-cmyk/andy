@@ -208,6 +208,8 @@ td.num, th.num { text-align: right; }
     </div>
     <textarea id="allText" hidden readonly aria-label="Бүх эргэлт"></textarea>
 
+    <details id="wonBox"><summary>Хожлын дүнгүүд</summary><div id="wonOut"></div></details>
+
     <h2>Дараагийн эргэлт</h2>
     <div id="liveSummary"><p class="empty">Таамаг 30 эргэлтээс эхэлнэ.</p></div>
 
@@ -380,12 +382,12 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 11</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 12</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=11"></script>
-<script src="ocr.js?v=11"></script>
+<script src="engine.js?v=12"></script>
+<script src="ocr.js?v=12"></script>
 <script>
 (function () {
   'use strict';
@@ -591,7 +593,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=11');
+    const r = await fetch('digits.json?v=12');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -756,7 +758,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=11'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=12'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -1219,7 +1221,33 @@ td.num, th.num { text-align: right; }
     h += `<p class="muted" style="margin-top:10px">Соронзолсон бөмбөг хаана буув: дугуйн дөрөвний нэгээр ${st.quarters.map(q => `${qn[q.i]} ${q.steered}`).join(', ')}; улаан ${st.colors.R}, хар ${st.colors.B}, тэг ${st.colors.G}; үржүүлэгчтэй тоонд ${st.lightSteered}. Хожлын дүн соронзолсон үед natural-аас тогтмол бага бол тэмдэглэгээ чинь бодит юм гэсэн дохио.</p>`;
     $('steerOut').innerHTML = h;
   }
-  function renderAll() { renderRecent(); renderSteer(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
+  // Won amount per spin, newest on the right; steered spins in the warning colour, multiplier hits outlined.
+  function renderWon() {
+    const withWon = state.spins.filter(s => s.won != null);
+    if (!withWon.length) { $('wonOut').innerHTML = '<p class="empty">Эргэлт бүртгэхдээ хожсон дүнг оруулбал энд харагдана.</p>'; return; }
+    const last = state.spins.slice(-60);
+    const W = 360, H = 150, pad = { l: 64, r: 6, t: 10, b: 22 };
+    const vals = last.map(s => s.won == null ? 0 : s.won), maxV = Math.max(1, ...vals);
+    const bw = (W - pad.l - pad.r) / last.length;
+    const Y = v => pad.t + (1 - v / maxV) * (H - pad.t - pad.b);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Хожлын дүн эргэлт бүрээр"><line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${Y(0)}" y2="${Y(0)}"/><line class="grid" x1="${pad.l}" x2="${W - pad.r}" y1="${Y(maxV)}" y2="${Y(maxV)}" stroke-dasharray="2 4"/><text x="${pad.l - 6}" y="${Y(maxV) + 4}" text-anchor="end">${fmtWon(maxV)}</text><text x="${pad.l - 6}" y="${Y(0) + 4}" text-anchor="end">0</text>`;
+    const med = (() => { const a = withWon.map(s => s.won).sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; })();
+    svg += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(med)}" y2="${Y(med)}" stroke="var(--muted)" stroke-dasharray="4 4"/><text x="${W - pad.r}" y="${Y(med) - 3}" text-anchor="end">медиан ${fmtWon(med)}</text>`;
+    last.forEach((s, i) => {
+      if (s.won == null) return;
+      const x = pad.l + i * bw + 1, h = Math.max(1, Y(0) - Y(s.won));
+      svg += `<rect x="${x.toFixed(1)}" y="${Y(s.won).toFixed(1)}" width="${Math.max(1, bw - 2).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${s.steer ? 'var(--warn)' : 'var(--accent)'}" ${PL.lightHit(s) ? 'stroke="var(--ink)" stroke-width="1"' : ''}><title>${s.n}: ${fmtWon(s.won)}${s.steer ? ', соронзолсон' : s.steer === false ? ', natural' : ''}${PL.lightHit(s) ? ', үржүүлэгчтэй' : ''}</title></rect>`;
+    });
+    svg += `<text x="${pad.l}" y="${H - 4}">сүүлийн ${last.length} эргэлт</text></svg>`;
+    let h = `<div class="legend"><span><i style="background:var(--accent);height:8px"></i>natural / тодорхойгүй</span><span><i style="background:var(--warn);height:8px"></i>соронзолсон</span><span>хүрээтэй = үржүүлэгчтэй</span></div><div class="chart">${svg}</div>`;
+    h += '<div class="scroll"><table><thead><tr><th>#</th><th>Тоо</th><th class="num">Хожсон дүн</th><th class="num">Хожсон хүн</th><th class="num">Тоглогч</th><th>Тэмдэг</th></tr></thead><tbody>';
+    state.spins.slice(-25).reverse().forEach((s, i) => {
+      const idx = state.spins.length - i;
+      h += `<tr><td class="muted">${idx}</td><td><b>${s.n}</b>${PL.lightHit(s) ? ' ⚡' : ''}</td><td class="num">${fmtWon(s.won)}</td><td class="num">${s.winners == null ? '—' : num(s.winners)}</td><td class="num">${s.players == null ? '—' : num(s.players)}</td><td>${s.steer ? '🧲 соронз' : s.steer === false ? 'natural' : '—'}</td></tr>`;
+    });
+    $('wonOut').innerHTML = h + '</tbody></table></div>';
+  }
+  function renderAll() { renderRecent(); renderWon(); renderSteer(); renderStrip(); renderDataSummary(); renderTests(); renderLearn(); renderVerdict(); renderLog(); renderTruth(); refreshNext(); scheduleTrain(); }
 
   // Surface failures instead of a silently dead page.
   window.addEventListener('error', e => { toast('Алдаа: ' + (e.message || e.error)); });
