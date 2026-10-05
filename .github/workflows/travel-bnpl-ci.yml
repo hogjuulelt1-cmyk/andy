@@ -1,0 +1,36 @@
+name: travel-bnpl CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["travel-bnpl/**", ".github/workflows/travel-bnpl-ci.yml"]
+  pull_request:
+    paths: ["travel-bnpl/**", ".github/workflows/travel-bnpl-ci.yml"]
+
+defaults:
+  run:
+    working-directory: travel-bnpl
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Prisma needs a URL to validate the schema; no DB is contacted in CI.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: travel-bnpl/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: travel-bnpl/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma generate
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

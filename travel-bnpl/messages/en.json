@@ -1,0 +1,17 @@
+{
+  "app": {
+    "name": "Mongolia Companions",
+    "tagline": "Pay the flight first, the rest in 0% installments before departure",
+    "description": "Mongolia package trips for Koreans in their 20s and 30s. Join a companion group and lock your seat by paying only the flight portion."
+  },
+  "home": {
+    "title": "Stars, steppe, ger. The easiest way to get to Mongolia",
+    "steps": {
+      "browse": "Pick a package",
+      "join": "Join a companion group",
+      "deposit": "Pay the flight portion to lock your seat",
+      "installments": "Rest in 0% installments before departure"
+    },
+    "comingSoon": "Opening soon."
+  }
+}

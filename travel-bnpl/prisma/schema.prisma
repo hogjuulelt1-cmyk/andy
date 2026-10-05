@@ -1,0 +1,253 @@
+// Data model, first draft: see docs/tech-stack.md.
+// Money: every *Krw field is integer won; *Mnt fields are integer tugrik stored
+// with the FX rate used. Never mix the two in one column.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  kakao
+  naver
+  email
+}
+
+enum Gender {
+  female
+  male
+  other
+  undisclosed
+}
+
+enum DepartureStatus {
+  open
+  confirmed
+  full
+  cancelled
+  completed
+}
+
+enum BookingStatus {
+  pending_deposit
+  seat_held
+  paid_in_full
+  cancelled
+  refunded
+}
+
+enum InstallmentStatus {
+  scheduled
+  paid
+  failed
+  waived
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+  cancelled
+  refunded
+}
+
+model User {
+  id        String       @id @default(cuid())
+  provider  AuthProvider
+  email     String?      @unique
+  phone     String?
+  name      String // display name (Korean)
+  nameEn    String? // as in passport
+  gender    Gender       @default(undisclosed)
+  birthYear Int?
+  intro     String? // short intro shown to the group
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  bookings     Booking[]
+  chatMessages ChatMessage[]
+}
+
+model Package {
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  titleKo      String
+  titleEn      String
+  titleMn      String
+  days         Int
+  nights       Int
+  season       String // free text for now, e.g. "May-Sep"
+  priceFromKrw Int // per person, lower bound of the range
+  priceToKrw   Int // per person, upper bound of the range
+  depositKrw   Int // flight portion that locks the seat (placeholder until priced)
+  description  String?
+  highlights   String[]
+  isActive     Boolean @default(true)
+
+  itinerary  PackageDay[]
+  departures Departure[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model PackageDay {
+  id          String  @id @default(cuid())
+  packageId   String
+  dayNumber   Int
+  title       String
+  description String?
+  stay        String?
+
+  package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, dayNumber])
+}
+
+model Departure {
+  id                String          @id @default(cuid())
+  packageId         String
+  startDate         DateTime // UTC; shown in Asia/Seoul to users
+  endDate           DateTime
+  capacity          Int             @default(6)
+  minToConfirm      Int             @default(4)
+  priceKrw          Int
+  depositKrw        Int
+  status            DepartureStatus @default(open)
+  confirmCutoffDate DateTime
+
+  package      Package         @relation(fields: [packageId], references: [id])
+  bookings     Booking[]
+  costs        DepartureCost[]
+  chatMessages ChatMessage[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([packageId, startDate])
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  userId      String
+  departureId String
+  status      BookingStatus @default(pending_deposit)
+  totalKrw    Int
+  depositKrw  Int
+
+  user         User           @relation(fields: [userId], references: [id])
+  departure    Departure      @relation(fields: [departureId], references: [id])
+  installments Installment[]
+  payments     Payment[]
+  events       BookingEvent[]
+  addOns       BookingAddOn[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([userId, departureId])
+  @@index([departureId, status])
+}
+
+model Installment {
+  id        String            @id @default(cuid())
+  bookingId String
+  seq       Int // 1-based position in the plan
+  dueDate   DateTime
+  amountKrw Int
+  status    InstallmentStatus @default(scheduled)
+
+  booking  Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([bookingId, seq])
+  @@index([dueDate, status])
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  bookingId          String
+  installmentId      String?
+  provider           String // "toss" for now
+  providerPaymentKey String        @unique
+  amountKrw          Int
+  status             PaymentStatus @default(pending)
+  rawWebhook         Json?
+
+  booking     Booking      @relation(fields: [bookingId], references: [id])
+  installment Installment? @relation(fields: [installmentId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+/// Append-only audit log of every booking / payment state transition.
+model BookingEvent {
+  id        String   @id @default(cuid())
+  bookingId String
+  type      String // e.g. "deposit_paid", "seat_held", "installment_failed"
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, createdAt])
+}
+
+model AddOn {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  title     String
+  priceKrw  Int     @default(0)
+  isActive  Boolean @default(true)
+  bookings  BookingAddOn[]
+}
+
+model BookingAddOn {
+  bookingId String
+  addOnId   String
+  quantity  Int    @default(1)
+  priceKrw  Int // price at time of booking
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addOn   AddOn   @relation(fields: [addOnId], references: [id])
+
+  @@id([bookingId, addOnId])
+}
+
+model Supplier {
+  id    String         @id @default(cuid())
+  name  String
+  kind  String // vehicle, driver, guide, camp, other
+  notes String?
+  costs DepartureCost[]
+}
+
+/// Supplier cost for one departure, kept in MNT with the FX rate used so the
+/// margin report can be computed in KRW.
+model DepartureCost {
+  id          String   @id @default(cuid())
+  departureId String
+  supplierId  String?
+  label       String
+  costMnt     Int
+  fxKrwPerMnt Decimal  @db.Decimal(12, 6)
+  costKrw     Int
+  createdAt   DateTime @default(now())
+
+  departure Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+}
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  departureId String
+  userId      String
+  body        String
+  createdAt   DateTime @default(now())
+
+  departure Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([departureId, createdAt])
+}
