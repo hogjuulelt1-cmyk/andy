@@ -181,6 +181,7 @@
       const iT = col(['time', 'timestamp', 'datetime', 'date', 'цаг', 'огноо']);
       const iP = col(['players', 'player_count', 'тоглогч', 'тоглогчид']);
       const iW = col(['won', 'total_won', 'payout', 'paid', 'хожсон']);
+      const iWin = col(['winners', 'winner_count', 'хожсон хүн', 'хожигчид']);
       const iM = col(['multipliers', 'multiplier', 'lightning', 'mult', 'үржүүлэгч']);
       const iH = col(['hit', 'lightning_hit', 'mult_hit', 'буусан']);
       const iPart = col(['mult_partial', 'partial']);
@@ -203,6 +204,7 @@
           time: iT >= 0 ? parseTime(cells[iT]) : null,
           players: iP >= 0 && parseInt(cells[iP], 10) > 0 ? parseInt(cells[iP], 10) : null,
           won: iW >= 0 && cells[iW] !== undefined && cells[iW].trim() !== '' ? parseFloat(cells[iW]) || 0 : null,
+          winners: iWin >= 0 && cells[iWin] !== undefined && cells[iWin].trim() !== '' ? parseInt(cells[iWin], 10) || 0 : null,
           mult: iM >= 0 ? parseMult(cells[iM]) : null,
           light: iH >= 0 && String(cells[iH] || '').trim() !== '' ? /^(1|true|yes|y|да|тийм)$/i.test(String(cells[iH]).trim()) : null,
           multPartial: iPart >= 0 ? /^(1|true|yes)$/i.test(String(cells[iPart] || '').trim()) : false,
@@ -232,7 +234,7 @@
         const n = parseInt(inParens ? m[1] : m[3], 10);
         if (!(n >= 0 && n <= 36)) { errors.push(`${li + 1}-р мөр: "${m[0]}" 0–36 биш.`); continue; }
         const k = m[2] ? parseInt(m[2], 10) : 0;
-        spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null,
+        spins.push({ n, session: String(session), dealer: '', dir: null, time: null, players: null, won: null, winners: null,
           light: inParens ? true : (hasParens ? false : null), mult: k > 1 ? { [n]: k } : null, multPartial: inParens, liab: null });
         sawNumber = true;
       }
@@ -240,15 +242,24 @@
     return { spins, errors };
   }
 
+  // "13, 24, (23x100), 31" form, for copying a session back into the paste box.
+  function spinsToText(spins) {
+    return spins.map(s => {
+      const k = s.mult && s.mult[s.n];
+      return lightHit(s) ? `(${s.n}${k ? 'x' + k : ''})` : String(s.n);
+    }).join(', ');
+  }
+
   function spinsToCsv(spins) {
     const hasL = spins.some(s => s.liab);
     const hasDir = spins.some(s => s.dir), hasT = spins.some(s => s.time != null), hasP = spins.some(s => s.players != null);
-    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult), hasH = spins.some(s => s.light != null), hasPart = spins.some(s => s.multPartial);
+    const hasW = spins.some(s => s.won != null), hasM = spins.some(s => s.mult), hasH = spins.some(s => s.light != null), hasPart = spins.some(s => s.multPartial), hasWin = spins.some(s => s.winners != null);
     const head = ['number', 'session', 'dealer'];
     if (hasDir) head.push('direction');
     if (hasT) head.push('time');
     if (hasP) head.push('players');
     if (hasW) head.push('won');
+    if (hasWin) head.push('winners');
     if (hasM) head.push('multipliers');
     if (hasH) head.push('hit');
     if (hasPart) head.push('mult_partial');
@@ -260,6 +271,7 @@
       if (hasT) r.push(s.time == null ? '' : new Date(s.time).toISOString().slice(0, 19));
       if (hasP) r.push(s.players == null ? '' : s.players);
       if (hasW) r.push(s.won == null ? '' : s.won);
+      if (hasWin) r.push(s.winners == null ? '' : s.winners);
       if (hasM) r.push(multToStr(s.mult));
       if (hasH) r.push(s.light == null ? '' : s.light ? 1 : 0);
       if (hasPart) r.push(s.multPartial ? 1 : 0);
@@ -409,10 +421,13 @@
       const ee = sub.length / N;
       let x = 0; for (let k = 0; k < N; k++) x += (c[k] - ee) ** 2 / (ee || 1);
       const pl = sub.filter(s => s.players != null), wn = sub.filter(s => s.won != null), lm = sub.filter(s => lightHit(s) != null);
+      const wi = sub.filter(s => s.winners != null), ws = sub.filter(s => s.winners != null && s.players > 0);
       return {
         label: b.label, n: sub.length, uniformP: sub.length ? chi2p(x, 36) : 1,
         players: pl.length ? pl.reduce((a, s) => a + s.players, 0) / pl.length : null,
         won: wn.length ? wn.reduce((a, s) => a + s.won, 0) / wn.length : null,
+        winners: wi.length ? wi.reduce((a, s) => a + s.winners, 0) / wi.length : null,
+        winShare: ws.length ? ws.reduce((a, s) => a + s.winners / s.players, 0) / ws.length : null,
         lightning: lm.length ? hitBand(b.label, lm) : null,
       };
     };
@@ -1061,7 +1076,7 @@
   const api = {
     N, WHEEL, POS, colorOf, wheelDist, OUTSIDE, rng,
     chi2p, normSf, binomSf,
-    parseSpins, spinsToCsv, parseMult, multToStr, parseTime, runTests,
+    parseSpins, spinsToCsv, spinsToText, parseMult, multToStr, parseTime, runTests,
     MODEL_INFO, DEFAULT_CFG, walkForward, nullRuns, train,
     PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit,
   };
