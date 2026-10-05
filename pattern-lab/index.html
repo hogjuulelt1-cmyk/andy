@@ -267,10 +267,9 @@ td.num, th.num { text-align: right; }
     <div id="dataSummary"></div>
 
     <h2>Дэлгэцийн зургаас унших</h2>
-    <p class="muted">Тоглоомын түүхийн зургийг сонгоход тоонуудыг нь уншиж дээрх талбарт бичнэ. Уншсан тоог заавал нүдээр шалгаарай. Эхний удаад 3 МБ орчим уншигч татагдана.</p>
+    <p class="muted">Тоглоомын “Statistics → Last 500” хүснэгтийн дэлгэцийн зургуудыг сонгоно. Нэг дэлгэцийн тоон болон үржүүлэгчийн зургийг хоёуланг нь өгвөл үржүүлэгчийг нь хамт уншина, олон зураг давхцаж байвал нэгтгэнэ. Уншсан тоо дээрх талбарт он цагийн дарааллаар орно, шалгаад “Ачаалах” дарна.</p>
     <div class="row">
-      <span class="btn ghost file" role="button">Зураг сонгох<input type="file" id="shotFile" accept="image/*" aria-label="Дэлгэцийн зураг сонгох"></span>
-      <label class="check" style="margin:0"><input type="checkbox" id="shotNewestFirst" checked> Зураг дээр хамгийн сүүлийн эргэлт эхэнд байна</label>
+      <span class="btn ghost file" role="button">Зураг сонгох<input type="file" id="shotFile" accept="image/*" multiple aria-label="Дэлгэцийн зураг сонгох"></span>
     </div>
     <div id="shotProgress" hidden class="progress"><i></i></div>
     <p class="muted" id="shotStatus"></p>
@@ -351,11 +350,12 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 6</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 7</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=6"></script>
+<script src="engine.js?v=7"></script>
+<script src="ocr.js?v=7"></script>
 <script>
 (function () {
   'use strict';
@@ -547,67 +547,63 @@ td.num, th.num { text-align: right; }
   $('avgLightning').addEventListener('change', () => { state.avgLightning = Math.max(1, parseFloat($('avgLightning').value) || 3); save(); renderTests(); });
   $('gameType').addEventListener('change', () => { setGame(parseInt($('gameType').value, 10) === 20 ? 20 : 36); state.last = null; renderAll(); });
 
-  // Screenshot OCR: Tesseract.js is loaded only when first needed.
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const el = document.createElement('script'); el.src = src; el.onload = resolve; el.onerror = () => reject(new Error('Уншигч татагдсангүй, интернэт холболтоо шалгана уу.'));
-      document.head.appendChild(el);
-    });
+  // Screenshot reading: grid detection and template digits in ocr.js, templates in digits.json.
+  let templates = null;
+  async function getTemplates() {
+    if (templates) return templates;
+    const r = await fetch('digits.json?v=7');
+    if (!r.ok) throw new Error('digits.json татагдсангүй.');
+    templates = PLOCR.unpackTemplates(await r.json());
+    return templates;
   }
-  function prepImage(file, invert) {
+  function imageData(file) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        const scale = Math.max(1, Math.min(3, 1600 / img.width));
-        const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
-        const g = c.getContext('2d'); g.drawImage(img, 0, 0, c.width, c.height);
-        const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
-        for (let i = 0; i < px.length; i += 4) {
-          const l = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-          // Game screens show light digits on coloured tiles; invert them to dark-on-light for the reader.
-          const v = invert ? (l > 170 ? 0 : 255) : (l < 110 ? 0 : 255);
-          px[i] = px[i + 1] = px[i + 2] = v;
-        }
-        g.putImageData(d, 0, 0);
+        const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
         URL.revokeObjectURL(img.src);
-        resolve(c);
+        resolve(g.getImageData(0, 0, c.width, c.height));
       };
       img.onerror = () => reject(new Error('Зураг нээгдсэнгүй.'));
       img.src = URL.createObjectURL(file);
     });
   }
-  // Lines that carry a number above 36 are multiplier legends ("17 100x"), not results.
-  const tokensFrom = text => text.split('\n').flatMap(line => {
-    const t = (line.match(/\d+/g) || []).map(Number);
-    return t.some(n => n > 36) ? [] : t;
-  });
-  async function readScreenshot(file) {
-    $('shotProgress').hidden = false; $('shotStatus').textContent = 'Уншигч бэлдэж байна…';
+  async function readScreenshots(files) {
+    $('shotProgress').hidden = false; $('shotStatus').textContent = 'Уншиж байна…';
     try {
-      if (!window.Tesseract) {
-        try { await loadScript('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js'); }
-        catch (e) { await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'); }
+      const T = await getTemplates();
+      const screens = [];
+      let skipped = 0;
+      for (let i = 0; i < files.length; i++) {
+        $('shotStatus').textContent = `Уншиж байна… ${i + 1}/${files.length}`;
+        await new Promise(r => setTimeout(r, 0));
+        const data = await imageData(files[i]);
+        const sc = PLOCR.readScreen(data, T);
+        if (sc) screens.push(sc); else skipped++;
       }
-      const worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') $('shotStatus').textContent = `Уншиж байна… ${Math.round(m.progress * 100)}%`; } });
-      await worker.setParameters({ tessedit_char_whitelist: '0123456789 ', preserve_interword_spaces: '1' });
-      let best = [];
-      for (const invert of [true, false]) {
-        const canvas = await prepImage(file, invert);
-        const { data } = await worker.recognize(canvas);
-        const toks = tokensFrom(data.text);
-        if (toks.length > best.length) best = toks;
-      }
-      await worker.terminate();
-      if (!best.length) { $('shotStatus').textContent = 'Тоо олдсонгүй. Зургийг томруулж авах эсвэл гараар оруулна уу.'; return; }
-      if ($('shotNewestFirst').checked) best.reverse();
-      $('spinText').value = best.join(', ');
-      $('shotStatus').textContent = `${best.length} тоо уншлаа. Дээрх талбарт шалгаад “Ачаалах” дарна уу.`;
+      if (!screens.length) { $('shotStatus').textContent = 'Хүснэгт олдсонгүй. “Last 500” хүснэгт бүтнээрээ харагдсан зураг хэрэгтэй.'; return; }
+      const wins = PLOCR.sequences(screens);
+      const m = PLOCR.mergeSequences(wins);
+      const chrono = m.merged.slice().reverse();
+      const unknown = chrono.filter(e => e.n == null).length;
+      const text = chrono.map(e => (e.n == null ? '?' : e.light ? `(${e.n}${e.mult ? 'x' + e.mult : ''})` : String(e.n))).join(', ');
+      $('spinText').value = text;
+      const parts = [`${num(chrono.length)} эргэлт уншлаа`, `${screens.length} зураг`, `${chrono.filter(e => e.light).length} үржүүлэгчтэй`];
+      if (m.joins.length) parts.push(`${m.joins.length} давхцал нэгтгэв`);
+      if (m.unjoined) parts.push(`${m.unjoined} холбоос давхцалгүй (дарааллыг шалгана уу)`);
+      if (unknown) parts.push(`${unknown} тоо уншигдсангүй (?)`);
+      if (skipped) parts.push(`${skipped} зурагт хүснэгт олдсонгүй`);
+      const unpaired = wins.filter(w => w.multOnly).length;
+      if (unpaired) parts.push(`${unpaired} үржүүлэгчийн зурагт тоон хос олдсонгүй`);
+      $('shotStatus').textContent = parts.join(', ') + '. Дээрх талбарт шалгаад “Ачаалах” дарна уу.';
+      if (unknown) toast('Зарим тоо уншигдсангүй, “?” гэж тэмдэглэв. Гараар засна уу.');
       $('spinText').focus();
     } catch (err) {
       $('shotStatus').textContent = 'Алдаа: ' + (err && err.message || err);
     } finally { $('shotProgress').hidden = true; }
   }
-  $('shotFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) readScreenshot(f); e.target.value = ''; });
+  $('shotFile').addEventListener('change', e => { const files = Array.from(e.target.files || []); if (files.length) readScreenshots(files); e.target.value = ''; });
 
   $('runSim').addEventListener('click', () => {
     const v = id => parseFloat($(id).value);
@@ -720,7 +716,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=6'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=7'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
