@@ -359,12 +359,12 @@ td.num, th.num { text-align: right; }
     </ul>
     <p class="muted">Дэлгэрэнгүй тайлбар, эх сурвалжийн жагсаалт <a href="RESEARCH.md">RESEARCH.md</a> файлд байна.</p>
   </section>
-  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 8</p>
+  <p class="muted" style="margin-top:40px;font-size:0.8125rem">Хувилбар 9</p>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="engine.js?v=8"></script>
-<script src="ocr.js?v=8"></script>
+<script src="engine.js?v=9"></script>
+<script src="ocr.js?v=9"></script>
 <script>
 (function () {
   'use strict';
@@ -483,7 +483,7 @@ td.num, th.num { text-align: right; }
         i: state.spins.length + 1, n, light: !!spin.light, top: order.slice(0, 3).map(o => o.k), picks, p: p[n], bits: Math.log2(37 * p[n]),
         hit1: order[0].k === n, hit3: order.slice(0, 3).some(o => o.k === n),
         bank: picks.reduce((s, k) => s + (k === n ? ret - 1 : -1), 0),
-        colorOk: gp.color.has(n), parityOk: gp.parity.has(n), dozenOk: gp.dozen.has(n),
+        colorOk: gp.color.has(n), parityOk: gp.parity.has(n), dozenOk: gp.dozen.has(n), sectorOk: bestWindows(p, 2, 1)[0].nums.includes(n),
       });
     }
     state.spins.push(spin);
@@ -561,7 +561,7 @@ td.num, th.num { text-align: right; }
   let templates = null;
   async function getTemplates() {
     if (templates) return templates;
-    const r = await fetch('digits.json?v=8');
+    const r = await fetch('digits.json?v=9');
     if (!r.ok) throw new Error('digits.json татагдсангүй.');
     templates = PLOCR.unpackTemplates(await r.json());
     return templates;
@@ -726,7 +726,7 @@ td.num, th.num { text-align: right; }
   let worker = null, jobId = 0;
   function getWorker() {
     if (worker !== null) return worker;
-    try { worker = new Worker('worker.js?v=8'); } catch (e) { worker = false; }
+    try { worker = new Worker('worker.js?v=9'); } catch (e) { worker = false; }
     return worker;
   }
   function askWorker(msg, syncFn, onProgress) {
@@ -953,7 +953,52 @@ td.num, th.num { text-align: right; }
     { title: 'Эгнээ × өнгө', items: [1, 2, 3].flatMap(i => [
       { label: `${i}-р эгнээ улаан`, has: and(C(i), R), cls: 'r' }, { label: `${i}-р эгнээ хар`, has: and(C(i), B), cls: 'b' } ]) },
   ];
+  // Wheel sectors: the French call bets and the four quarters of the wheel, in wheel order.
+  const SECTOR = nums => { const set = new Set(nums); return n => set.has(n); };
+  const VOISINS = [22, 18, 29, 7, 28, 12, 35, 3, 26, 0, 32, 15, 19, 4, 21, 2, 25], TIERS = [27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33], ORPHELINS = [17, 34, 6, 1, 20, 14, 31, 9], ZERO = [12, 35, 3, 26, 0, 32, 15];
+  const QUARTER = i => (n => { const q = Math.floor(PL.POS[n] * 4 / 37); return q === i; });
+  GROUPS.push({ title: 'Дугуйн бүс', items: [
+    { label: 'Voisins du zéro (0-ийн хөрш, 17 нүд)', has: SECTOR(VOISINS) }, { label: 'Tiers du cylindre (эсрэг тал, 12 нүд)', has: SECTOR(TIERS) },
+    { label: 'Orphelins (8 нүд)', has: SECTOR(ORPHELINS) }, { label: 'Jeu zéro (7 нүд)', has: SECTOR(ZERO) },
+    { label: 'Дугуйн 1-р дөрөвний нэг (0→15)', has: QUARTER(0) }, { label: '2-р дөрөвний нэг (19→20)', has: QUARTER(1) }, { label: '3-р дөрөвний нэг (14→28)', has: QUARTER(2) }, { label: '4-р дөрөвний нэг (12→26)', has: QUARTER(3) } ] });
   GROUPS.forEach(g => g.items.forEach(it => { it.count = 0; for (let k = 0; k < 37; k++) if (it.has(k)) it.count++; }));
+  // Best neighbour windows on the wheel: a number and the pockets either side of it.
+  function bestWindows(p, half, top) {
+    const out = [];
+    for (let i = 0; i < 37; i++) {
+      let q = 0; const nums = [];
+      for (let o = -half; o <= half; o++) { const k = PL.WHEEL[(i + o + 37) % 37]; q += p[k]; nums.push(k); }
+      out.push({ center: PL.WHEEL[i], nums, q, ratio: q / ((2 * half + 1) / 37) });
+    }
+    out.sort((a, b) => b.q - a.q);
+    // Skip windows that mostly overlap a better one.
+    const picked = [];
+    for (const w of out) {
+      if (!picked.some(v => w.nums.filter(n => v.nums.includes(n)).length > half)) picked.push(w);
+      if (picked.length >= top) break;
+    }
+    return picked;
+  }
+  // The wheel as a ring: pocket colour, opacity by probability, the best 5-pocket window outlined.
+  function wheelSvg(p, best) {
+    const R = 150, r0 = 100, cx = 160, cy = 160;
+    let s = `<svg viewBox="0 0 320 320" role="img" aria-label="Дугуй дээрх магадлал">`;
+    PL.WHEEL.forEach((k, i) => {
+      const a0 = (i / 37) * 2 * Math.PI - Math.PI / 2, a1 = ((i + 1) / 37) * 2 * Math.PI - Math.PI / 2;
+      const ratio = p[k] * 37, op = Math.max(0.18, Math.min(1, ratio * 0.5));
+      const P = (rr, a) => `${(cx + rr * Math.cos(a)).toFixed(1)},${(cy + rr * Math.sin(a)).toFixed(1)}`;
+      s += `<path d="M${P(r0, a0)} L${P(R, a0)} A${R},${R} 0 0 1 ${P(R, a1)} L${P(r0, a1)} A${r0},${r0} 0 0 0 ${P(r0, a0)} Z" fill="${pocketColor(k)}" fill-opacity="${op.toFixed(2)}" stroke="var(--bg)" stroke-width="1"><title>${k}: ${(p[k] * 100).toFixed(1)}% (×${ratio.toFixed(2)})</title></path>`;
+      const am = (a0 + a1) / 2, tx = cx + (R - 22) * Math.cos(am), ty = cy + (R - 22) * Math.sin(am);
+      s += `<text x="${tx.toFixed(1)}" y="${(ty + 3).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="var(--ink)">${k}</text>`;
+    });
+    if (best) {
+      const i0 = PL.POS[best.nums[0]], n = best.nums.length;
+      const a0 = (i0 / 37) * 2 * Math.PI - Math.PI / 2, a1 = ((i0 + n) / 37) * 2 * Math.PI - Math.PI / 2, rr = R + 6;
+      s += `<path d="M${(cx + rr * Math.cos(a0)).toFixed(1)},${(cy + rr * Math.sin(a0)).toFixed(1)} A${rr},${rr} 0 ${n > 18 ? 1 : 0} 1 ${(cx + rr * Math.cos(a1)).toFixed(1)},${(cy + rr * Math.sin(a1)).toFixed(1)}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>`;
+    }
+    s += `<text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="11" fill="var(--muted)">тод = магадлал</text><text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="11" fill="var(--muted)">өндөр</text>`;
+    return s + '</svg>';
+  }
   function groupProbs(p) {
     const sum = has => { let q = 0; for (let k = 0; k < 37; k++) if (has(k)) q += p[k]; return q; };
     const best = items => items.reduce((a, it) => { const q = sum(it.has) / (it.count / 37); return q > a.q ? { q, has: it.has } : a; }, { q: -1, has: () => false });
@@ -1011,7 +1056,7 @@ td.num, th.num { text-align: right; }
   function freqTable() {
     const sizes = [50, 100, 200, 0].filter(n => !n || state.spins.length >= n);
     if (state.spins.length < 20) return '';
-    const items = GROUPS[0].items.concat(GROUPS[1].items);
+    const items = GROUPS[0].items.concat(GROUPS[1].items, GROUPS[GROUPS.length - 1].items);
     let h = `<h3>Давтамж цонх бүрээр</h3><p class="muted">Санамсаргүй түвшнээс хоёр стандарт хазайлтаас илүү зөрсөн нь тодорсон. Богино цонхны хэлбэлзэл том байдаг тул 50-ийн баганад тод үзүүлэлт их гарна.</p><div class="scroll"><table class="freq"><thead><tr><th>Бооцоо</th><th class="num">санамсаргүй</th>${sizes.map(n => `<th class="num">${n ? 'сүүлийн ' + n : 'бүгд'}</th>`).join('')}</tr></thead><tbody>`;
     items.forEach(it => {
       const chance = it.count / 37;
@@ -1038,6 +1083,11 @@ td.num, th.num { text-align: right; }
     h += `<div class="picks">${order.slice(0, 5).map(o => `<span class="pick"><span class="n" style="background:${pocketColor(o.k)}">${o.k}</span><span>${(o.v * 100).toFixed(1)}%<br><small>×${(o.v * 37).toFixed(2)}</small></span></span>`).join('')}</div>`;
     h += `<p class="muted">Нүдний өнгө тод байх тусам тэр тоо буух магадлал өндөр. Баруун талд арван хоёрын, доор баганын нийлбэр.</p><div class="layout">${layoutHeat(p)}</div>`;
     h += `<div class="strip">${heatStrip(p)}</div>`;
+    const w5 = bestWindows(p, 2, 3), w9 = bestWindows(p, 4, 2);
+    h += `<h3>Дугуй дээрх бүс</h3><div class="layout">${wheelSvg(p, w5[0])}</div>`;
+    h += `<p class="muted">Хөршийн цонх: тоо ба дугуй дээр хажуу талын нүднүүд. Санамсаргүй бол 5 нүд 13.5%, 9 нүд 24.3%.</p><div class="picks">` +
+      w5.map(w => `<span class="pick"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span><span>${w.nums.join('·')}<br><small>5 нүд ${(w.q * 100).toFixed(1)}% ×${w.ratio.toFixed(2)}</small></span></span>`).join('') +
+      w9.map(w => `<span class="pick"><span class="n" style="background:${pocketColor(w.center)}">${w.center}</span><span>±4 хөрш<br><small>9 нүд ${(w.q * 100).toFixed(1)}% ×${w.ratio.toFixed(2)}</small></span></span>`).join('') + '</div>';
     h += `<p class="muted" style="margin-top:14px">Мөр бүр: магадлал, санамсаргүйгээс хэд дахин (×1.00 = ялгаагүй), стандарт бооцоотой бол хүлээгдэж буй өгөөж. Дунд зураас = санамсаргүй түвшин.</p>`;
     h += groupBars(p);
     h += freqTable();
@@ -1063,10 +1113,10 @@ td.num, th.num { text-align: right; }
   function renderLiveChart() {
     const L = state.live;
     if (!L.length) { $('liveChart').innerHTML = '<p class="empty">Эхний бүртгэлийн дараа харагдана.</p>'; $('liveHistory').innerHTML = ''; return; }
-    let bits = 0, hits = 0, bank = 0, colorOk = 0, parityOk = 0, dozenOk = 0;
+    let bits = 0, hits = 0, bank = 0, colorOk = 0, parityOk = 0, dozenOk = 0, sectorOk = 0;
     const bitPts = [], hitPts = [], chancePts = [], bankPts = [];
     L.forEach((e, i) => {
-      bits += e.bits; hits += e.hit1 ? 1 : 0; bank += e.bank; colorOk += e.colorOk ? 1 : 0; parityOk += e.parityOk ? 1 : 0; dozenOk += e.dozenOk ? 1 : 0;
+      bits += e.bits; hits += e.hit1 ? 1 : 0; bank += e.bank; colorOk += e.colorOk ? 1 : 0; parityOk += e.parityOk ? 1 : 0; dozenOk += e.dozenOk ? 1 : 0; sectorOk += e.sectorOk ? 1 : 0;
       bitPts.push({ x: i + 1, y: bits }); hitPts.push({ x: i + 1, y: hits }); chancePts.push({ x: i + 1, y: (i + 1) / 37 }); bankPts.push({ x: i + 1, y: bank });
     });
     const bets = L.filter(e => e.picks.length).length;
@@ -1075,16 +1125,17 @@ td.num, th.num { text-align: right; }
       <div class="stat"><div class="v">${pct(colorOk / L.length)}</div><div class="k">өнгө таасан (санамсаргүй 48.6%)</div></div>
       <div class="stat"><div class="v">${pct(parityOk / L.length)}</div><div class="k">тэгш/сондгой таасан (48.6%)</div></div>
       <div class="stat"><div class="v">${pct(dozenOk / L.length)}</div><div class="k">арван хоёр таасан (32.4%)</div></div>
+      <div class="stat"><div class="v">${pct(sectorOk / L.length)}</div><div class="k">дугуйн 5 нүдний бүс таасан (13.5%)</div></div>
       <div class="stat"><div class="v">${bits >= 0 ? '+' : ''}${bits.toFixed(2)}</div><div class="k">мэдээллийн ашиг, нийт бит</div></div>
       <div class="stat"><div class="v">${bank >= 0 ? '+' : ''}${num(bank)}</div><div class="k">сонголтоор ${bets} удаа тавьсан бол, нэгж</div></div></div>`;
     h += `<h3>1-р таамаг оносон тоо</h3><div class="legend"><span><i style="background:var(--accent)"></i>загвар</span><span><i style="background:var(--muted)"></i>санамсаргүй</span></div><div class="chart">${lineChart2(hitPts, chancePts, { label: 'Оносон тоо', xLabel: 'эргэлт' })}</div>`;
     h += `<h3>Мэдээллийн ашиг</h3><div class="chart">${lineChart(bitPts, { label: 'Мэдээллийн ашиг', xLabel: 'эргэлт', dec: 1 })}</div>`;
     if (bets) h += `<h3>Сонголтоор тавьсан бол</h3><div class="chart">${lineChart(bankPts, { label: 'Үлдэгдэл', xLabel: 'эргэлт', color: bank >= 0 ? 'var(--good)' : 'var(--bad)' })}</div>`;
     $('liveChart').innerHTML = h;
-    let t = '<div class="scroll"><table><thead><tr><th>#</th><th>Таамаг (эхний 3)</th><th>Сонголт</th><th>Буусан</th><th class="num">Магадлал</th><th>Өнгө</th><th>Тэгш/с</th><th>12</th></tr></thead><tbody>';
+    let t = '<div class="scroll"><table><thead><tr><th>#</th><th>Таамаг (эхний 3)</th><th>Сонголт</th><th>Буусан</th><th class="num">Магадлал</th><th>Өнгө</th><th>Тэгш/с</th><th>12</th><th>Бүс</th></tr></thead><tbody>';
     const ok = v => v ? '<span class="pill ok">✓</span>' : '';
     L.slice(-20).reverse().forEach(e => {
-      t += `<tr><td>${e.i}</td><td>${e.top.join(', ')}${e.hit1 ? ' <span class="pill ok">1-р</span>' : e.hit3 ? ' <span class="pill ok">3-т</span>' : ''}</td><td>${e.picks.join(', ') || '—'}</td><td><b>${e.n}</b>${e.light ? ' ⚡' : ''}</td><td class="num">${(e.p * 100).toFixed(1)}%</td><td>${ok(e.colorOk)}</td><td>${ok(e.parityOk)}</td><td>${ok(e.dozenOk)}</td></tr>`;
+      t += `<tr><td>${e.i}</td><td>${e.top.join(', ')}${e.hit1 ? ' <span class="pill ok">1-р</span>' : e.hit3 ? ' <span class="pill ok">3-т</span>' : ''}</td><td>${e.picks.join(', ') || '—'}</td><td><b>${e.n}</b>${e.light ? ' ⚡' : ''}</td><td class="num">${(e.p * 100).toFixed(1)}%</td><td>${ok(e.colorOk)}</td><td>${ok(e.parityOk)}</td><td>${ok(e.dozenOk)}</td><td>${ok(e.sectorOk)}</td></tr>`;
     });
     $('liveHistory').innerHTML = t + '</tbody></table></div>';
   }
