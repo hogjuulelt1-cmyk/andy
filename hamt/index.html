@@ -332,7 +332,7 @@ const pick=(t,r)=>{const o={};COLS[t].forEach(k=>{if(r[k]!==undefined)o[k]=r[k];
 
 let S=null; // {me, profiles[], groups[], members[], goals[], habits[], checkins[], feed[]}
 let CK=new Set();
-const persist=()=>{if(!REMOTE)store.set("hamt-local-v1",JSON.stringify(S));};
+const persist=()=>{if(!REMOTE&&!SH.on)store.set("hamt-local-v1",JSON.stringify(S));};
 
 function seedLocal(){
   const t=today(),me="me",now=new Date().toISOString();
@@ -355,7 +355,68 @@ function seedLocal(){
   return d;
 }
 
+/* ---------- shared mode: inside a claude.ai artifact, its db is the backend ----------
+   Everyone the page is shared with is one team. people/<id> holds a person's team-visible
+   habits, goals and check-ins; data/users/<id>/private their private ones; feed/<id> their posts. */
+const SH={on:false,db:null,uid:null,mine:null,myFeed:[],others:{},feeds:{},settings:{},dirty:false,feedDirty:false,writing:false,readOnly:false,suggestName:""};
+const clone=o=>JSON.parse(JSON.stringify(o||{}));
+async function initShared(){
+  if(!window.claude||typeof window.claude.use!=="function")return false;
+  const [db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")]);
+  if(!db||!user)return false;
+  const uid=await user.id();if(!uid)return false;
+  Object.assign(SH,{db,uid});
+  SH.readOnly=(await user.can("data.write"))===false;
+  const [pub,priv,fd,st]=(await Promise.all([db.doc("people/"+uid).get(),db.doc("data/users/"+uid+"/private").get(),db.doc("feed/"+uid).get(),db.doc("team/settings").get()])).map(d=>d.exists?clone(d.data()):{});
+  SH.mine={name:pub.name||"",color:pub.color||COLORS[0],habits:(pub.habits||[]).concat(priv.habits||[]),goals:(pub.goals||[]).concat(priv.goals||[]),checkins:Object.assign({},pub.checkins,priv.checkins)};
+  SH.myFeed=fd.posts||[];SH.settings=st;
+  if(!SH.mine.name)SH.suggestName=(await user.me()).name||"";
+  SH.on=true;rebuild();
+  const live=()=>{rebuild();if(!sheetEl)render();};
+  db.collection("people").onSnapshot(q=>{SH.others={};q.docs.forEach(d=>{if(d.id!==uid)SH.others[d.id]=clone(d.data());});live();},()=>{});
+  db.collection("feed").onSnapshot(q=>{SH.feeds={};q.docs.forEach(d=>{if(d.id!==uid)SH.feeds[d.id]=clone(d.data()).posts||[];});live();},()=>{});
+  db.doc("team/settings").onSnapshot(d=>{SH.settings=d.exists?clone(d.data()):{};live();},()=>{});
+  return true;
+}
+function rebuild(){
+  const T="team",out={me:SH.uid,profiles:[],groups:[{id:T,name:SH.settings.name||"Our team",code:"",stake:SH.settings.stake||"",created_by:""}],members:[],goals:[],habits:[],checkins:[],feed:[]};
+  const add=(id,p,isMe)=>{
+    if(!isMe&&!p.name)return;
+    out.profiles.push({id,name:p.name||"",color:p.color||COLORS[0]});out.members.push({group_id:T,user_id:id});
+    (p.habits||[]).forEach(h=>out.habits.push(Object.assign({},h,{user_id:id})));
+    (p.goals||[]).forEach(g=>out.goals.push(Object.assign({},g,{user_id:id})));
+    Object.keys(p.checkins||{}).forEach(hid=>(p.checkins[hid]||[]).forEach(day=>out.checkins.push({habit_id:hid,user_id:id,day})));
+  };
+  add(SH.uid,SH.mine,true);Object.keys(SH.others).forEach(id=>add(id,SH.others[id],false));
+  const posts=(id,list)=>(list||[]).forEach(f=>out.feed.push(Object.assign({},f,{group_id:T,user_id:id})));
+  posts(SH.uid,SH.myFeed);Object.keys(SH.feeds).forEach(id=>{if(out.members.some(m=>m.user_id===id))posts(id,SH.feeds[id]);});
+  out.feed.sort((a,b)=>a.created_at<b.created_at?1:-1);
+  S=out;UI.group=T;
+}
+function captureMine(){ // local edits to my rows -> SH.mine, then queue one write
+  const u=SH.uid,p=S.profiles.find(x=>x.id===u)||{},strip=r=>{const o=Object.assign({},r);delete o.user_id;return o;};
+  const c={};S.checkins.filter(x=>x.user_id===u).forEach(x=>(c[x.habit_id]=c[x.habit_id]||[]).push(x.day));
+  SH.mine={name:p.name||"",color:p.color||COLORS[0],habits:S.habits.filter(h=>h.user_id===u).map(strip),goals:S.goals.filter(g=>g.user_id===u).map(strip),checkins:c};
+  SH.myFeed=S.feed.filter(f=>f.user_id===u).slice(0,40).map(f=>({id:f.id,to_user:f.to_user,kind:f.kind,body:f.body,created_at:f.created_at}));
+  SH.dirty=true;clearTimeout(SH.t);SH.t=setTimeout(flushShared,350);
+}
+async function flushShared(){
+  if(SH.writing||!SH.dirty)return;SH.writing=true;SH.dirty=false;
+  const m=SH.mine,pubIds=new Set(m.habits.filter(h=>h.group_id).map(h=>h.id)),pc={},vc={};
+  Object.keys(m.checkins).forEach(k=>{(pubIds.has(k)?pc:vc)[k]=m.checkins[k];});
+  try{
+    await SH.db.doc("people/"+SH.uid).set({name:m.name,color:m.color,habits:m.habits.filter(h=>h.group_id),goals:m.goals.filter(g=>g.group_id),checkins:pc,updated:new Date().toISOString()});
+    await SH.db.doc("data/users/"+SH.uid+"/private").set({habits:m.habits.filter(h=>!h.group_id),goals:m.goals.filter(g=>!g.group_id),checkins:vc});
+    if(SH.feedDirty){SH.feedDirty=false;await SH.db.doc("feed/"+SH.uid).set({posts:SH.myFeed});}
+  }catch(e){
+    if(e&&e.code==="invalid_argument"){SH.readOnly=true;render();toast("You can view this team but not save. Ask the owner for Contributor access.");}
+    else toast("Couldn’t save. Check your connection and try again.");
+  }
+  SH.writing=false;if(SH.dirty)flushShared();
+}
+
 async function loadData(){
+  if(SH.on){rebuild();return;}
   if(!REMOTE){
     try{S=JSON.parse(store.get("hamt-local-v1")||"null");}catch(e){S=null;}
     if(!S){S=seedLocal();persist();}
@@ -375,10 +436,12 @@ async function save(table,row){
   const k=keyOf(table,row),i=S[table].findIndex(r=>keyOf(table,r)===k);
   if(i>=0)S[table][i]=Object.assign({},S[table][i],row);else S[table].push(row);
   persist();
+  if(SH.on){if(table==="feed")SH.feedDirty=true;captureMine();return;}
   if(REMOTE)try{await R.upsert(table,pick(table,row));}catch(e){fail(e);}
 }
 async function remove(table,row,q){
   const k=keyOf(table,row);S[table]=S[table].filter(r=>keyOf(table,r)!==k);persist();
+  if(SH.on){if(table==="feed")SH.feedDirty=true;captureMine();return;}
   if(REMOTE)try{await R.del(table,q);}catch(e){fail(e);}
 }
 function fail(e){
@@ -504,7 +567,7 @@ function onboardView(){
   return `<div class="gate"><h1 class="brand" style="font-size:40px">Hi there!</h1>
   <p class="lead">Your team will see you with this name and color.</p>
   <form id="onboard">
-   <label class="field"><span>Name</span><input class="input" name="name" maxlength="24" autocomplete="given-name" required></label>
+   <label class="field"><span>Name</span><input class="input" name="name" maxlength="24" autocomplete="given-name" required value="${esc(SH.suggestName)}"></label>
    <div class="field"><span>Color</span>${colorPicker("color",me().color||COLORS[0])}</div>
    <div class="actions"><button class="btn block">Get started</button></div>
   </form></div>`;
@@ -516,6 +579,7 @@ function todayView(){
   const date=WD[t.getDay()]+", "+MONTHS[t.getMonth()]+" "+t.getDate();
   let html=`<header class="top"><div><p class="eyebrow">${date}</p><h1 class="title">Today</h1></div>${due.length?`<p class="count" aria-label="${n} of ${due.length} done"><b>${n}</b>/${due.length}</p>`:""}</header>`;
   if(due.length)html+=`<div class="segs" aria-hidden="true">${due.map(h=>`<i class="${done(h,t)?"on":""}"></i>`).join("")}</div>`;
+  if(SH.on&&SH.readOnly)html+=`<div class="notice"><span class="em">👀</span><p>You can view this team but not check in. Ask the owner for Contributor access.</p></div>`;
   // cheers received in the last two days
   const recent=S.feed.filter(f=>f.kind==="cheer"&&f.to_user===S.me&&Date.now()-new Date(f.created_at)<2*864e5).slice(0,2);
   html+=recent.map(f=>`<div class="notice"><span class="em">${esc(f.body.length<=4?f.body:"👏")}</span><p><b>${esc(prof(f.user_id).name)}</b> cheered you on${f.body.length>4?": “"+esc(f.body)+"”":""}</p></div>`).join("");
@@ -571,6 +635,7 @@ function groupView(){
   </div></div>`;
   html+=`<div class="section"><div class="section-head"><h2>Leaderboard</h2><span class="small muted">Resets every Monday</span></div><div class="rank">${rows.map((r,i)=>`<div class="row"><span class="pos">${i+1}</span>${av(r.p)}<div class="row-main"><div class="row-title">${esc(r.p.name)}${r.u===S.me?' <span class="muted small">(you)</span>':""}</div><div class="row-meta">${r.n?r.w.points+" pts · "+r.w.done+"/"+r.w.sched+" check-ins":"No team habits yet"}</div></div><span class="pct">${r.n?pctTxt(r.w.pct):"–"}</span>${r.u===S.me?'<span style="width:44px"></span>':`<button class="cheer ${cheered.has(r.u)?"sent":""}" data-act="cheer" data-v="${esc(r.u)}" aria-label="Send a cheer to ${esc(r.p.name)}">👏</button>`}</div>`).join("")}</div></div>`;
   html+=`<div class="section"><div class="section-head"><h2>Stake</h2></div><button class="stake" data-act="stake"><span class="em">🤝</span><span>${g.stake?esc(g.stake):'<span class="muted">Optional: set a small friendly stake. For example, last place buys the coffee.</span>'}</span></button></div>`;
+  if(SH.on&&ms.length<2)html=html.replace('<section class="team"','<div class="empty" style="margin-bottom:12px"><h3>Invite your friends</h3><p class="muted">Share this page from the Share menu at the top and give friends Contributor access. They’ll appear here once they open it and pick a name.</p></div><section class="team"');
   const posts=S.feed.filter(f=>f.group_id===g.id).slice(0,30);
   html+=`<div class="section"><div class="section-head"><h2>Feed</h2><button class="link" data-act="report">Write report</button></div>
    ${posts.length?`<div class="feed">${posts.map(postView).join("")}</div>`:`<p class="muted">At the end of the week, share a few lines on what went well and what got in the way.</p>`}</div>`;
@@ -620,9 +685,9 @@ function meView(){
   <div class="section"><div class="menu">
    <button data-act="profile">Change name and color<span class="muted">›</span></button>
    <button data-act="archived">Paused habits<span class="muted">${S.habits.filter(h=>h.archived&&h.user_id===S.me).length||""} ›</span></button>
-   <button data-act="export">Download data (JSON)<span class="muted">›</span></button>
-   ${REMOTE?'<button data-act="logout" style="color:#c2334d">Log out</button>':'<button data-act="reset" style="color:#c2334d">Delete all data</button>'}
-  </div>${REMOTE?"":'<p class="small muted" style="margin-top:12px">Data is saved on this device only. To connect with friends, set up Supabase (see the README).</p>'}</div>`;
+   ${window.claude?"":'<button data-act="export">Download data (JSON)<span class="muted">›</span></button>'}
+   ${REMOTE?'<button data-act="logout" style="color:#c2334d">Log out</button>':SH.on?"":'<button data-act="reset" style="color:#c2334d">Delete all data</button>'}
+  </div>${REMOTE?"":SH.on?'<p class="small muted" style="margin-top:12px">Saved to this shared page. Everyone it’s shared with sees your team habits; habits set to “Only me” stay private.</p>':'<p class="small muted" style="margin-top:12px">Data is saved on this device only. To connect with friends, set up Supabase (see the README).</p>'}</div>`;
 }
 
 /* ---------- sheets ---------- */
@@ -759,7 +824,8 @@ const handlers={
   "new-group":()=>openSheet(`<h2>Create team</h2><p class="lead">Next you’ll send the invite code to your friends.</p><form id="group-form"><label class="field"><span>Team name</span><input class="input" name="name" maxlength="40" required placeholder="Morning club"></label><label class="field"><span>Stake (optional)</span><input class="input" name="stake" maxlength="120" placeholder="Last place buys the coffee"></label><div class="actions"><button class="btn block">Create</button></div></form>`),
   "join-group":()=>openSheet(`<h2>Join a team</h2><p class="lead">Ask your friend for the 6-character code.</p><form id="join-form"><label class="field"><span>Invite code</span><input class="input" name="code" maxlength="6" required autocapitalize="characters" autocomplete="off" style="letter-spacing:.2em;text-transform:uppercase"></label><p class="err" id="join-err" role="alert"></p><div class="actions"><button class="btn block">Join</button></div></form>`),
   "pick-group":(el)=>{UI.group=el.value;render();},
-  "group-menu":()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;const link=location.origin+location.pathname+"?join="+g.code;
+  "group-menu":()=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;
+    if(SH.on){openSheet(`<h2>Team settings</h2><p class="lead">To invite friends, share this page from the Share menu at the top and give them Contributor access.</p><form id="team-form"><label class="field"><span>Team name</span><input class="input" id="team-name" name="name" maxlength="40" required value="${esc(g.name)}"></label><label class="field"><span>Weekly stake (optional)</span><textarea class="input" id="team-stake" name="stake" maxlength="120" placeholder="Last place buys everyone coffee">${esc(g.stake)}</textarea></label><div class="actions"><button class="btn block">Save</button></div></form>`);return;}const link=location.origin+location.pathname+"?join="+g.code;
     openSheet(`<h2>${esc(g.name)}</h2><p class="lead">Friends join with this code.</p><p class="code">${esc(g.code)}</p>
     <div class="actions"><button class="btn block" data-act="share" data-v="${esc(link)}">Send invite</button><button class="btn ghost block" data-act="stake">Edit stake</button><button class="btn ghost block" data-act="new-group">Create another team</button><button class="btn ghost block" data-act="join-group">Join another team</button><button class="btn danger block" data-act="leave">Leave team</button></div>`);},
   share:async(el)=>{const url=el.dataset.v,text="Join our team on Hamt! Invite link:";
@@ -831,7 +897,10 @@ const forms={
     try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";closeSheet();render();toast("Joined the team!");}
     catch(e){err.textContent=/not found/i.test(e.message)?"No team with that code. Check it and try again.":"Error: "+e.message;f.querySelector("button").disabled=false;}
   },
+  "team-form":async(f,fd)=>{const name=fd.get("name").trim(),stake=fd.get("stake").trim();if(!name)return;SH.settings={name,stake};rebuild();closeSheet();render();
+    try{await SH.db.doc("team/settings").set({name,stake});toast("Saved");}catch(e){toast("Couldn’t save. Only Contributors and above can change team settings.");}},
   "stake-form":async(f,fd)=>{const g=S.groups.find(x=>x.id===UI.group);if(!g)return;g.stake=fd.get("stake").trim();persist();closeSheet();render();
+    if(SH.on){SH.settings={name:g.name,stake:g.stake};try{await SH.db.doc("team/settings").set(SH.settings);}catch(e){toast("Couldn’t save the stake.");}return;}
     if(REMOTE)try{await R.patch("groups","id=eq."+g.id,{stake:g.stake});}catch(e){fail(e);}},
   "report-form":async(f,fd)=>{const body=fd.get("body").trim();if(!body||!UI.group)return;save("feed",{id:uid(),group_id:UI.group,user_id:S.me,to_user:null,kind:"report",body,created_at:new Date().toISOString()});S.feed.sort((a,b)=>b.created_at<a.created_at?-1:1);closeSheet();render();toast("Posted");}
 };
@@ -843,6 +912,10 @@ async function joinFromLink(){
   try{const id=await R.rpc("join_group",{p_code:code});await loadData();UI.group=id;UI.tab="group";toast("Joined the team!");}catch(e){toast("Invite code not found");}
 }
 async function boot(){
+  if(window.claude&&typeof window.claude.use==="function"){
+    $("#root").innerHTML='<div class="gate"><p class="muted">Loading your team…</p></div>';
+    try{if(await initShared()){render();return;}}catch(e){SH.on=false;}
+  }
   if(REMOTE){R.load();if(!R.session){render();return;}}
   try{await loadData();}catch(e){if(e.message==="noauth"){render();return;}$("#root").innerHTML='<div class="gate"><h1 class="brand" style="font-size:32px">Couldn’t connect</h1><p class="lead">Check your connection and reopen the app.</p><button class="btn" onclick="location.reload()">Try again</button></div>';return;}
   if(me().name)await joinFromLink();
