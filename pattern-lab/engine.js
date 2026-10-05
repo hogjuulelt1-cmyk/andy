@@ -551,7 +551,47 @@
     return F.map(standardize);
   }
 
+  // Features for the linear learner: smooth wheel-position harmonics (tilt, worn pockets), harmonics of the
+  // distance from the previous number per launch direction (a machine's throw), gap, hot counts over three
+  // windows, and the crowd-habit features. Every feature is a 37-vector; the learner weighs them jointly.
+  const WHEEL_HARM = [];
+  for (let m = 1; m <= 3; m++) {
+    const c = new Float64Array(N), s = new Float64Array(N);
+    for (let k = 0; k < N; k++) { const a = 2 * Math.PI * m * POS[k] / N; c[k] = Math.cos(a); s[k] = Math.sin(a); }
+    WHEEL_HARM.push(c, s);
+  }
+  const LOGIT_FEATURES = [];
+  for (let m = 1; m <= 3; m++) ['cos', 'sin'].forEach(t => LOGIT_FEATURES.push({ id: `wheel${m}${t}`, label: `Дугуйн байрлал ${m}${t === 'sin' ? "'" : ''}` }));
+  for (const d of ['A', 'B']) for (let m = 1; m <= 3; m++) ['cos', 'sin'].forEach(t => LOGIT_FEATURES.push({ id: `dist${d}${m}${t}`, label: `Шидэлтийн зай ${d}${m}${t === 'sin' ? "'" : ''}` }));
+  LOGIT_FEATURES.push({ id: 'gap', label: 'Удсан тоо' }, { id: 'hot10', label: 'Халуун 10' }, { id: 'hot37', label: 'Халуун 37' }, { id: 'hot100', label: 'Халуун 100' });
+  PSYCH_FEATURES.forEach(f => LOGIT_FEATURES.push({ id: 'psych.' + f.id, label: f.label }));
+  function logitFeatures(ctx) {
+    const F = [];
+    WHEEL_HARM.forEach(h => F.push(h));
+    for (const d of ['A', 'B']) for (let m = 1; m <= 3; m++) {
+      const c = new Float64Array(N), s = new Float64Array(N);
+      if (ctx.prev != null && (ctx.dir || 'A') === d) for (let k = 0; k < N; k++) { const a = 2 * Math.PI * m * ((POS[k] - POS[ctx.prev] + N) % N) / N; c[k] = Math.cos(a); s[k] = Math.sin(a); }
+      F.push(c, s);
+    }
+    const g = new Float64Array(N); for (let k = 0; k < N; k++) g[k] = Math.log1p(ctx.gaps[k]); F.push(standardize(g));
+    const hist = ctx.hist || [];
+    for (const w of [10, 37, 100]) { const h = new Float64Array(N); hist.slice(-w).forEach(n => { h[n] += 1; }); F.push(standardize(h)); }
+    (ctx._psychF || (ctx._psychF = psychFeatures(ctx))).forEach(f => F.push(f));
+    return F;
+  }
+  // Category families for the group-sequence model: what the crowd bets on and what a steering house would target.
+  const CAT_FAMILIES = [
+    { id: 'color', of: n => (n === 0 ? null : colorOf(n)), cats: ['R', 'B'] },
+    { id: 'parity', of: n => (n === 0 ? null : n % 2 ? 'O' : 'E'), cats: ['O', 'E'] },
+    { id: 'half', of: n => (n === 0 ? null : n >= 19 ? 'H' : 'L'), cats: ['L', 'H'] },
+    { id: 'dozen', of: n => (n === 0 ? null : String(Math.ceil(n / 12))), cats: ['1', '2', '3'] },
+    { id: 'column', of: n => (n === 0 ? null : String(((n - 1) % 3) + 1)), cats: ['1', '2', '3'] },
+  ];
+
   const MODEL_INFO = {
+    logit: { label: 'Шугаман суралцагч', hint: 'Дугуйн байрлал, өмнөх тооноос зай, удсан/халуун тоо, олны зуршил зэрэг 30 шинжийг нэг дор жинлэж сурна (онлайн логистик регресс).' },
+    hot: { label: 'Халуун тоо', hint: 'Сүүлийн 30 орчим эргэлтийн давтамж: богино хугацааны хазайлт, машины “үе”.' },
+    cat: { label: 'Бүлгийн дараалал', hint: 'Өнгө, тэгш/сондгой, бага/их, арван хоёр, эгнээний цуваа дараагийн бүлгийг хэрхэн тодорхойлдгийг сурна (казино цуваанд тавигчдын эсрэг буулгадаг эсэх).' },
     uniform: { label: 'Шударга дугуй', hint: '37 нүд бүгд 1/37. Харьцуулах суурь.' },
     freq: { label: 'Давтамж', hint: 'Олон буусан тоо дахин бууна гэж үзнэ (хазгай дугуй).' },
     sector: { label: 'Дугуйн хэсэг', hint: 'Дугуй дээр зэргэлдээ нүднүүдийн давтамжийг нэгтгэнэ (налуу, элэгдэл).' },
@@ -599,7 +639,12 @@
       return f;
     };
     const magnetP = f => { let z = 0; for (let j = 0; j < MF; j++) z += mgW[j] * f[j]; return 1 / (1 + Math.exp(-z)); };
-    const lr = cfg.lr;
+    const lr = cfg.lr, logitLr = cfg.logitLr || 0.1;
+    const lw = new Float64Array(LOGIT_FEATURES.length), lG = new Float64Array(LOGIT_FEATURES.length);
+    const hotRaw = new Float64Array(N); let hotSum = 0;
+    const catBase = CAT_FAMILIES.map(f => { const b = {}; f.cats.forEach(c => { let n = 0; for (let k = 0; k < N; k++) if (f.of(k) === c) n++; b[c] = n / 36; }); return b; });
+    const catPrior = cfg.catPrior || 20;
+    const catT = CAT_FAMILIES.map((f, fi) => { const t = {}; f.cats.forEach(c => { for (let L = 1; L <= 3; L++) { const row = {}; f.cats.forEach(c2 => { row[c2] = catBase[fi][c2] * catPrior; }); t[c + L] = row; } }); return t; });
     return [
       { id: 'uniform', predict: () => uniformP(), update() {} },
       { id: 'freq', predict: freqP, update(ctx, y) { decayFreq(y); } },
@@ -660,7 +705,7 @@
         id: 'markov',
         predict(ctx) {
           if (ctx.prev == null) return freqP();
-          const base = freqP(), row = M[ctx.prev], k0 = 20, p = new Float64Array(N);
+          const base = freqP(), row = M[ctx.prev], k0 = cfg.markovK0 || 200, p = new Float64Array(N);
           for (let k = 0; k < N; k++) p[k] = (row[k] + k0 * base[k]) / (Msum[ctx.prev] + k0);
           return p;
         },
@@ -706,7 +751,7 @@
         update(ctx, y) {
           const F = ctx._psychF || psychFeatures(ctx), p = this.predict(ctx);
           // Log-loss gradient; the step shrinks as evidence accumulates.
-          const step = Math.max(0.01, 0.05 / Math.sqrt(1 + ctx.step / 200));
+          const step = Math.max(0.005, (cfg.psychStep || 0.05) / Math.sqrt(1 + ctx.step / 200));
           for (let j = 0; j < F.length; j++) {
             let ez = 0; for (let k = 0; k < N; k++) ez += p[k] * F[j][k];
             pw[j] = Math.max(-3, Math.min(3, pw[j] + step * (F[j][y] - ez)));
@@ -781,6 +826,61 @@
         param: () => ({ beta: payBeta, n: payN, w: Array.from(payW) }),
       },
       {
+        id: 'logit',
+        predict(ctx) {
+          const F = ctx._logF || (ctx._logF = logitFeatures(ctx));
+          const p = new Float64Array(N);
+          let mx = -Infinity;
+          for (let k = 0; k < N; k++) { let v = 0; for (let j = 0; j < F.length; j++) v += lw[j] * F[j][k]; v = Math.max(-8, Math.min(8, v)); p[k] = v; if (v > mx) mx = v; }
+          for (let k = 0; k < N; k++) p[k] = Math.exp(p[k] - mx);
+          return normalize(p);
+        },
+        update(ctx, y) {
+          const F = ctx._logF || (ctx._logF = logitFeatures(ctx)), p = this.predict(ctx);
+          for (let j = 0; j < F.length; j++) {
+            let ez = 0; for (let k = 0; k < N; k++) ez += p[k] * F[j][k];
+            const g = F[j][y] - ez;
+            lG[j] += g * g;
+            lw[j] = Math.max(-3, Math.min(3, (lw[j] + logitLr * g / (Math.sqrt(lG[j]) + 1e-3)) * (1 - 2e-4)));
+          }
+        },
+        param: () => Array.from(lw),
+      },
+      {
+        id: 'hot',
+        predict() { const hp = cfg.hotPrior || 3, p = new Float64Array(N); for (let k = 0; k < N; k++) p[k] = (hotRaw[k] + hp) / (hotSum + N * hp); return p; },
+        update(ctx, y) { for (let k = 0; k < N; k++) hotRaw[k] *= 0.97; hotSum = hotSum * 0.97 + 1; hotRaw[y] += 1; },
+      },
+      {
+        id: 'cat',
+        // Per family, counts of the next category given the current category and streak length (1, 2, 3+);
+        // the 37 numbers get the product of their families' lifts over the base rate.
+        predict(ctx) {
+          const hist = ctx.hist || [];
+          const p = new Float64Array(N).fill(1);
+          if (!hist.length) return normalize(p);
+          CAT_FAMILIES.forEach((f, fi) => {
+            const st = streakOf(hist, f.of);
+            if (st.c == null) return;
+            const row = catT[fi][st.c + Math.min(3, st.L)], base = catBase[fi];
+            let tot = 0; f.cats.forEach(c => { tot += row[c]; });
+            f.cats.forEach(c => { const lift = Math.max(0.5, Math.min(2, (row[c] / tot) / base[c])); for (let k = 0; k < N; k++) if (f.of(k) === c) p[k] *= lift; });
+          });
+          return normalize(p);
+        },
+        update(ctx, y) {
+          const hist = ctx.hist || [];
+          if (!hist.length) return;
+          CAT_FAMILIES.forEach((f, fi) => {
+            const st = streakOf(hist, f.of), yc = f.of(y);
+            if (st.c == null || yc == null) return;
+            const row = catT[fi][st.c + Math.min(3, st.L)];
+            f.cats.forEach(c => { row[c] = catBase[fi][c] * catPrior + (row[c] - catBase[fi][c] * catPrior) * decay; });
+            row[yc] += 1;
+          });
+        },
+      },
+      {
         id: 'overdue',
         predict(ctx) {
           const g = new Float64Array(N); for (let k = 0; k < N; k++) g[k] = -Math.log1p(ctx.gaps[k]);
@@ -798,7 +898,7 @@
   }
 
   // straightRet: total return per unit on a winning straight-up bet (36 = standard, 20 = lightning-style).
-  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3 };
+  const DEFAULT_CFG = { decay: 0.999, share: 0.01, eta: 1, lr: 0.03, margin: 0.1, maxBets: 3, straightRet: 36, prior: 3, gate: 0.02, logitLr: 0.1, psychStep: 0.02, catPrior: 60, markovK0: 200, hotPrior: 3 };
 
   // Walk-forward: every spin is predicted before the model sees it. Nothing peeks at the future.
   // scoreFrom: spins before this index train the model but are not scored (holdout evaluation).
@@ -824,6 +924,17 @@
     const wonZ = v => (wonN > 5 && wonM2 > 0 ? (Math.log1p(v) - wonMean) / Math.sqrt(wonM2 / (wonN - 1)) : 0);
     let plMean = 0, plM2 = 0, plN = 0;
     const playersZ = v => (plN > 5 && plM2 > 0 ? (v - plMean) / Math.sqrt(plM2 / (plN - 1)) : 0);
+    // Context gating: each model's weight is also scaled by exp(theta · g(context)), learned online, so a model
+    // that only works in some hours, crowd sizes or after certain streaks can be trusted just then.
+    const GF = 6, theta = new Float64Array(K * GF), gateLr = cfg.gate || 0;
+    const gateFeatures = c => { const g = new Float64Array(GF); g[0] = 1; if (c.hour != null) { g[1] = Math.sin(c.hour / 24 * 2 * Math.PI); g[2] = Math.cos(c.hour / 24 * 2 * Math.PI); } g[3] = c.playersZ || 0; g[4] = Math.min(6, streakOf(c.hist || [], n => (n === 0 ? null : colorOf(n))).L) / 3; g[5] = c.lastWonZ || 0; return g; };
+    const gated = (w, g) => {
+      const u = new Float64Array(K); let mx = -Infinity;
+      for (let i = 0; i < K; i++) { let v = Math.log(w[i] + 1e-12); for (let j = 0; j < GF; j++) v += theta[i * GF + j] * g[j]; u[i] = v; if (v > mx) mx = v; }
+      let sw = 0; for (let i = 0; i < K; i++) { u[i] = Math.exp(u[i] - mx); sw += u[i]; }
+      for (let i = 0; i < K; i++) u[i] /= sw;
+      return u;
+    };
     const context = (s, t, newSession) => {
       const recent = wonLog.slice(-5);
       return {
@@ -839,8 +950,9 @@
       if (s.session !== prevSession) { prev = null; hist = []; prevSteer = null; prevSteer2 = null; }
       const ctx = Object.assign({ prev, liab: s.liab, gaps, step: t, dir: dirs[t], hist, newSession: s.session !== prevSession, won: s.won, lightHit: !!lightHit(s), steer: s.steer }, context(s, t));
       const preds = models.map(m => m.predict(ctx));
+      const g = gateFeatures(ctx), wg = gateLr ? gated(w, g) : w;
       const p = new Float64Array(N);
-      for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
+      for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += wg[i] * preds[i][k];
       const y = s.n;
       if (t >= scoreFrom) {
         scored++;
@@ -867,6 +979,11 @@
           weightsHist.push({ t, w: Array.from(w) });
         }
       }
+      if (gateLr) {
+        let z = 0; const resp = new Float64Array(K);
+        for (let i = 0; i < K; i++) { resp[i] = wg[i] * preds[i][y]; z += resp[i]; }
+        for (let i = 0; i < K; i++) { const d = resp[i] / z - wg[i]; for (let j = 0; j < GF; j++) theta[i * GF + j] = Math.max(-3, Math.min(3, theta[i * GF + j] + gateLr * d * g[j])); }
+      }
       // Hedge / Bayesian mixture update, then fixed-share so weights can move when a session changes regime.
       let sw = 0;
       for (let i = 0; i < K; i++) { w[i] *= Math.pow(Math.max(preds[i][y], 1e-12) * N, cfg.eta); sw += w[i]; }
@@ -887,10 +1004,11 @@
       const last = spins[spins.length - 1] || null;
       const ctx = Object.assign({ prev, liab: null, gaps, step: t, dir: dir || 'A', hist, newSession: t === 0 }, context(last && { time: last.time != null ? last.time + 45000 : null, players: last.players }, t));
       const preds = models.map(m => m.predict(ctx));
+      const wg = gateLr ? gated(w, gateFeatures(ctx)) : w;
       const p = new Float64Array(N);
-      for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += w[i] * preds[i][k];
+      for (let i = 0; i < K; i++) for (let k = 0; k < N; k++) p[k] += wg[i] * preds[i][k];
       const mg = models.find(m => m.id === 'magnet');
-      next = { p: Array.from(p), steerProb: mg ? mg.steerProb(ctx) : null, models: models.map((m, i) => ({ id: m.id, weight: w[i], p: Array.from(preds[i]) })) };
+      next = { p: Array.from(p), steerProb: mg ? mg.steerProb(ctx) : null, models: models.map((m, i) => ({ id: m.id, weight: wg[i], p: Array.from(preds[i]) })) };
     }
     return {
       next, cfg, scored, bits, bitsPerSpin: scored ? bits / scored : 0,
@@ -920,7 +1038,7 @@
     const train = spins.slice(0, split);
     const grid = [];
     const straightRet = opts.straightRet || 36;
-    [1, 0.999, 0.99].forEach(decay => [0.002, 0.02, 0.08].forEach(share => grid.push({ decay, share, lr: 0.05, straightRet })));
+    [1, 0.999, 0.99].forEach(decay => [0.002, 0.02, 0.08].forEach(share => [1, 0.5].forEach(eta => grid.push({ decay, share, eta, lr: 0.05, straightRet }))));
     const trials = grid.map(g => {
       const r = walkForward(train, g, { scoreFrom: Math.floor(train.length * 0.3) });
       return { cfg: r.cfg, bitsPerSpin: r.bitsPerSpin };
@@ -1247,7 +1365,7 @@
     N, WHEEL, POS, colorOf, wheelDist, OUTSIDE, rng,
     chi2p, normSf, binomSf,
     parseSpins, spinsToCsv, spinsToText, parseMult, multToStr, parseTime, runTests,
-    MODEL_INFO, DEFAULT_CFG, walkForward, nullRuns, train,
+    MODEL_INFO, LOGIT_FEATURES, DEFAULT_CFG, walkForward, nullRuns, train,
     PLAYER_TYPES, simulate, parsePlayerLog, playerLogToCsv, analyzePlayers, PSYCH_FEATURES, lightHit, steerStats,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
