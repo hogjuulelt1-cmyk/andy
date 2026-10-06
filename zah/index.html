@@ -213,22 +213,32 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
   </header>
   <main id="app"></main>
   <footer>
-    <p>Туршилтын хувилбар 3. Өгөгдөл энэ утсанд хадгалагдана, дүрүүдийг дээрх товчоор сольж туршина. Үнэ, лангуу, захиалагчид, 90 хоногийн түүх бүгд хиймэл; “Судалгаа” хэсэгт загварууд хэр зөв таасныг шалгана.</p>
+    <p>Туршилтын хувилбар 4. Өгөгдөл энэ утсанд хадгалагдана, дүрүүдийг дээрх товчоор сольж туршина. Үнэ, лангуу, захиалагчид, 90 хоногийн түүх бүгд хиймэл; “Судалгаа” хэсэгт загварууд хэр зөв таасныг шалгана.</p>
     <p><button data-act="reset">Жишээ өгөгдлийг сэргээх</button></p>
   </footer>
 </div>
 <div class="cartbar" id="cartbar" hidden></div>
 <nav class="tabbar" id="tabbar" hidden aria-label="Үндсэн цэс"></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<script src="engine.js?v=4"></script>
+<script src="engine.js?v=5"></script>
 <script>
 (() => {
   'use strict';
   const KEY = 'langu.v1';
   const FREE_FROM = 150000, DELIVERY = 6000, FEE = 0.03;
-  const CATS = ['Ногоо', 'Жимс', 'Мах', 'Сүү, өндөг', 'Хуурай хүнс'];
+  const CATS = ['Багц', 'Ногоо', 'Жимс', 'Мах', 'Сүү, өндөг', 'Хуурай хүнс'];
   const SLOTS = ['Өнөөдөр 11:00–13:00', 'Өнөөдөр 14:00–16:00', 'Өнөөдөр 17:00–19:00', 'Маргааш 08:00–10:00', 'Маргааш 10:00–12:00'];
   const PAYS = ['Хүргэлтээр бэлнээр', 'Дансаар шилжүүлэх', 'Байгууллагын нэхэмжлэх'];
+  const POINT = 'Захын 1-р хаалганы цуглуулах цэг';
+  const COLLECT_FEE = 1000, COLLECT_FREE_STALLS = 2; // beyond two stalls, each extra stall costs this unless the order is big
+  const BUNDLES = [
+    { id: 'k1', name: 'Гуанзны өдрийн багц', em: '🍲', who: 'Гуанз, ресторан', items: [['p1', 20], ['p2', 10], ['p4', 10], ['p3', 10], ['p5', 1]] },
+    { id: 'k2', name: 'Салатны багц', em: '🥗', who: 'Ресторан, кафе', items: [['p6', 5], ['p7', 5], ['p8', 2], ['p4', 3]] },
+    { id: 'k3', name: 'Бууз, хуушуурын багц', em: '🥟', who: 'Гуанз', items: [['p15', 10], ['p4', 5], ['p20', 1]] },
+    { id: 'k4', name: 'Өглөөний цайны багц', em: '🍳', who: 'Кафе, цайны газар', items: [['p17', 2], ['p18', 10], ['p19', 1], ['p23', 2]] },
+    { id: 'k5', name: 'Жимсний багц', em: '🍎', who: 'Дэлгүүр, айл', items: [['p10', 5], ['p11', 5], ['p12', 3], ['p13', 1]] },
+    { id: 'k6', name: 'Айлын долоо хоногийн багц', em: '🏠', who: 'Айл өрх', items: [['p1', 5], ['p2', 2], ['p4', 2], ['p10', 3], ['p17', 1], ['p18', 5]] },
+  ].map(b => ({ ...b, items: b.items.map(([productId, qty]) => ({ productId, qty })) }));
 
   function seed() {
     const sellers = [
@@ -265,7 +275,7 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     ];
     const offers = rows.map(([productId, sellerId, price], i) => ({ id: 'o' + (i + 1), productId, sellerId, price, stock: true }));
     offers.find(o => o.productId === 'p6' && o.sellerId === 's1').stock = false;
-    return { v: 1, role: 'buyer', buyerTab: 'shop', sellerTab: 'orders', sellerId: 's1', cat: 'Ногоо', q: '', open: null, sellers, products, offers, cart: {}, orders: [], seq: 100, profile: { name: '', phone: '', address: '', note: '', slot: SLOTS[0], pay: PAYS[0] }, synth: { days: 90, seed: 7 }, stockQty: {}, lambda: 6, buyerTab: 'home' };
+    return { v: 1, role: 'buyer', sellerTab: 'orders', sellerId: 's1', cat: 'Ногоо', q: '', open: null, sellers, products, offers, cart: {}, orders: [], seq: 100, profile: { name: '', phone: '', address: '', note: '', slot: SLOTS[0], pay: PAYS[0] }, synth: { days: 90, seed: 7 }, stockQty: {}, lambda: 6, buyerTab: 'home', cartBundles: [] };
   }
 
   let S;
@@ -274,6 +284,7 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
   const PARTNER = location.hash === '#partner' || /[?&]partner/.test(location.search);
   if (!PARTNER) S.role = 'buyer'; else if (S.role === 'buyer') S.role = 'seller';
   if (!['home', 'shop', 'cart', 'orders', 'me', 'smart'].includes(S.buyerTab)) S.buyerTab = 'home';
+  if (!S.cartBundles) S.cartBundles = [];
   if (!S.synth) S.synth = { days: 90, seed: 7 }; if (!S.stockQty) S.stockQty = {}; if (S.lambda == null) S.lambda = 6;
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
@@ -323,10 +334,19 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
   const cartTotal = () => cartLines().reduce((s, l) => s + l.offer.price * l.qty, 0);
   const deliveryFee = sub => (sub >= FREE_FROM || sub === 0 ? 0 : DELIVERY);
   const cartQtyForProduct = pid => cartLines().filter(l => l.offer.productId === pid).reduce((s, l) => s + l.qty, 0);
+  const bundlePlans = () => memo('bundles', () => BUNDLES.map(b => ZE.bundlePlan(b, S.offers, reliability())).filter(x => x.best));
+  // A bundle discount holds while every line of the bundle is still in the cart at that stall with at least its quantity.
+  function bundleDiscounts() {
+    const out = [];
+    S.cartBundles = S.cartBundles.filter(cb => { const pl = bundlePlans().find(x => x.bundle.id === cb.id); if (!pl) return false; const opt = pl.options.find(o => o.stalls.join() === cb.stalls.join()); if (!opt) return false; const ok = opt.lines.every(l => (S.cart[l.offerId] || 0) >= l.qty); if (!ok) return false; out.push({ id: cb.id, name: pl.bundle.name, amount: Math.round(opt.listTotal * opt.discount / 50) * 50 }); return true; });
+    return out;
+  }
+  const cartStalls = () => new Set(cartLines().map(l => l.offer.sellerId)).size;
+  const collectFee = (stalls, sub) => (sub >= FREE_FROM ? 0 : Math.max(0, stalls - COLLECT_FREE_STALLS) * COLLECT_FEE);
 
   // ---------- order state ----------
   const itemsTotal = o => o.items.reduce((s, it) => s + (it.status === 'out' ? 0 : it.price * it.qty), 0);
-  const orderTotal = o => itemsTotal(o) + o.fee;
+  const orderTotal = o => Math.max(0, itemsTotal(o) - (o.discount || 0)) + o.fee + (o.collectFee || 0);
   const sellersOf = o => [...new Set(o.items.map(it => it.sellerId))].sort((a, b) => SE(a).stall - SE(b).stall);
   const liveSellers = o => sellersOf(o).filter(sid => o.items.some(it => it.sellerId === sid && it.status !== 'out'));
   function phase(o) {
@@ -341,7 +361,7 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
   const PHASE_TEXT = { new: 'Лангуунууд шалгаж байна', confirmed: 'Баталсан, хүргэгч цуглуулна', picking: 'Хүргэгч цуглуулж байна', picked: 'Бүгдийг цуглуулсан', onway: 'Замд явж байна', done: 'Хүргэгдсэн', cancel: 'Цуцалсан', empty: 'Бараа дууссан' };
   const PHASE_STEP = { new: 1, confirmed: 2, picking: 3, picked: 3, onway: 4, done: 5 };
   function log(o, text) { o.log.push({ t: Date.now(), text }); }
-  function refreshFee(o) { o.fee = deliveryFee(itemsTotal(o)); }
+  function refreshFee(o) { o.fee = deliveryFee(itemsTotal(o)); o.collectFee = collectFee(liveSellers(o).length, itemsTotal(o)); }
 
   // ---------- views ----------
   function render() {
@@ -387,19 +407,30 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     h += inCart.length === 1 ? stepper(inCart[0].offer.id, inCart[0].qty, p.unit) : inCart.length > 1 ? `<small class="muted">${inCart.length} лангуунаас</small>` : `<button class="add" data-act="add" data-v="${best.id}">Нэмэх</button>`;
     return h + '</div>';
   }
+  function bundleCard(pl) {
+    const b = pl.bundle, o = pl.best, inCart = S.cartBundles.some(cb => cb.id === b.id);
+    const stalls = o.stalls.map(sid => SE(sid).stall + '-р').join(', ');
+    return `<div class="col bundle${inCart ? ' sel' : ''}"><div class="k">${b.em} ${esc(b.who)}</div><div class="v">${esc(b.name)}</div><div class="x"><span class="tag">${num(o.total)}<small>₮</small></span> ${pl.saving ? `<s class="muted">${money(pl.listTotal)}</s>` : ''}</div><div class="s">${b.items.map(it => `${P(it.productId).em} ${qtyText(it.qty, P(it.productId).unit)}`).join(' · ')}</div><div class="s muted">${o.stalls.length === 1 ? `${stalls} лангуунаас, нэг дор` : `${o.stalls.length} лангуу (${stalls}), цэг дээр цуглуулна`} · ${pl.saving ? `${money(pl.saving)} хямд` : 'хямдралгүй'}</div>${inCart ? '<div class="s">Сагсанд байна</div>' : `<button class="btn" data-act="bundle" data-v="${b.id}">Сагсанд</button>`}</div>`;
+  }
+  function bundlesSection(limit) {
+    const pls = bundlePlans();
+    if (!pls.length) return '';
+    return `<div class="sec"><h2>Багцууд</h2>${limit ? '<button data-act="gocat" data-v="Багц">Бүгд</button>' : ''}</div><p class="small muted" style="margin:0 0 6px">Нэг лангуунаас бүтэн багц авбал 7%, хоёр лангуунаас 4% хямд. Багцыг сагсанд оруулаад тоог нь өөрчилж болно.</p><div class="cols bundles">${(limit ? pls.slice(0, limit) : pls).map(bundleCard).join('')}</div>`;
+  }
   function homeView() {
     const sub = cartTotal(), pr = S.profile;
     let h = `<div class="hello"><div><b>${pr.name ? 'Сайн байна уу, ' + esc(pr.name) : 'Сайн байна уу'}</b><div class="small muted">Захаас шууд, өнөөдөр хүргэнэ</div></div><button class="slot" data-act="tab" data-v="cart" aria-label="Хүргэх цаг">🕒 ${esc(pr.slot.replace('Өнөөдөр ', '').replace('Маргааш ', 'Маргааш '))}</button></div>`;
     if (sub > 0 && sub < FREE_FROM) h += `<div class="progress"><div class="small">${money(FREE_FROM - sub)} нэмбэл хүргэлт үнэгүй</div><div class="track"><span class="fill" style="width:${Math.round(sub / FREE_FROM * 100)}%"></span></div></div>`;
     const last = S.orders.filter(o => o.status !== 'cancel').slice(-1)[0];
     if (last) h += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b>Сүүлийн захиалгаа давтах</b><div class="small muted">${last.no}, ${last.items.length} бараа, ${money(orderTotal(last))}</div></div><button class="btn" data-act="reorder" data-v="${last.id}">Сагсанд</button></div>`;
+    h += bundlesSection(3);
     const guide = orderGuide().slice(0, 8);
     if (guide.length) {
       h += `<div class="sec"><h2>Миний байнгын бараа</h2><button data-act="guideAll">Бүгдийг нэмэх</button></div><div class="hscroll">${guide.map(g => productCard(P(g.productId))).join('')}</div>`;
     } else {
       h += `<p class="small muted" style="margin:14px 0 4px">Анхны захиалгаа хийсний дараа байнга авдаг бараа тань энд гарч, нэг товчоор дахин захиална.</p>`;
     }
-    h += `<div class="sec"><h2>Ангилал</h2></div><div class="grid">${CATS.map((c, i) => `<button class="tile" data-act="gocat" data-v="${c}"><i aria-hidden="true">${['🥬', '🍎', '🥩', '🥚', '🌾'][i]}</i>${c}</button>`).join('')}</div>`;
+    h += `<div class="sec"><h2>Ангилал</h2></div><div class="grid">${CATS.slice(1).map((c, i) => `<button class="tile" data-act="gocat" data-v="${c}"><i aria-hidden="true">${['🥬', '🍎', '🥩', '🥚', '🌾'][i]}</i>${c}</button>`).join('')}</div>`;
     const drops = market().filter(m => m.minPriceNow != null && m.priceTrend <= -0.04).sort((a, b) => a.priceTrend - b.priceTrend).slice(0, 6);
     if (drops.length) h += `<div class="sec"><h2>Өнөөдөр хямдарсан</h2><button data-act="tab" data-v="smart">Бүх хандлага</button></div><div class="hscroll">${drops.map(m => productCard(P(m.productId))).join('')}</div>`;
     const rel = reliability().slice().sort((a, b) => a.outRate - b.outRate)[0];
@@ -428,6 +459,7 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     let h = `<input class="search" id="q" type="search" placeholder="Юу хайж байна? Жишээ нь сонгино" value="${esc(S.q)}" aria-label="Бараа хайх">`;
     if (!S.q) h += `<div class="cats" role="group" aria-label="Ангилал">${CATS.map(c => `<button data-act="cat" data-v="${c}" aria-pressed="${S.cat === c}">${c}</button>`).join('')}</div>`;
     const q = S.q.trim().toLowerCase();
+    if (!q && S.cat === 'Багц') return h + bundlesSection(0);
     const prods = S.products.filter(p => (q ? p.name.toLowerCase().includes(q) : p.cat === S.cat));
     if (!prods.length) return h + `<p class="empty">“${esc(S.q)}” олдсонгүй. Өөр үгээр хайгаад үз.</p>`;
     h += '<div class="list">';
@@ -550,7 +582,10 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       ls.forEach(l => { const p = P(l.offer.productId); h += `<div class="line"><div class="nm">${p.em} ${esc(p.name)}<small>${money(l.offer.price)} / ${p.unit}</small></div>${stepper(l.offer.id, l.qty, p.unit)}</div>`; });
       h += '</div>';
     });
-    h += `<div class="sum"><span>Бараа</span><span>${money(sub)}</span><span>Хүргэлт${fee ? ` <small class="muted">(${money(FREE_FROM)}-с дээш үнэгүй)</small>` : ''}</span><span>${fee ? money(fee) : 'үнэгүй'}</span><span class="tot">Нийт</span><span class="tot">${money(sub + fee)}</span></div></div>`;
+    const discs = bundleDiscounts(), disc = discs.reduce((a, d) => a + d.amount, 0), nSt = cartStalls(), cfee = collectFee(nSt, sub);
+    h += `<div class="sum"><span>Бараа</span><span>${money(sub)}</span>${discs.map(d => `<span>${esc(d.name)}</span><span>−${money(d.amount)}</span>`).join('')}<span>Хүргэлт${fee ? ` <small class="muted">(${money(FREE_FROM)}-с дээш үнэгүй)</small>` : ''}</span><span>${fee ? money(fee) : 'үнэгүй'}</span>${cfee ? `<span>Цуглуулалт <small class="muted">(${nSt} лангуу)</small></span><span>${money(cfee)}</span>` : ''}<span class="tot">Нийт</span><span class="tot">${money(sub - disc + fee + cfee)}</span></div>`;
+    if (nSt >= 2) h += `<p class="small muted" style="margin:10px 0 0">${nSt} лангуунаас: лангуу бүр бараагаа <b>${POINT}</b> рүү хүргэх цагаас өмнө авчирна, хүргэгч нэг газраас аваад танд нэг хүргэлтээр ирнэ.${nSt > COLLECT_FREE_STALLS && sub < FREE_FROM ? ` ${COLLECT_FREE_STALLS}-оос дээш лангуу бүрт ${money(COLLECT_FEE)}; ${money(FREE_FROM)}-с дээш бол үнэгүй.` : ''}</p>`;
+    h += '</div>';
     h += `<div class="card"><h3>Хүргэлт</h3>
       <div class="grid2"><div><label for="fName">Нэр эсвэл байгууллага</label><input class="field" id="fName" autocomplete="organization" value="${esc(pr.name)}" placeholder="Жишээ нь Нарны гуанз"></div>
       <div><label for="fPhone">Утас</label><input class="field" id="fPhone" type="tel" inputmode="tel" autocomplete="tel" value="${esc(pr.phone)}" placeholder="8 оронтой"></div></div>
@@ -559,7 +594,7 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       <div><label for="fPay">Төлбөр</label><select class="field" id="fPay">${PAYS.map(s => `<option${s === pr.pay ? ' selected' : ''}>${s}</option>`).join('')}</select></div></div>
       <label for="fNote">Тэмдэглэл</label><input class="field" id="fNote" value="${esc(pr.note)}" placeholder="Жишээ нь арын хаалгаар орно">
       <p class="small muted">Бараа дууссан бол лангуу шууд мэдэгдэнэ, та өөр лангуунаас авахыг сонгож болно. Мөнгийг зөвхөн бодит хүргэгдсэн бараагаар бодно.</p>
-      <button class="btn block" data-act="place">Захиалга илгээх, ${money(sub + fee)}</button></div>`;
+      <button class="btn block" data-act="place">Захиалга илгээх, ${money(sub - disc + fee + cfee)}</button></div>`;
     return h;
   }
 
@@ -598,7 +633,7 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       return `<div class="card"><h3><span>${o.no}</span><span class="small muted">${hhmm(o.at)}, ${esc(o.slot)}</span></h3>
         <p class="small" style="margin:4px 0 0">${PHASE_TEXT[ph]}</p>${track(o)}
         ${orderItemsHtml(o, { buyer: true, picked: true })}
-        <div class="sum"><span>Бараа</span><span>${money(itemsTotal(o))}</span><span>Хүргэлт</span><span>${o.fee ? money(o.fee) : 'үнэгүй'}</span><span class="tot">Нийт</span><span class="tot">${money(orderTotal(o))}</span></div>
+        <div class="sum"><span>Бараа</span><span>${money(itemsTotal(o))}</span>${o.discount ? `<span>Багцын хямдрал</span><span>−${money(o.discount)}</span>` : ''}<span>Хүргэлт</span><span>${o.fee ? money(o.fee) : 'үнэгүй'}</span>${o.collectFee ? `<span>Цуглуулалт</span><span>${money(o.collectFee)}</span>` : ''}<span class="tot">Нийт</span><span class="tot">${money(orderTotal(o))}</span></div>
         ${ph === 'new' ? `<div class="row" style="margin-top:10px"><button class="btn warn" data-act="cancel" data-v="${o.id}">Захиалга цуцлах</button></div>` : ''}</div>`;
     }).join('');
   }
@@ -618,8 +653,10 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     open.slice().reverse().forEach(o => {
       const its = o.items.filter(it => it.sellerId === me), sub = its.reduce((s, it) => s + (it.status === 'out' ? 0 : it.price * it.qty), 0);
       const pending = its.some(it => it.status === 'new');
-      const st = pending ? 'Бэлэн эсэхийг тэмдэглэнэ үү' : o.picked[me] ? 'Хүргэгч авсан' : its.every(it => it.status === 'out') ? 'Бүгд дууссан' : 'Бэлдээд хүргэгчийг хүлээнэ';
-      h += `<div class="card"><h3><span>${o.no}</span><span class="small muted">${hhmm(o.at)}, ${esc(o.slot)}</span></h3><p class="small" style="margin:4px 0 0">${st}</p>${orderItemsHtml(o, { sellerId: me })}<div class="sum"><span>Таны бараа</span><span class="tot">${money(sub)}</span></div></div>`;
+      const multi = liveSellers(o).length >= 2, atPt = o.atPoint && o.atPoint[me];
+      const st = pending ? 'Бэлэн эсэхийг тэмдэглэнэ үү' : o.picked[me] ? 'Хүргэгч авсан' : its.every(it => it.status === 'out') ? 'Бүгд дууссан' : multi ? (atPt ? 'Цуглуулах цэгт авчирсан' : `Бэлдээд ${POINT} рүү авчирна`) : 'Бэлдээд хүргэгчийг хүлээнэ';
+      const canPoint = multi && !pending && !o.picked[me] && !its.every(it => it.status === 'out') && o.status === 'open';
+      h += `<div class="card"><h3><span>${o.no}</span><span class="small muted">${hhmm(o.at)}, ${esc(o.slot)}</span></h3><p class="small" style="margin:4px 0 0">${st}</p>${orderItemsHtml(o, { sellerId: me })}<div class="sum"><span>Таны бараа</span><span class="tot">${money(sub)}</span></div>${canPoint ? `<button class="btn ${atPt ? 'ghost' : ''} block" style="margin-top:10px" data-act="topoint" data-v="${o.id}">${atPt ? 'Цэгт авчирсныг буцаах' : 'Цуглуулах цэгт авчирлаа'}</button>` : ''}</div>`;
     });
     return h;
   }
@@ -656,10 +693,13 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       const ph = phase(o), ls = liveSellers(o);
       h += `<div class="card"><h3><span>${o.no}</span><span class="small muted">${esc(o.slot)}</span></h3>
         <p class="small" style="margin:6px 0 0"><b>${esc(o.buyer.name)}</b>, <a href="tel:${esc(o.buyer.phone)}">${esc(o.buyer.phone)}</a><br>${esc(o.buyer.address)}${o.buyer.note ? `<br><span class="muted">${esc(o.buyer.note)}</span>` : ''}</p>
-        <p class="small muted" style="margin:10px 0 0">Лангуунуудыг дугаарын дарааллаар тойрно.</p>`;
-      ls.forEach(sid => {
-        const s = SE(sid), its = o.items.filter(it => it.sellerId === sid && it.status !== 'out');
-        h += `<div class="stall"><label class="check" style="margin:0;color:var(--ink)"><input type="checkbox" data-pick="${o.id}" data-s="${sid}"${o.picked[sid] ? ' checked' : ''}${ph === 'onway' ? ' disabled' : ''}><span><b>${s.stall}-р лангуу</b>, ${esc(s.name)} <a href="tel:${s.phone}">${s.phone}</a></span></label>`;
+        `;
+      const atPt = ls.filter(sid => o.atPoint && o.atPoint[sid]), walk = ls.filter(sid => !(o.atPoint && o.atPoint[sid]));
+      if (ls.length >= 2) h += `<p class="small" style="margin:10px 0 0"><b>${POINT}:</b> ${atPt.length}/${ls.length} лангуу авчирсан${walk.length ? ', үлдсэнийг лангуунаас нь авна' : ', нэг газраас бүгдийг авна'}.</p>`;
+      else h += `<p class="small muted" style="margin:10px 0 0">Нэг лангуу, шууд очно.</p>`;
+      [...atPt, ...walk].forEach(sid => {
+        const s = SE(sid), its = o.items.filter(it => it.sellerId === sid && it.status !== 'out'), pt = o.atPoint && o.atPoint[sid];
+        h += `<div class="stall"><label class="check" style="margin:0;color:var(--ink)"><input type="checkbox" data-pick="${o.id}" data-s="${sid}"${o.picked[sid] ? ' checked' : ''}${ph === 'onway' ? ' disabled' : ''}><span><b>${s.stall}-р лангуу</b>, ${esc(s.name)} ${pt ? '<span class="pill">цэг дээр</span>' : `<a href="tel:${s.phone}">${s.phone}</a>`}</span></label>`;
         its.forEach(it => { const p = P(it.productId); h += `<div class="line"><div class="nm">${p.em} ${esc(p.name)}</div><span>${qtyText(it.qty, p.unit)}</span></div>`; });
         h += '</div>';
       });
@@ -686,10 +726,10 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       id: 'ord' + Date.now(), no: 'З-' + (++S.seq), at: Date.now(), slot: pr.slot, pay: pr.pay,
       buyer: { name: pr.name, phone: pr.phone.replace(/\s/g, ''), address: pr.address, note: pr.note },
       items: lines.map(l => ({ offerId: l.offer.id, productId: l.offer.productId, sellerId: l.offer.sellerId, qty: l.qty, price: l.offer.price, status: 'new' })),
-      picked: {}, status: 'open', fee: 0, log: [],
+      picked: {}, atPoint: {}, status: 'open', fee: 0, collectFee: 0, discount: bundleDiscounts().reduce((s, d) => s + d.amount, 0), bundles: bundleDiscounts().map(d => d.name), log: [],
     };
     refreshFee(o); log(o, 'Захиалга илгээсэн');
-    S.orders.push(o); S.cart = {}; pr.note = ''; S.buyerTab = 'orders';
+    S.orders.push(o); S.cart = {}; S.cartBundles = []; pr.note = ''; S.buyerTab = 'orders';
     save(); render(); window.scrollTo(0, 0);
     toast(`${o.no} илгээгдлээ. ${sellersOf(o).length} лангуунд мэдэгдлээ.`);
   }
@@ -700,6 +740,13 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     const ord = () => S.orders.find(o => o.id === v);
     switch (a) {
       case 'role': S.role = v; break;
+      case 'bundle': {
+        const pl = bundlePlans().find(x => x.bundle.id === v); if (!pl) break;
+        pl.best.lines.forEach(l => { S.cart[l.offerId] = (S.cart[l.offerId] || 0) + l.qty; });
+        S.cartBundles.push({ id: v, stalls: pl.best.stalls });
+        toast(`${pl.bundle.name} сагсанд орлоо`); break;
+      }
+      case 'topoint': { const o = ord(); if (!o) break; o.atPoint = o.atPoint || {}; o.atPoint[S.sellerId] = !o.atPoint[S.sellerId]; log(o, `${SE(S.sellerId).stall}-р лангуу: ${o.atPoint[S.sellerId] ? 'цуглуулах цэгт авчирсан' : 'цэгт авчирсныг буцаасан'}`); break; }
       case 'gocat': S.cat = v; S.q = ''; S.open = null; S.buyerTab = 'shop'; window.scrollTo(0, 0); break;
       case 'reorder': {
         const o = S.orders.find(x => x.id === v); if (!o) break;
