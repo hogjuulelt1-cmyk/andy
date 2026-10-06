@@ -428,6 +428,10 @@ details.fold[open] summary::after{transform:rotate(-135deg)}
 .hist .crumb{font-size:.78rem;min-height:30px;display:inline-flex;align-items:center}
 .crumb.pos{background:var(--accent);color:var(--accent-ink)} .crumb.mv{background:var(--sunk);color:var(--ink)} .crumb.df{background:var(--df-bg);color:var(--df-ink)}
 .crumb.last{box-shadow:0 0 0 2px var(--accent-soft)}
+/* drills */
+.pict.dk{border-radius:10px;background:var(--sunk);color:var(--t-ctl)} .pict.dk svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.pict.dk.solo{color:var(--t-td)} .pict.dk.sub{color:var(--t-sub)} .pict.dk.td{color:var(--t-td)} .pict.dk.esc{color:var(--t-esc)} .pict.dk.flow{color:var(--t-pass)} .pict.dk.partner{color:var(--t-sweep)}
+.dbody{display:flex;flex-direction:column;gap:10px;padding:4px 0 12px 42px}
 /* club: calendar, medals, open mats */
 .cal .dow{display:grid;grid-template-columns:repeat(7,1fr);font-size:.7rem;color:var(--muted);text-align:center;margin-bottom:4px}
 .cal .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px} .cal b,.cal i{display:grid;place-items:center;height:34px;border-radius:9px;font-weight:600;font-size:.84rem;font-variant-numeric:tabular-nums;background:var(--sunk)} .cal i{background:none}
@@ -496,7 +500,7 @@ nav.tabs button{font-size:.72rem}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="meta.js?v=3"></script>
-<script src="seed.js?v=6"></script>
-<script src="app.js?v=10"></script>
+<script src="seed.js?v=7"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>

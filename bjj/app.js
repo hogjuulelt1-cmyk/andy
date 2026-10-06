@@ -69,7 +69,7 @@ function blank() {
     tree: { nodes: [] },
     plans: { items: [], setups: [] },
     log: { items: [] },
-    body: { routines: [], items: [] },
+    body: { routines: [], items: [], drills: [] },
     belt: { track: "kids", belt: "white", stripes: 0, since: "", history: [], goals: {} },
     weight: { items: [], cls: "adult_m", target: "" },
     comp: { events: [] },
@@ -233,7 +233,7 @@ const TABS = [
   ["club", "Club", '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/>'],
   ["me", "Me", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
 ];
-const SEGS = { train: [["log", "Log"], ["body", "Body"]], me: [["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
+const SEGS = { train: [["log", "Log"], ["drills", "Drills"], ["body", "Body"]], me: [["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
 function renderTabs() {
   $("tabs").innerHTML = TABS.map((t) => '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
 }
@@ -1209,7 +1209,53 @@ async function importBackup(file) {
 
 
 /* ======================= TRAIN / ME (grouped tabs) ======================= */
-VIEWS.train = function () { const v = UI.seg.train || "log"; return seg(SEGS.train, v, "segview") + (v === "body" ? VIEWS.body() : VIEWS.log()); };
+VIEWS.train = function () { const v = UI.seg.train || "log"; return seg(SEGS.train, v, "segview") + (v === "body" ? VIEWS.body() : v === "drills" ? vDrills() : VIEWS.log()); };
+
+/* ======================= DRILLS ======================= */
+const DKIND = [["all", "All"], ["solo", "Solo"], ["partner", "Partner"], ["sub", "Submissions"], ["td", "Takedowns"], ["esc", "Escapes"], ["flow", "Sparring"]];
+const DKNAME = Object.fromEntries(DKIND);
+function allDrills() { return (SEED.drills || []).concat(S.body.drills || []); }
+function findTech(name) { const q = name.toLowerCase(); return nodes().find((n) => n.k === "mv" && n.n.toLowerCase() === q) || nodes().find((n) => n.k === "mv" && n.n.toLowerCase().includes(q)); }
+function drillCount(id, since) { return S.body.items.filter((x) => x.cat === "drill" && x.drill === id && (!since || x.d >= since)).length; }
+function suggestDrills() {
+  const weak = (typeof learnCards === "function" ? learnCards() : []).filter((c) => c.f >= 2).map((c) => c.n.n.toLowerCase());
+  const all = allDrills(); const hits = all.filter((d) => (d.tech || []).some((t) => weak.some((w) => w.includes(t.toLowerCase()) || t.toLowerCase().includes(w))));
+  if (hits.length >= 3) return { why: "from your Learn misses", list: hits.slice(0, 3) };
+  const day = Math.floor(Date.now() / 86400000); const kinds = ["solo", "partner", "sub", "td", "esc"]; const out = []; for (let i = 0; i < 3; i++) { const ks = all.filter((d) => d.kind === kinds[(day + i) % kinds.length]); if (ks.length) out.push(ks[(day + i * 7) % ks.length]); }
+  return { why: "today’s rotation", list: hits.concat(out).slice(0, 3) };
+}
+function vDrills() {
+  const f = UI.drillF || "all"; const today = todayIso(), wk = mondayOf(today), mo = today.slice(0, 7);
+  const logs = S.body.items.filter((x) => x.cat === "drill"); const wkN = logs.filter((x) => x.d >= wk).length, moN = logs.filter((x) => x.d.startsWith(mo)).length;
+  const list = allDrills().filter((d) => f === "all" || d.kind === f);
+  let h = '<div class="card"><div class="summary"><div class="stat"><b>' + wkN + '</b><span>drills this week</span></div><div class="stat"><b>' + moN + '</b><span>this month</span></div><div class="stat"><b>' + allDrills().length + '</b><span>in the library</span></div></div>';
+  const sg = suggestDrills(); h += '<p class="muted small">Today · ' + esc(sg.why) + '</p><div class="chips">' + sg.list.map((d) => '<button class="chip" data-act="drill-open" data-id="' + d.id + '">' + esc(d.n) + "</button>").join("") + "</div></div>";
+  h += '<div class="chips">' + DKIND.map((k) => '<button type="button" class="chip' + (f === k[0] ? " on" : "") + '" data-act="drillf" data-v="' + k[0] + '">' + k[1] + "</button>").join("") + "</div>";
+  const order = ["solo", "partner", "sub", "td", "esc", "flow"];
+  for (const k of order) { const ds = list.filter((d) => d.kind === k); if (!ds.length) continue;
+    h += '<div class="card"><div class="card-head"><h3>' + DKNAME[k] + "</h3><span class=\"muted small\">" + ds.length + "</span></div><div class=\"list\">" + ds.map((d) => {
+      const open = UI.drillOpen === d.id; const n = drillCount(d.id); const ok = allowed({ belt: d.lvl || "white", gi: "both", kids: true });
+      let r = '<button class="row" data-act="drill-open" data-id="' + d.id + '" aria-expanded="' + open + '"><span class="pict dk ' + d.kind + '"><svg viewBox="0 0 24 24">' + (d.kind === "solo" ? PICT.stand : d.kind === "sub" ? TICON.sub : d.kind === "td" ? TICON.td : d.kind === "esc" ? TICON.esc : d.kind === "flow" ? TICON.trans : TICON.ctl) + '</svg></span><div class="txt"><b>' + esc(d.n) + "</b><small>" + esc(d.dose || "") + (d.lvl && d.lvl !== "white" ? " · from " + d.lvl : "") + (n ? " · done " + n + "×" : "") + "</small></div>" + CHEV + "</button>";
+      if (open) r += '<div class="dbody"><ol class="steps">' + (d.cues || []).map((c) => "<li>" + esc(c) + "</li>").join("") + "</ol>" + ((d.tech || []).length ? '<div class="chips">' + d.tech.map((t) => { const nd = findTech(t); return nd ? '<button class="chip pchip" data-act="open" data-id="' + nd.id + '">' + iconFor(nd) + "<span>" + esc(nd.n) + "</span></button>" : ""; }).join("") + "</div>" : "") + '<div class="actions"><button class="btn" data-act="drill-done" data-id="' + d.id + '">Done today</button>' + (d.custom ? '<button class="btn ghost" data-act="drill-edit" data-id="' + d.id + '">Edit</button>' : "") + "</div></div>";
+      return r; }).join("") + "</div></div>"; }
+  h += '<button class="btn ghost wide" data-act="drill-add">+ Add my own drill</button>';
+  const recent = logs.sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 10);
+  if (recent.length) h += '<div class="card"><h3>Drill log</h3><div class="list">' + recent.map((x) => '<button class="row" data-act="edit-blog" data-id="' + x.id + '"><div class="txt"><b>' + fmtD(x.d) + " · " + esc(x.n) + "</b><small>" + (x.min ? x.min + " min" : "") + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div></div>";
+  return h;
+}
+function drillSheet(id) {
+  const d = id ? (S.body.drills || []).find((x) => x.id === id) : null;
+  const b = field("d-n", "Drill", inp("d-n", d ? d.n : "", "text", "autofocus")) + '<div class="field"><span class="lbl">Kind</span>' + chips("kind", DKIND.slice(1), d ? d.kind : "partner") + "</div>" + '<div class="grid2">' + field("d-dose", "Reps or time", inp("d-dose", d ? d.dose || "" : "", "text", 'placeholder="10 each side"')) + '<div class="field"><span class="lbl">From belt</span>' + chips("lvl", [["white", "White"], ["blue", "Blue"], ["purple", "Purple"]], d ? d.lvl || "white" : "white") + "</div></div>" + field("d-cues", "Cues (one per line)", ta("d-cues", (d ? d.cues || [] : []).join("\n"), "")) + field("d-tech", "Techniques it trains (names, one per line)", ta("d-tech", (d ? d.tech || [] : []).join("\n"), "Armbar"));
+  openSheet(d ? "Edit drill" : "My drill", b, { state: { picks: { kind: d ? d.kind : "partner", lvl: d ? d.lvl || "white" : "white" } }, onDelete: d ? () => { S.body.drills = S.body.drills.filter((x) => x.id !== d.id); save("body"); render(); return true; } : null, onSave() {
+    const n = sv("d-n").trim(); if (!n) return false; const rec = d || { id: "u_" + uid(), custom: true }; rec.n = n; rec.kind = pickVal("kind", "partner"); rec.lvl = pickVal("lvl", "white"); rec.dose = sv("d-dose").trim(); rec.cues = lines(sv("d-cues")); rec.tech = lines(sv("d-tech"));
+    S.body.drills = S.body.drills || []; if (!d) S.body.drills.push(rec); save("body"); UI.drillOpen = rec.id; render(); return true;
+  } });
+}
+function drillDone(id) {
+  const d = allDrills().find((x) => x.id === id); if (!d) return;
+  const b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", "", "number", 'inputmode="numeric"')) + "</div>" + field("f-note", "Note", inp("f-note", "", "text", 'placeholder="felt the timing / still slow on the left"'));
+  openSheet(d.n, b, { saveLabel: "Log it", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), cat: "drill", drill: d.id, n: d.n, min: +sv("f-min") || 0, note: sv("f-note").trim() }; S.body.items.push(rec); save("body"); if (CLUB.id) attMark(rec.d, true); toast("Logged"); render(); return true; } });
+}
 VIEWS.me = function () { const v = UI.seg.me || "belt"; return seg(SEGS.me, v, "segview") + (v === "weight" ? VIEWS.weight() : v === "comp" ? VIEWS.comp() : (S.belt.byCoach ? '<div class="tip">Your belt is set by your coach. Ask them if something is off.</div>' : "") + VIEWS.belt()); };
 
 /* ======================= CLUB ======================= */
@@ -1537,6 +1583,11 @@ document.addEventListener("click", (e) => {
     case "club-join": if (ds.open) clubJoin(ds.id, "", false); else joinSheet(ds.id, false); break;
     case "club-coach": joinSheet(ds.id, true); break;
     case "club-paynow": payNowSheet(); break;
+    case "drillf": UI.drillF = ds.v; render(); break;
+    case "drill-open": UI.drillOpen = UI.drillOpen === ds.id ? null : ds.id; if (UI.tab !== "train" || UI.seg.train !== "drills") { UI.tab = "train"; UI.seg.train = "drills"; UI.drillOpen = ds.id; go("enter-l"); } else render(); break;
+    case "drill-done": drillDone(ds.id); break;
+    case "drill-add": drillSheet(null); break;
+    case "drill-edit": drillSheet(ds.id); break;
     case "club-member": if (isAdmin()) memberSheet(ds.id || null); break;
     case "memf": UI.memF = ds.v; render(); break;
     case "att-me": { const today = todayIso(); const on = !(CLUB.attMonth && CLUB.attMonth.days[today] && CLUB.attMonth.days[today].includes(myUid())); attMark(today, on).then(render); break; }
