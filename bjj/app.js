@@ -910,16 +910,82 @@ function planSheet(id) {
 /* ======================= TRAINING ======================= */
 const STYPES = [["gi", "Gi"], ["nogi", "No-gi"], ["open", "Open mat"], ["priv", "Private"], ["drill", "Drilling"], ["comp", "Compete"]];
 const SNAME = Object.fromEntries(STYPES);
+/* ======================= STREAKS & SHARE CARD ======================= */
+function trainedDays() { const d = new Set(S.log.items.map((s) => s.d)); for (const x of S.body.items) if (x.cat === "drill") d.add(x.d); if (CLUB.id && CLUB.attMonth) for (const k in CLUB.attMonth.days) if (CLUB.attMonth.days[k].includes(myUid())) d.add(k); return d; }
+function streaks() {
+  const days = trainedDays(); const today = todayIso(); let weeks = 0; let ws = mondayOf(today);
+  for (let i = 0; i < 520; i++) { let hit = false; for (let j = 0; j < 7; j++) if (days.has(addDays(ws, j))) { hit = true; break; } if (!hit) { if (i === 0) { ws = addDays(ws, -7); continue; } break; } weeks++; ws = addDays(ws, -7); }
+  let classes = 0; const sched = (CLUB.profile && CLUB.profile.schedule) || []; const cdays = new Set(sched.map((x) => x.d));
+  if (cdays.size) { let d = today; for (let i = 0; i < 400; i++) { const dow = (new Date(d + "T12:00:00").getDay() + 6) % 7; if (cdays.has(dow)) { if (days.has(d)) classes++; else if (d !== today) break; } d = addDays(d, -1); } }
+  let run = 0; { let d = today; if (!days.has(d)) d = addDays(d, -1); while (days.has(d)) { run++; d = addDays(d, -1); } }
+  return { weeks, classes, run, total: days.size };
+}
+function streakLine() { const st = streaks(); const bits = []; if (st.weeks) bits.push(st.weeks + " week streak"); if (st.classes) bits.push(st.classes + " classes without a miss"); return bits.length ? '<p class="streak">🔥 ' + bits.join(" · ") + "</p>" : ""; }
+/* Share card: a photo (or the mat) with the session, the roll path and the streak on top, like a run on Strava. */
+const SHARE = { img: null, tpl: "photo", sess: null };
+function shareSheet(sessId) {
+  const s = sessId ? S.log.items.find((x) => x.id === sessId) : sessionsSorted()[0]; if (!s) { toast("Log a training first"); return; }
+  SHARE.sess = s; SHARE.img = null; SHARE.tpl = "photo";
+  const b = '<p class="small">Add a photo from the mat and share the session with its stats, your roll path and your streak.</p>' +
+    '<div class="field"><label for="sh-photo" class="btn ghost" style="display:flex;align-items:center;justify-content:center">Choose a photo<input id="sh-photo" type="file" accept="image/*" capture="environment" hidden></label></div>' +
+    '<div class="field"><span class="lbl">Look</span>' + chips("tpl", [["photo", "Photo"], ["mat", "Mat"], ["light", "Light"]], "photo") + "</div>" +
+    '<canvas id="sh-cv" width="1080" height="1350" class="sharecv"></canvas>' +
+    '<div class="actions"><button class="btn ghost" data-act="share-save">Save image</button><button class="btn" data-act="share-send">Share</button></div>';
+  openSheet("Share the session", b, { state: { picks: { tpl: "photo" } } });
+  const inp0 = $("sh-photo"); inp0.addEventListener("change", () => { const f = inp0.files && inp0.files[0]; if (!f) return; const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { SHARE.img = im; URL.revokeObjectURL(url); drawShare(); }; im.src = url; });
+  drawShare();
+}
+function drawShare() {
+  const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const g = cv.getContext("2d"); const W = cv.width, H = cv.height; const tpl = SHARE.tpl; const dark = tpl !== "light";
+  g.clearRect(0, 0, W, H);
+  if (SHARE.img && tpl === "photo") { const im = SHARE.img; const r = Math.max(W / im.width, H / im.height); const w = im.width * r, h = im.height * r; g.drawImage(im, (W - w) / 2, (H - h) / 2, w, h); const gr = g.createLinearGradient(0, H * 0.35, 0, H); gr.addColorStop(0, "rgba(10,13,20,0)"); gr.addColorStop(1, "rgba(10,13,20,.92)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); const gt = g.createLinearGradient(0, 0, 0, H * 0.3); gt.addColorStop(0, "rgba(10,13,20,.6)"); gt.addColorStop(1, "rgba(10,13,20,0)"); g.fillStyle = gt; g.fillRect(0, 0, W, H); }
+  else { g.fillStyle = dark ? "#161b26" : "#eef0f4"; g.fillRect(0, 0, W, H); g.strokeStyle = dark ? "rgba(255,255,255,.035)" : "rgba(15,20,25,.05)"; g.lineWidth = 2; for (let i = -H; i < W + H; i += 44) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + H, H); g.stroke(); g.beginPath(); g.moveTo(i, H); g.lineTo(i + H, 0); g.stroke(); } }
+  const ink = dark ? "#f3f5f9" : "#0f1419", mute = dark ? "rgba(243,245,249,.72)" : "rgba(15,20,25,.6)"; const disp = "700 %dpx 'Bricolage Grotesque', system-ui, sans-serif", body = "500 %dpx 'IBM Plex Sans', system-ui, sans-serif";
+  const F = (t, px) => t.replace("%d", px); const pad = 64;
+  // header: club / app + date
+  g.fillStyle = mute; g.font = F(body, 34); g.textBaseline = "top"; g.fillText((CLUB.profile ? CLUB.profile.n : "Jiu-jitsu").toUpperCase(), pad, pad);
+  g.fillStyle = ink; g.font = F(disp, 44); g.fillText(s.d, pad, pad + 46);
+  // belt bar top right
+  { const bw = 260, bh = 28, x = W - pad - bw, y = pad + 10; const b = beltDef(S.belt.track, S.belt.belt); g.fillStyle = b.c || "#999"; g.fillRect(x, y, bw, bh); g.fillStyle = "#111"; g.fillRect(x + bw * 0.66, y, bw * 0.34, bh); g.fillStyle = "#fff"; for (let i = 0; i < (S.belt.stripes || 0); i++) g.fillRect(x + bw * 0.66 + 14 + i * 18, y, 8, bh); g.strokeStyle = "rgba(0,0,0,.25)"; g.strokeRect(x, y, bw, bh); }
+  // big numbers
+  let y = H - pad - 580;
+  const stats = [[String(s.min || 0), "min"], [String(s.rolls || 0), "rounds"], [String((s.tech || []).length + (s.subs || []).reduce((a, x) => a + (x.c || 1), 0)), "moves"]];
+  stats.forEach((st, i) => { const x = pad + i * 300; g.fillStyle = ink; g.font = F(disp, 120); g.fillText(st[0], x, y); g.fillStyle = mute; g.font = F(body, 34); g.fillText(tr(st[1]), x + 6, y + 126); });
+  // type + what went well
+  y += 200; g.fillStyle = ink; g.font = F(disp, 48); g.fillText(tr(SNAME[s.type] || "Training"), pad, y);
+  if (s.good) { g.fillStyle = mute; g.font = F(body, 32); const words = s.good.split(" "); let line = "", ly = y + 64; for (const w of words) { const t = line ? line + " " + w : w; if (g.measureText(t).width > W - pad * 2) { g.fillText(line, pad, ly); line = w; ly += 40; if (ly > y + 110) break; } else line = t; } if (line && ly <= y + 110) g.fillText(line, pad, ly); }
+  // roll path (the "route"): last saved roll of that day, else the week's dots
+  const roll = S.rolls.items.filter((r) => r.d === s.d).sort((a, b) => (a.id < b.id ? 1 : -1))[0] || S.rolls.items.slice().sort((a, b) => (a.d < b.d ? 1 : -1))[0];
+  const ry = H - pad - 200;
+  if (roll && roll.steps.length > 1) {
+    const st = roll.steps.filter((x) => x.k !== "fin").slice(0, 9); const gap = Math.min(120, (W - pad * 2) / Math.max(1, st.length - 1)); const x0 = pad + 12;
+    g.strokeStyle = dark ? "#5b8dff" : "#1f56d9"; g.lineWidth = 6; g.lineCap = "round"; g.beginPath(); st.forEach((x, i) => { const px = x0 + i * gap, py = ry + (i % 2 ? 0 : 34); i ? g.lineTo(px, py) : g.moveTo(px, py); }); g.stroke();
+    st.forEach((x, i) => { const px = x0 + i * gap, py = ry + (i % 2 ? 0 : 34); g.beginPath(); g.arc(px, py, x.k === "pos" ? 16 : 11, 0, Math.PI * 2); g.fillStyle = x.k === "pos" ? (dark ? "#5b8dff" : "#1f56d9") : x.k === "df" ? "#e2a04a" : (dark ? "#161b26" : "#fff"); g.fill(); g.lineWidth = 4; g.strokeStyle = dark ? "#5b8dff" : "#1f56d9"; g.stroke(); });
+    g.fillStyle = mute; g.font = F(body, 28); g.fillText(tr("Roll") + " · " + st.filter((x) => x.k === "pos").map((x) => { const n = node(x.id); return n ? dn(n) : x.n; }).join(" › ").slice(0, 60), pad, ry + 70);
+  } else { const days = trainedDays(); const wk = mondayOf(s.d); for (let i = 0; i < 7; i++) { const d = addDays(wk, i); const on = days.has(d); g.beginPath(); g.arc(pad + 24 + i * 60, ry + 20, 20, 0, Math.PI * 2); g.fillStyle = on ? (dark ? "#3ddc6a" : "#1f9a48") : (dark ? "rgba(255,255,255,.12)" : "rgba(15,20,25,.1)"); g.fill(); } g.fillStyle = mute; g.font = F(body, 28); g.fillText(tr("This week"), pad, ry + 60); }
+  // streak + brand
+  const sk = streaks(); const parts = []; if (sk.weeks) parts.push(sk.weeks + " " + tr("week streak")); if (sk.classes) parts.push(sk.classes + " " + tr("classes without a miss"));
+  g.fillStyle = dark ? "#ffa531" : "#c25e00"; g.font = F(disp, 36); g.textBaseline = "bottom"; if (parts.length) g.fillText("🔥 " + parts.join("  ·  "), pad, H - pad + 6);
+  g.fillStyle = mute; g.font = F(body, 28); g.textAlign = "right"; g.fillText("Chinbilig Jiu-jitsu", W - pad, H - pad + 2); g.textAlign = "left"; g.textBaseline = "top";
+}
+async function shareSend(save) {
+  const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const name = "jiu-jitsu-" + s.d + ".png";
+  const blob = await new Promise((res) => cv.toBlob(res, "image/png")); if (!blob) return;
+  const file = new File([blob], name, { type: "image/png" });
+  if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Jiu-jitsu", text: fmtLong(s.d) + " · " + (s.min || 0) + " min" }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved");
+}
 function sessionsSorted() { return S.log.items.slice().sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0)); }
 VIEWS.log = function () {
   const today = todayIso(), items = sessionsSorted();
   const wk = mondayOf(today); const thisWk = items.filter((s) => s.d >= wk); const mo = today.slice(0, 7); const thisMo = items.filter((s) => s.d.startsWith(mo));
   const totalMin = items.reduce((a, s) => a + (+s.min || 0), 0);
-  let h = '<div class="card"><div class="summary"><div class="stat"><b>' + thisWk.length + '</b><span>this week</span></div><div class="stat"><b>' + thisMo.length + '</b><span>this month</span></div><div class="stat"><b>' + (totalMin / 60).toFixed(totalMin >= 600 ? 0 : 1) + '</b><span>total hours</span></div></div>';
+  const sk = streaks();
+  let h = '<div class="card"><div class="summary"><div class="stat"><b>' + thisWk.length + '</b><span>this week</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div><div class="stat"><b>' + (totalMin / 60).toFixed(totalMin >= 600 ? 0 : 1) + '</b><span>total hours</span></div></div>' + streakLine();
   // minutes per week, 8 weeks
   const bars = []; let maxM = 1;
   for (let i = 7; i >= 0; i--) { const ws = addDays(wk, -7 * i); const we = addDays(ws, 7); const m = items.filter((s) => s.d >= ws && s.d < we).reduce((a, s) => a + (+s.min || 0), 0); maxM = Math.max(maxM, m); bars.push([ws, m]); }
-  h += '<div class="bars">' + bars.map((b) => '<div class="b"><i style="height:' + Math.round((b[1] / maxM) * 100) + '%" title="' + b[1] + ' min"></i><span>' + b[0].slice(5).replace("-", "/") + "</span></div>").join("") + '</div><p class="muted small">Minutes per week</p></div>';
+  h += '<div class="bars">' + bars.map((b) => '<div class="b"><i style="height:' + Math.round((b[1] / maxM) * 100) + '%" title="' + b[1] + ' min"></i><span>' + b[0].slice(5).replace("-", "/") + "</span></div>").join("") + '</div><p class="muted small">Minutes per week</p>' + (items.length ? '<button class="btn ghost wide" data-act="share" data-id="' + items[0].id + '">Share the last session</button>' : "") + "</div>";
   h += '<button class="btn big wide" data-act="add-sess">+ Log training</button>';
   h += timerCard();
   // submission stats
@@ -969,7 +1035,7 @@ function sessSheet(id) {
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
-      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); } toast("Training saved"); render(); return true;
+      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id), 450); return true;
     },
     onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); toast("Deleted"); render(); return true; } : null,
   });
@@ -1462,7 +1528,7 @@ function vClubToday(P, adm) {
   const me = myUid(); const today = todayIso(); const dow = (new Date().getDay() + 6) % 7; const todays = (P.schedule || []).filter((x) => x.d === dow).sort((a, b) => (a.t < b.t ? -1 : 1));
   const here = !!(CLUB.attMonth && CLUB.attMonth.days[today] && CLUB.attMonth.days[today].includes(me)); const cal = attCalendar(me, thisMonth());
   let h = '<div class="card"><div class="card-head"><h3>Today</h3><span class="muted small">' + (todays.length ? todays.map((x) => x.t + " " + (x.n || KIND[x.kind])).join(" · ") : "no class scheduled") + "</span></div>" +
-    '<button class="btn ' + (here ? "ghost" : "") + ' wide" data-act="att-me">' + (here ? "✓ On the mat today · tap to undo" : "I’m on the mat today") + "</button></div>";
+    '<button class="btn ' + (here ? "ghost" : "") + ' wide" data-act="att-me">' + (here ? "✓ On the mat today · tap to undo" : "I’m on the mat today") + "</button>" + streakLine() + "</div>";
   { const mine = (CLUB.members.list || []).find((m) => attKey(m) === me); if (mine && mine.comp) { const ev = ((CLUB.events && CLUB.events.list) || []).filter((e) => e.d >= today).sort((a, b) => (a.d < b.d ? -1 : 1))[0]; h += '<div class="tip"><b>You are on the competition team.</b> ' + (ev ? esc(ev.n) + " in " + daysBetween(today, ev.d) + " days" + (ev.deadline ? " · register by " + fmtD(ev.deadline) : "") : "No competition announced yet.") + "</div>"; } }
   const notes = ((CLUB.notes && CLUB.notes.list) || []).slice().sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 5);
   h += '<div class="card"><div class="card-head"><h3>Notices</h3>' + (adm ? '<button class="btn ghost" data-act="club-note">+ Post</button>' : "") + "</div>" + (notes.length ? '<div class="list">' + notes.map((n) => '<div class="row"><div class="txt"><b>' + esc(n.text) + "</b><small>" + fmtD(n.d) + " · " + esc(n.by || "coach") + "</small></div>" + (adm ? '<button class="x" data-act="club-note-del" data-id="' + n.id + '">✕</button>' : "") + "</div>").join("") + "</div>" : '<p class="empty">No notices. ' + (adm ? "Schedule changes, open mats, seminars: post them here." : "Your coach posts changes and news here.") + "</p>") + "</div>";
@@ -1621,7 +1687,7 @@ document.addEventListener("click", (e) => {
   if (act === "sheet-close") { closeSheet(); return; }
   if (act === "sheet-save") { if (UI.sheetSave && UI.sheetSave() !== false) closeSheet(); return; }
   if (act === "sheet-del") { if (armConfirmSheet(el)) { if (UI.sheetDel && UI.sheetDel() !== false) closeSheet(); } return; }
-  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
+  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "tpl") { SHARE.tpl = ds.v; drawShare(); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
   if (act === "pk-add") { pkAdd(ds.pk, ds.id, ds.n); return; }
   if (act === "pk-inc") { pkChange(ds.pk, +ds.i, 1); return; }
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
@@ -1637,6 +1703,9 @@ document.addEventListener("click", (e) => {
     case "club-coach": joinSheet(ds.id, true); break;
     case "club-paynow": payNowSheet(); break;
     case "w-range": UI.wRange = ds.v; render(); break;
+    case "share": shareSheet(ds.id || null); break;
+    case "share-save": shareSend(true); break;
+    case "share-send": shareSend(false); break;
     case "with-toggle": if (UI.sheet) { UI.sheet.with = UI.sheet.with || []; const i = UI.sheet.with.indexOf(ds.who); if (i >= 0) UI.sheet.with.splice(i, 1); else UI.sheet.with.push(ds.who); el.classList.toggle("on", i < 0); } break;
     case "belt-page": UI.tab = "me"; UI.seg.me = "belt"; UI.beltPage = ds.v === "open" ? true : !UI.beltPage; go(UI.beltPage ? "enter-l" : "enter-r"); break;
     case "drillf": UI.drillF = ds.v; render(); break;
