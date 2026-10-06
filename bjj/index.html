@@ -219,18 +219,37 @@ textarea{min-height:64px;resize:vertical}
 .canvas .gchip .btn{flex:none;min-height:38px;padding:6px 14px}
 .canvas .hint{position:absolute;left:12px;top:12px;font-size:.74rem;color:var(--muted);background:var(--surface);padding:4px 9px;border-radius:999px;box-shadow:var(--shadow);pointer-events:none}
 .g-node{cursor:pointer}
-.g-node rect.b{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
-.g-node text{font-size:12px;font-weight:600;fill:var(--ink);pointer-events:none}
-.g-node text.sm{font-size:10.5px;font-weight:500;fill:var(--muted)}
-.g-node.pos rect.b{fill:var(--ink);stroke:var(--ink)} .g-node.pos text{fill:var(--bg)}
-.g-node.root rect.b{fill:var(--ink);stroke:var(--ink)} .g-node.root text{fill:var(--bg);font-size:14px}
-.g-node.df rect.b{fill:var(--df-bg);stroke:var(--df-ink);stroke-dasharray:4 3} .g-node.df text{fill:var(--df-ink)}
-.g-node.sel rect.b{stroke:var(--accent);stroke-width:3}
-.g-node.dim{opacity:.35}
+.g-node circle.hit{fill:transparent}
+.g-node circle.b{fill:var(--surface);stroke:currentColor;stroke-width:2}
+.g-node .ic{color:currentColor}
+.g-node.pos circle.b,.g-node.root circle.b{fill:currentColor}
+.g-node.pos .ic,.g-node.root .ic{color:#fff}
+.g-node.df circle.b{fill:var(--df-bg);stroke-dasharray:4 3}
+.g-node text.lb{font-size:11px;font-weight:600;fill:var(--ink)}
+.g-node.sel circle.b{stroke:var(--accent);stroke-width:3.5}
+.g-node.cur circle.b{stroke:var(--accent);stroke-width:4}
+.g-node.cur text.lb{fill:var(--accent)}
+.g-node.vis circle.b{filter:drop-shadow(0 0 0 var(--accent))}
+.g-node.dim{opacity:.3} .g-node.faint{opacity:.45}
 .g-edge{fill:none;stroke:var(--line);stroke-width:2;stroke-linecap:round}
 .g-edge.df{stroke-dasharray:5 4}
-.g-edge.hl{stroke:var(--accent);stroke-width:2.5} .g-edge.dim{opacity:.15}
+.g-edge.hl{stroke:var(--accent);stroke-width:2.5} .g-edge.dim{opacity:.1}
+.g-edge.roll{stroke:var(--accent);stroke-width:3.5;opacity:1}
 .g-badge circle{fill:var(--accent)} .g-badge text{fill:#fff;font-size:10px;font-weight:700;pointer-events:none}
+.pict{flex:none;width:30px;height:30px;display:grid;place-items:center;color:var(--muted)}
+.pict svg{width:22px;height:22px}
+.canvas .gchip .pict{width:34px;height:34px;border-radius:50%;background:var(--sunk)}
+.roll{display:flex;flex-direction:column;gap:8px}
+.roll h3{color:var(--ink);text-transform:none;letter-spacing:0;font-size:1.05rem}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:.76rem}
+.crumb{padding:2px 8px;border-radius:999px;background:var(--sunk);font-weight:600}
+.crumb.pos{background:var(--ink);color:var(--bg)} .crumb.df{background:var(--df-bg);color:var(--df-ink)}
+details.fold summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;min-height:36px}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::after{content:"";width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-right:4px;flex:none}
+details.fold[open] summary::after{transform:rotate(-135deg)}
+@media (prefers-reduced-motion:no-preference){.g-node.cur circle.b{animation:pulse 1.6s ease-in-out infinite}}
+@keyframes pulse{0%,100%{stroke-width:4}50%{stroke-width:7}}
 .g-band rect{fill:var(--band);opacity:.5} .g-band text{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;fill:var(--muted)}
 .g-dots{fill:var(--line)}
 .legend{display:flex;gap:14px;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
