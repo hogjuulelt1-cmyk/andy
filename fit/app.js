@@ -154,10 +154,11 @@ function reassess() { if (!S.profile) return; try { S.assessment = E.assess(S.pr
 function screenResult() { try { return E.screen(S.profile); } catch (e) { return { ok: true, stop: false, flags: [] }; } }
 function logsFor(date) { return S.logs.filter((l) => l.date === date && l.done); }
 function dayFor(iso) { const pr = S.program; if (!pr) return null; return pr.days.find((d) => d.dow === dowOf(iso)) || null; }
-function weekDone(program) { if (!program) return false; const start = mondayOf(program.createdAt.slice(0, 10)); const ids = program.days.filter((d) => d.kind === "session" && d.session).map((d) => d.session.id); const logged = S.logs.filter((l) => l.done && daysBetween(start, l.date) >= 0 && ids.includes(l.sessionId)); return logged.length >= ids.length; }
-function weekElapsed(program) { return program && daysBetween(program.createdAt.slice(0, 10), todayIso()) >= 7; }
+function progStart(program) { return (program.createdAt || (P() && P().createdAt) || todayIso()).slice(0, 10); }
+function weekDone(program) { if (!program) return false; const start = mondayOf(progStart(program)); const ids = program.days.filter((d) => d.kind === "session" && d.session).map((d) => d.session.id); const logged = S.logs.filter((l) => l.done && daysBetween(start, l.date) >= 0 && ids.includes(l.sessionId)); return logged.length >= ids.length; }
+function weekElapsed(program) { return program && daysBetween(progStart(program), todayIso()) >= 7; }
 function stepsOn(iso) { const s = S.steps.find((x) => x.date === iso); return s ? s.n : null; }
-function minutesOf(s) { try { return E.estimateMinutes ? E.estimateMinutes(s) : s.minutes; } catch (e) { return s.minutes; } }
+function minutesOf(s) { let m = s.minutes; try { if (E.estimateMinutes) m = E.estimateMinutes(s) || m; } catch (e) {} return Math.max(1, Math.round(m || 0)); }
 function descr(it) { try { return E.describeItem(it); } catch (e) { return it.seconds ? it.sets + " × " + it.seconds + " сек" : it.breaths ? it.sets + " × " + it.breaths + " амьсгал" : it.sets + " × " + it.reps + " давталт"; } }
 function exName(id) { const e = LIB.byId(id); return e ? e.name : id; }
 
@@ -260,7 +261,7 @@ function viewOb() {
 function viewStop() {
   const r = screenResult();
   return '<div class="ob"><h1>Эхлэхээсээ өмнө эмчтэйгээ уулзаарай</h1>' + r.flags.map((f) => '<div class="note bad">' + esc(f.text) + "</div>").join("") +
-    '<p>Эмчээс зөвшөөрөл аваад буцаж ирээрэй. Хариултууд тань хадгалагдсан тул дахин бөглөх шаардлагагүй, “Би” хэсгээс засаж болно.</p>' +
+    '<p>Эмчээс зөвшөөрөл аваад буцаж ирээрэй. Хариултууд тань хадгалагдсан тул дахин бөглөх шаардлагагүй, «Би» хэсгээс засаж болно.</p>' +
     '<div class="ob-foot"><button type="button" class="btn ghost" data-act="ob-goto" data-v="parq">Хариултаа харах</button><button type="button" class="btn" data-act="ob-save-stop">Профайлаа хадгалах</button></div></div>';
 }
 function viewObDone() {
@@ -285,7 +286,8 @@ function buildAll() {
   const p = P();
   try {
     S.assessment = E.assess(p);
-    S.program = E.buildProgram(p, S.assessment, { weekIndex: 0, prev: S.program || null, logs: S.logs });
+    S.program = E.buildProgram(p, S.assessment, { weekIndex: 0, prev: S.program || null, logs: S.logs, now: new Date().toISOString() });
+    if (!S.program.createdAt) S.program.createdAt = new Date().toISOString();
     UI.nutrition = E.nutrition(p, S.assessment);
   } catch (e) { console.error(e); toast("Хөтөлбөр үүсгэхэд алдаа гарлаа"); return false; }
   save("assessment"); save("program"); return true;
@@ -345,6 +347,8 @@ VIEWS.today = function () {
       '<div class="row"><span class="big">' + minutesOf(s) + '<small style="font-family:var(--body);font-size:.95rem;font-weight:500;color:var(--muted);letter-spacing:0;margin-left:4px">мин</small></span></div>' +
       '<div class="blocks">' + s.blocks.map((b) => '<div class="bk"><b>' + esc(b.name) + "</b><span>" + b.items.map((it) => esc(exName(it.exId))).join(", ") + "</span></div>").join("") + "</div>" +
       '<button class="btn lg" data-act="play" data-id="' + s.id + '">' + ico("play") + (done ? "Дахин хийх" : "Эхлэх") + "</button>" + why((s.why || []).concat(d.why || [])) + "</div>";
+  } else if (d && d.kind === "walk") {
+    h += '<div class="card rail" style="--rc:var(--c-walk)"><p class="muted small">Алхалт</p><h1>Өнөөдөр алхана</h1><p>Урт хичээлгүй өдөр. Зорилтот алхамдаа хүрэх, эсвэл 10–20 минут ярьж чадах хурдтай алхах л хангалттай. Алхмаа доор бичээрэй.</p>' + why(d.why) + "</div>";
   } else if (d && d.kind === "snack") {
     h += '<div class="card rail" style="--rc:var(--c-mobility)"><p class="muted small">Зууш</p><h1>5 минутын зууш</h1><p>Өнөөдөр урт хичээлгүй. Нэг зууш хийгээд л болно.</p>' + why(d.why) + "</div>";
   } else if (d && d.kind === "rest") {
@@ -366,7 +370,7 @@ function findSession(id) { const pr = S.program; if (!pr) return null; for (cons
 /* ---------- program ---------- */
 VIEWS.program = function () {
   const pr = S.program, p = P(); if (!pr) return '<div class="empty">Хөтөлбөр алга.</div>';
-  const today = todayIso(), start = mondayOf(pr.createdAt.slice(0, 10));
+  const today = todayIso(), start = mondayOf(progStart(pr));
   let h = "";
   let due = false; try { due = E.retestDue(p, S.logs, new Date()); } catch (e) {}
   if (due) h += '<div class="note warn row between"><span>4 долоо хоног өнгөрлөө, гэрийн тестээ дахин хийх цаг.</span><button class="btn quiet" data-act="retest">Дахин тест</button></div>';
@@ -376,7 +380,7 @@ VIEWS.program = function () {
   h += '<div class="card"><div class="list">' + pr.days.map((d) => {
     const iso = addDays(start, d.dow - 1); const s = d.session; const open = UI.openDay === d.dow;
     const done = s ? logsFor(iso).some((l) => l.sessionId === s.id) : false;
-    let row = '<button class="li" data-act="day" data-v="' + d.dow + '" aria-expanded="' + open + '"><span class="dw' + (done ? " done" : s ? " on" : "") + (iso === today ? " today" : "") + '">' + DOW[d.dow] + '</span><span class="txt"><b>' + esc(s ? s.title : d.kind === "rest" ? "Амралт" : d.kind === "snack" ? "Зууш" : "Алхалт") + "</b><small>" + (s ? esc(TYPE_N[s.type] || s.type) + " · " + minutesOf(s) + " мин" : d.kind === "rest" ? "Бүрэн амралт" : d.kind === "snack" ? "5 минутын зууш л хангалттай" : KIND_N[d.kind]) + (done ? " · хийсэн" : "") + "</small></span>" + (s || (d.why || []).length ? ico("chevron", "chev") : "") + "</button>";
+    let row = '<button class="li" data-act="day" data-v="' + d.dow + '" aria-expanded="' + open + '"><span class="dw' + (done ? " done" : s ? " on" : "") + (iso === today ? " today" : "") + '">' + DOW[d.dow] + '</span><span class="txt"><b>' + esc(s ? s.title : d.kind === "rest" ? "Амралт" : d.kind === "snack" ? "Зууш" : "Алхалт") + "</b><small>" + (s ? esc(TYPE_N[s.type] || s.type) + " · " + minutesOf(s) + " мин" : d.kind === "rest" ? "Бүрэн амралт" : d.kind === "snack" ? "5 минутын зууш л хангалттай" : d.kind === "walk" ? "Хичээлгүй, зорилт " + fmtN(pr.stepsTarget || 0) + " алхам" : KIND_N[d.kind]) + (done ? " · хийсэн" : "") + "</small></span>" + (s || (d.why || []).length ? ico("chevron", "chev") : "") + "</button>";
     if (open) {
       row += '<div class="items">' + why(d.why) + (s ? s.blocks.map((b) => '<div class="blk"><h3>' + esc(b.name) + "</h3>" + b.items.map((it) => { const ex = LIB.byId(it.exId); return '<div class="it"><span class="nm">' + esc(ex ? ex.name : it.exId) + (it.sides === "each" ? ' <span class="muted small">зүүн/баруун</span>' : "") + '</span><span class="ds">' + esc(descr(it)) + (it.rest ? " · амралт " + it.rest + " с" : "") + (it.tempo ? " · темп " + esc(it.tempo) : "") + "</span>" + why(it.why) + "</div>"; }).join("") + "</div>").join("") + why(s.why) + '<button class="btn quiet" data-act="play" data-id="' + s.id + '">' + ico("play") + "Эхлэх</button>" : "") + "</div>";
     }
@@ -391,9 +395,9 @@ VIEWS.program = function () {
 function nextWeek() {
   const pr = S.program, p = P(); let res;
   try { res = E.adapt(pr, p, S.logs); } catch (e) { console.error(e); res = { changes: [], nextOpts: {} }; }
-  let np; try { np = E.buildProgram(p, S.assessment, Object.assign({ weekIndex: (pr.weekIndex || 0) + 1, prev: pr, logs: S.logs }, res.nextOpts || {})); } catch (e) { console.error(e); toast("Хөтөлбөр үүсгэхэд алдаа гарлаа"); return; }
+  let np; try { np = E.buildProgram(p, S.assessment, Object.assign({ weekIndex: (pr.weekIndex || 0) + 1, prev: pr, logs: S.logs, now: new Date().toISOString() }, res.nextOpts || {})); if (!np.createdAt) np.createdAt = new Date().toISOString(); } catch (e) { console.error(e); toast("Хөтөлбөр үүсгэхэд алдаа гарлаа"); return; }
   S.programs.push(pr); if (S.programs.length > 12) S.programs.shift(); S.program = np; UI.openDay = null; save("program");
-  openSheet("Юу өөрчлөгдөв", '<p class="muted">' + esc(np.title) + "</p>" + (res.changes && res.changes.length ? '<ul class="changes">' + res.changes.map((c) => "<li>" + esc(c.text) + "</li>").join("") + "</ul>" : "<p>Том өөрчлөлт алга, ижил бүтцээр үргэлжилнэ.</p>") + why(np.notes), { ok: "Ойлголоо" });
+  openSheet("Юу өөрчлөгдөв", '<p class="muted">' + esc(np.title) + "</p>" + (res.changes && res.changes.length ? '<ul class="changes">' + res.changes.map((c) => "<li>" + esc(c.text) + "</li>").join("") + "</ul>" : "<p>Том өөрчлөлт алга, ижил бүтцээр үргэлжилнэ.</p>") + why((np.notes || []).filter((n) => !(res.changes || []).some((c) => c.text === n))), { ok: "Ойлголоо" });
   render();
 }
 
@@ -441,12 +445,12 @@ VIEWS.progress = function () {
   const p = P(), today = todayIso(); const ws = S.weights.slice().sort((a, b) => a.date.localeCompare(b.date));
   const last = ws[ws.length - 1]; const first = ws[0];
   let h = '<div class="card"><div class="card-head"><h2>Жин, бүсэлхий</h2>' + (last ? '<span class="tag">сүүлд ' + fmtD(last.date) + "</span>" : "") + "</div>" +
-    '<div class="stats"><div class="stat"><span class="big">' + (last ? last.kg : p.weightKg || "–") + '<small>кг</small></span><span>' + (first && last && ws.length > 1 ? (last.kg - first.kg > 0 ? "+" : "") + (last.kg - first.kg).toFixed(1) + " кг эхнээс" : "жин") + '</span></div><div class="stat"><span class="big">' + (last && last.waist ? last.waist : p.waistCm || "–") + '<small>см</small></span><span>бүсэлхий</span></div>' + (S.assessment ? '<div class="stat"><span class="big">' + S.assessment.whtr + '</span><span>бүсэлхий/өндөр ' + ({ ok: "хэвийн", watch: "анхаарах", high: "өндөр" }[S.assessment.whtrBand] || "") + "</span></div>" : "") + "</div>" +
+    '<div class="stats"><div class="stat"><span class="big">' + (last ? last.kg : p.weightKg || "–") + '<small>кг</small></span><span>' + (first && last && ws.length > 1 ? (last.kg - first.kg > 0 ? "+" : "") + (last.kg - first.kg).toFixed(1).replace("-", "\u2212") + " кг эхнээс" : "жин") + '</span></div><div class="stat"><span class="big">' + (last && last.waist ? last.waist : p.waistCm || "–") + '<small>см</small></span><span>бүсэлхий</span></div>' + (S.assessment ? '<div class="stat"><span class="big">' + S.assessment.whtr + '</span><span>бүсэлхий/өндөр ' + ({ ok: "хэвийн", watch: "анхаарах", high: "өндөр" }[S.assessment.whtrBand] || "") + "</span></div>" : "") + "</div>" +
     (ws.length >= 2 ? chart(ws) + '<div class="legend"><span><i></i>Дундаж (EMA)</span><span><i class="raw"></i>Хэмжилт</span></div>' : '<p class="muted small">Хоёроос олон хэмжилт орвол график гарна. Долоо хоногт нэг удаа, өглөө хоосон гэдсэн дээр хэмжвэл хамгийн зөв.</p>') +
     '<form id="w-form" class="stack"><div class="grid3"><div class="field"><label for="w-d">Огноо</label><input id="w-d" type="date" value="' + today + '" max="' + today + '"></div><div class="field"><label for="w-kg">Жин, кг</label><input id="w-kg" type="number" inputmode="decimal" step="0.1" min="30" max="250" required></div><div class="field"><label for="w-w">Бүсэлхий, см</label><input id="w-w" type="number" inputmode="numeric" min="50" max="200"></div></div><button class="btn quiet" type="submit">Бичих</button></form></div>';
   /* steps */
   const st = stepsOn(today), tgt = S.program ? S.program.stepsTarget : 0; const week = []; for (let i = 6; i >= 0; i--) { const d = addDays(today, -i); week.push({ d, n: stepsOn(d) }); }
-  h += '<div class="card"><div class="card-head"><h2>Алхам</h2><span class="tag">зорилт ' + tgt + '</span></div><div class="row"><span class="big" style="font-size:1.8rem">' + (st == null ? "–" : fmtN(st)) + '</span><div class="grow"><div class="bar' + (st >= tgt && tgt ? " ok" : "") + '"><i style="width:' + (st && tgt ? Math.min(100, Math.round((st / tgt) * 100)) : 0) + '%"></i></div></div></div>' +
+  h += '<div class="card"><div class="card-head"><h2>Алхам</h2><span class="tag">зорилт ' + fmtN(tgt) + '</span></div><div class="row"><span class="big" style="font-size:1.8rem">' + (st == null ? "–" : fmtN(st)) + '</span><div class="grow"><div class="bar' + (st >= tgt && tgt ? " ok" : "") + '"><i style="width:' + (st && tgt ? Math.min(100, Math.round((st / tgt) * 100)) : 0) + '%"></i></div></div></div>' +
     '<div class="weeks" aria-label="Сүүлийн 7 өдөр">' + week.map((w) => '<i class="' + (w.n != null && tgt && w.n >= tgt ? "hit" : "") + (w.d === today ? " cur" : "") + '" title="' + fmtShort(w.d) + '"></i>').join("") + "</div>" +
     '<form class="row" id="steps-form"><input type="number" inputmode="numeric" id="steps-n" min="0" max="100000" placeholder="Өнөөдрийн алхам" aria-label="Өнөөдрийн алхам" value="' + (st == null ? "" : st) + '"><button class="btn quiet" type="submit">Бичих</button></form></div>';
   /* streak */
@@ -507,7 +511,7 @@ function obSummary(id, p) {
     case "body": return p.heightCm + " см · " + p.weightKg + " кг · бүсэлхий " + p.waistCm;
     case "schedule": return p.daysPerWeek + " өдөр × " + p.minutes + " мин";
     case "equipment": return p.equipment.map((e) => Object.fromEntries(EQUIP)[e] || e).join(", ");
-    case "parq": return p.parq.some(Boolean) ? "“Тийм” хариулт бий" : "Бүгд үгүй";
+    case "parq": return p.parq.some(Boolean) ? "«Тийм» хариулт бий" : "Бүгд үгүй";
     case "pain": return p.pain.length ? p.pain.map((x) => PAIN_N[x] || x).join(", ") : "Өвддөггүй";
     case "life": return "Нойр " + p.sleepHours + " ц · стресс " + p.stress + " · " + (Object.fromEntries(OCC)[p.occupation] || "");
     case "habit": return p.cue || "—";
@@ -545,7 +549,7 @@ function play(id) {
   enterStep();
 }
 function curItem() { const st = PL.steps[PL.i]; return st ? st.item : null; }
-function stepSeconds(it) { return it.seconds ? it.seconds : it.breaths ? it.breaths * 5 : 0; }
+function stepSeconds(it) { return it.seconds ? it.seconds * (it.reps > 1 ? it.reps : 1) : it.breaths ? it.breaths * 5 : 0; }
 function enterStep() {
   const it = curItem(); if (!it) { finish(); return; }
   PL.phase = "work"; const sec = stepSeconds(it); PL.left = sec; PL.total = sec; PL.running = false; clearInterval(PL.iv);
@@ -589,7 +593,7 @@ function renderPlayer() {
   const dots = []; let lastKey = "", curDot = 0; PL.steps.forEach((x, k) => { const key = x.bi + ":" + x.ii; if (key !== lastKey) { dots.push(key); lastKey = key; } if (k === PL.i) curDot = dots.length - 1; });
   el.innerHTML = '<div class="in" style="' + rc(s.type) + '"><div class="ph"><button type="button" class="x" data-act="pl-close" aria-label="Хичээлийг хаах">' + ico("x") + '</button><div class="dots" aria-hidden="true">' + dots.map((d, k) => '<i class="' + (k === curDot ? "cur" : k < curDot ? "done" : "") + '"></i>').join("") + '</div><span class="tag num">' + (PL.i + 1) + "/" + PL.steps.length + "</span></div>" +
     '<div><span class="blk-lbl">' + esc(st.block) + (rest ? " · амралт" : "") + '</span><h1>' + (rest ? "Амралт" : esc(ex.name)) + '</h1><p class="side">' + (rest ? "Дараа: " + esc(ex.name) + " · " + st.set + "/" + st.sets + " сет" : st.set + "/" + st.sets + " сет" + (it.sides === "each" ? " · зүүн / баруун" : "") + (it.tempo ? " · темп " + esc(it.tempo) : "")) + "</p></div>" +
-    '<div class="clock">' + (sec ? '<div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/><circle class="fg' + (rest ? " rest" : "") + '" id="pl-ring" cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="0"/></svg><span class="big' + (rest ? " rest" : "") + '" id="pl-clock">' + mmss(PL.left) + "</span></div>" + (it.breaths && !rest ? '<span class="sub">' + it.breaths + " амьсгал, удаан</span>" : "") : '<span class="big">' + (it.reps || 0) + '</span><span class="sub">давталт' + (it.sides === "each" ? ", тал бүрд" : "") + "</span>") + "</div>" +
+    '<div class="clock">' + (sec ? '<div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/><circle class="fg' + (rest ? " rest" : "") + '" id="pl-ring" cx="50" cy="50" r="46" stroke-dasharray="289" stroke-dashoffset="0"/></svg><span class="big' + (rest ? " rest" : "") + '" id="pl-clock">' + mmss(PL.left) + "</span></div>" + (it.breaths && !rest ? '<span class="sub">' + it.breaths + " амьсгал, удаан</span>" : it.seconds && it.reps > 1 && !rest ? '<span class="sub">' + it.reps + " × " + it.seconds + " сек барих</span>" : "") : '<span class="big">' + (it.reps || 0) + '</span><span class="sub">давталт' + (it.sides === "each" ? ", тал бүрд" : "") + "</span>") + "</div>" +
     (!rest && ex.cues && ex.cues.length ? '<ul class="cues">' + ex.cues.slice(0, 3).map((c) => "<li>" + esc(c) + "</li>").join("") + "</ul>" : "") +
     (!rest ? why(it.why) : "") +
     '<div class="ctl2">' + (!rest ? '<button type="button" data-act="pl-swap">' + ico("swap") + "Солих</button>" : "") + '<button type="button" data-act="pl-skip">Алгасах</button></div>' +

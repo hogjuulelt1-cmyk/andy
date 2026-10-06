@@ -18,6 +18,7 @@
   function has(arr, x) { return Array.isArray(arr) && arr.indexOf(x) >= 0; }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
   function fmt(n) { return String(n).replace(".", ","); }
+  function fmtK(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009"); } // 5000 → 5 000 (thin space)
   // FNV-1a → [0,1). Долоо хоног, зорилго, дасгалаар санамсаргүй мэт боловч давтагддаг.
   function rnd(str) {
     var h = 0x811c9dc5;
@@ -821,7 +822,7 @@
     wk.sets = 1; wk.rest = 0;
     var walkSec = (mins - (postMeal ? 0 : 3)) * 60;
     wk.seconds = Math.max(300, walkSec);
-    wk.why.push(postMeal ? "Чихрийн шижин → хоолны дараа 10–15 минут алхахад сахар буурна" : hasMet(p, "htn") ? "Даралт → аэробик долоо хоногт 150 мин, ярьж чадах хурдаар" : g === "event_5k" ? "5 км → интервал алхалт/гүй-алх, долоо хоногт эзлэхүүн +10%-иас ихгүй" : "Алхамын зорилт " + stepsTarget(p, ctx.a, ctx.weekIndex) + " → " + mins + " мин алхалт ≈ " + Math.round(mins * 100 / 500) * 500 + " алхам");
+    wk.why.push(postMeal ? "Чихрийн шижин → хоолны дараа 10–15 минут алхахад сахар буурна" : hasMet(p, "htn") ? "Даралт → аэробик долоо хоногт 150 мин, ярьж чадах хурдаар" : g === "event_5k" ? "5 км → интервал алхалт/гүй-алх, долоо хоногт эзлэхүүн +10%-иас ихгүй" : "Алхамын зорилт " + fmtK(stepsTarget(p, ctx.a, ctx.weekIndex)) + " → " + mins + " мин алхалт ≈ " + fmtK(Math.round(mins * 100 / 500) * 500) + " алхам");
     if (monthOf(ctx.now) >= 11 || monthOf(ctx.now) <= 3) wk.why.push("Өвөл утаатай өдөр → гэртээ газар дээрээ алхах, шатаар өгсөх ижил минут");
     main.push(wk);
     if (!postMeal) {
@@ -965,7 +966,7 @@
       } else {
         day.kind = altWalk ? "walk" : "snack";
         altWalk = !altWalk;
-        if (day.kind === "walk") day.why.push("Алхамын зорилт " + steps + (a.whtrBand !== "ok" ? " — бүсэлхий/өндөр " + fmt(a.whtr) + " → алхалт хэвлийн өөхөнд" : ""));
+        if (day.kind === "walk") day.why.push("Алхамын зорилт " + fmtK(steps) + (a.whtrBand !== "ok" ? " — бүсэлхий/өндөр " + fmt(a.whtr) + " → алхалт хэвлийн өөхөнд" : ""));
         else day.why.push("Зууш 5 мин × 2 — хичээлгүй өдөр ч дадал тасрахгүй");
       }
       if (day.session) day.session.blocks.forEach(function (b) { b.items.forEach(function (it) { history[it.exId] = (ctx.streak[it.exId] || 0) + 1; }); });
@@ -978,7 +979,7 @@
     if (p.failedBefore) notes.push("Өмнө нь завсардсан → эхний 2–3 долоо хоног давтамж чухал, тун биш. Хоёр удаа дараалан алгасахгүй байх л дүрэм.");
     if (ctx.deload) notes.push("Энэ долоо хоног deload: сет 40% бага, ижил дасгал. Дараагийн циклд бэлтгэнэ.");
     if (weekIndex % 4 === 3) notes.push("4 долоо хоног дүүрч байна → «Ахиц» хэсгээс гэрийн тестээ дахин хийгээрэй, түвшин шинэчлэгдэнэ.");
-    if (has(a.flags, "winter_vitd")) notes.push("Өвлийн улиралд алхамын зорилтыг гадаа биш минутаар тоол: 10 минут газар дээрээ алхах ≈ 1 000 алхам.");
+    if (has(a.flags, "winter_vitd")) notes.push("Өвлийн улиралд алхамын зорилтыг гадаа биш минутаар тоол: 10 минут газар дээрээ алхах ≈ 1 000 алхам.");
     if (hasMet(p, "gout")) notes.push("Тулай → хурцдалын үед хичээл хийхгүй, өдөрт 2,5–3 литр ус, пиво, дотор мах хасна.");
     if (isPregnant(p)) notes.push("Жирэмсэн → халуун өрөөнд хийхгүй, ярьж чадах эрчим (RPE 12–14), цус алдалт/базлалт/толгой эргэвэл зогсооно.");
     if (ctx.setsWhy.length) notes.push(ctx.setsWhy.join(", ") + " — нойр, стресс засрахад сет буцаж нэмэгдэнэ.");
