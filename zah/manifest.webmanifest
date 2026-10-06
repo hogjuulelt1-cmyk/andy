@@ -1,0 +1,15 @@
+{
+  "name": "Лангуу",
+  "short_name": "Лангуу",
+  "description": "Захын ногоо, хүнсийг лангуунаас шууд захиалж хүргүүлэх",
+  "start_url": "/zah/",
+  "scope": "/zah/",
+  "display": "standalone",
+  "background_color": "#EEF2EC",
+  "theme_color": "#1F6B3A",
+  "lang": "mn",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

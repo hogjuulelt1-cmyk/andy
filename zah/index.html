@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Лангуу</title>
+<meta name="description" content="Захын ногоо, хүнсийг лангуунаас шууд захиалж хүргүүлэх">
+<meta name="theme-color" content="#1F6B3A">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap&subset=cyrillic,cyrillic-ext" rel="stylesheet">
+<style>
+:root {
+  --bg: #EEF2EC; --surface: #FFFFFF; --ink: #16211A; --muted: #56665B; --rule: #D3DCD1;
+  --leaf: #1F6B3A; --leaf-ink: #FFFFFF; --leaf-soft: #DCEBDF;
+  --beet: #9C2148; --onion: #F2C14E; --onion-ink: #2B2208;
+  --r-s: 8px; --r-m: 14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1511; --surface: #18211B; --ink: #E7EEE8; --muted: #9AAA9F; --rule: #2A362D;
+    --leaf: #57B276; --leaf-ink: #07130B; --leaf-soft: #1E3325;
+    --beet: #E46A90; --onion: #E8B93C; --onion-ink: #231B04;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1511; --surface: #18211B; --ink: #E7EEE8; --muted: #9AAA9F; --rule: #2A362D;
+  --leaf: #57B276; --leaf-ink: #07130B; --leaf-soft: #1E3325;
+  --beet: #E46A90; --onion: #E8B93C; --onion-ink: #231B04;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.45 Rubik, system-ui, -apple-system, "Segoe UI", sans-serif; font-variant-numeric: tabular-nums; }
+button, input, select, textarea { font: inherit; color: inherit; }
+input, select, textarea { font-size: 16px; }
+a { color: var(--leaf); }
+:focus-visible { outline: 3px solid var(--onion); outline-offset: 2px; }
+
+.wrap { max-width: 640px; margin: 0 auto; padding: 0 16px calc(96px + env(safe-area-inset-bottom)); }
+header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(10px + env(safe-area-inset-top)) 0 8px; }
+.brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.brand h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--muted); font-size: 0.875rem; }
+.roles { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border: 1px solid var(--rule); border-radius: 999px; padding: 3px; margin-top: 10px; }
+.roles button { border: 0; background: none; border-radius: 999px; padding: 8px 4px; font-weight: 500; cursor: pointer; }
+.roles button[aria-pressed="true"] { background: var(--leaf); color: var(--leaf-ink); }
+.sub { display: flex; gap: 6px; margin: 12px 0 4px; overflow-x: auto; scrollbar-width: none; }
+.sub button { flex: none; border: 1px solid var(--rule); background: var(--surface); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.sub button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.badge { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--beet); color: #fff; font-size: 0.75rem; line-height: 20px; text-align: center; margin-left: 4px; }
+
+h2 { font-size: 1.125rem; margin: 20px 0 8px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.875rem; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--rule); border-radius: var(--r-m); }
+
+.search { width: 100%; padding: 11px 14px; border-radius: var(--r-m); border: 1px solid var(--rule); background: var(--surface); margin-top: 8px; }
+.cats { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; scrollbar-width: none; }
+.cats button { flex: none; border: 0; background: var(--leaf-soft); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+.cats button[aria-pressed="true"] { background: var(--leaf); color: var(--leaf-ink); }
+
+.list { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-m); overflow: hidden; margin-top: 10px; }
+.prod { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 12px; border-top: 1px solid var(--rule); }
+.prod:first-child { border-top: 0; }
+.em { font-size: 1.75rem; line-height: 1; text-align: center; }
+.pn b { display: block; font-weight: 500; }
+.pn small { color: var(--muted); font-size: 0.8125rem; }
+.pn button.link { border: 0; background: none; padding: 0; color: var(--leaf); font-size: 0.8125rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* The price tag: the one loud element, like the cardboard tags on market stalls. */
+.tag { display: inline-flex; align-items: baseline; gap: 2px; background: var(--onion); color: var(--onion-ink); font-weight: 700; font-size: 1.125rem; padding: 3px 10px 3px 16px; border-radius: 4px 6px 6px 4px; clip-path: polygon(9px 0, 100% 0, 100% 100%, 9px 100%, 0 50%); position: relative; white-space: nowrap; }
+.tag::before { content: ""; position: absolute; left: 6px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--surface); }
+.tag small { font-weight: 500; font-size: 0.6875rem; }
+.tag.big { font-size: 1.5rem; padding: 4px 12px 4px 20px; }
+
+.step { display: inline-flex; align-items: center; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); }
+.step button { width: 34px; height: 34px; border: 0; background: none; font-size: 1.125rem; cursor: pointer; border-radius: 50%; }
+.step .qty { display: inline-flex; align-items: baseline; gap: 2px; margin: 0; color: var(--ink); }
+.step .qty input { width: 48px; border: 0; background: none; text-align: right; font-weight: 500; padding: 4px 0; -moz-appearance: textfield; }
+.step .qty input::-webkit-inner-spin-button, .step .qty input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.step .qty small { font-size: 0.8125rem; color: var(--muted); padding-right: 2px; }
+.add { border: 0; background: var(--leaf); color: var(--leaf-ink); border-radius: 999px; padding: 7px 14px; font-weight: 500; cursor: pointer; }
+
+.offers { grid-column: 1 / -1; display: grid; gap: 6px; padding: 4px 0 2px 50px; }
+.offer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: var(--r-s); background: var(--bg); }
+.offer.sel { outline: 2px solid var(--leaf); }
+.offer .who { font-size: 0.875rem; }
+.offer .who small { display: block; color: var(--muted); }
+.offer button { border: 1px solid var(--leaf); background: none; color: var(--leaf); border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 0.875rem; }
+.offer .out { color: var(--muted); font-size: 0.8125rem; }
+
+.cartbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--rule); }
+.cartbar .in { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.btn { border: 0; background: var(--leaf); color: var(--leaf-ink); border-radius: var(--r-m); padding: 12px 18px; font-weight: 500; cursor: pointer; }
+.btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--rule); }
+.btn.warn { background: none; color: var(--beet); border: 1px solid var(--beet); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.block { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-m); padding: 14px; margin-top: 10px; }
+.card h3 { margin: 0; font-size: 1rem; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.stall { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule); }
+.stall:first-of-type { border-top: 0; padding-top: 0; }
+.stall-h { font-weight: 500; display: flex; justify-content: space-between; gap: 8px; }
+.line { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 6px 0; }
+.line .nm { font-size: 0.9375rem; }
+.line .nm small { display: block; color: var(--muted); font-size: 0.8125rem; }
+.line.out .nm { text-decoration: line-through; color: var(--muted); }
+.sum { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
+.sum .tot { font-weight: 700; font-size: 1.125rem; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; background: var(--leaf-soft); color: var(--ink); }
+.pill.wait { background: color-mix(in srgb, var(--onion) 35%, transparent); }
+.pill.no { background: color-mix(in srgb, var(--beet) 22%, transparent); }
+
+label { display: block; font-size: 0.875rem; color: var(--muted); margin: 12px 0 4px; }
+.field { width: 100%; padding: 11px 12px; border-radius: var(--r-s); border: 1px solid var(--rule); background: var(--surface); }
+textarea.field { min-height: 64px; resize: vertical; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+@media (max-width: 380px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* Order progress: a real sequence, so the steps are numbered. */
+.track { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin: 12px 0 4px; list-style: none; padding: 0; counter-reset: s; }
+.track li { counter-increment: s; font-size: 0.6875rem; color: var(--muted); text-align: center; }
+.track li::before { content: counter(s); display: block; margin: 0 auto 4px; width: 22px; height: 22px; border-radius: 50%; line-height: 22px; background: var(--rule); color: var(--muted); font-weight: 700; font-size: 0.75rem; }
+.track li.done::before { content: "✓"; background: var(--leaf); color: var(--leaf-ink); }
+.track li.now { color: var(--ink); font-weight: 500; }
+.track li.now::before { background: var(--onion); color: var(--onion-ink); }
+
+.pricerow { display: grid; grid-template-columns: 34px 1fr 112px auto; gap: 8px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--rule); }
+.pricerow:first-child { border-top: 0; }
+.pricerow input { width: 100%; padding: 8px 10px; border-radius: var(--r-s); border: 1px solid var(--rule); background: var(--bg); text-align: right; }
+.stock { border: 1px solid var(--rule); background: var(--leaf-soft); border-radius: 999px; padding: 6px 10px; cursor: pointer; font-size: 0.8125rem; white-space: nowrap; }
+.stock[aria-pressed="false"] { background: color-mix(in srgb, var(--beet) 18%, transparent); }
+.check { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.check input { width: 22px; height: 22px; accent-color: var(--leaf); }
+
+.toast { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 20; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 0.9375rem; max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity .2s; }
+.toast.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+footer { margin-top: 32px; color: var(--muted); font-size: 0.8125rem; }
+footer button { border: 0; background: none; color: var(--leaf); padding: 0; cursor: pointer; text-decoration: underline; font-size: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Лангуу</h1><p id="who"></p></div>
+    <div class="roles" role="group" aria-label="Би хэн бэ">
+      <button data-act="role" data-v="buyer">Захиалагч</button>
+      <button data-act="role" data-v="seller">Худалдаачин</button>
+      <button data-act="role" data-v="driver">Хүргэгч</button>
+    </div>
+  </header>
+  <main id="app"></main>
+  <footer>
+    <p>Туршилтын хувилбар 1. Өгөгдөл энэ утсанд хадгалагдана, гурван дүрийг дээрх товчоор сольж туршина. Үнэ, лангуунууд жишээ.</p>
+    <p><button data-act="reset">Жишээ өгөгдлийг сэргээх</button></p>
+  </footer>
+</div>
+<div class="cartbar" id="cartbar" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(() => {
+  'use strict';
+  const KEY = 'langu.v1';
+  const FREE_FROM = 150000, DELIVERY = 6000, FEE = 0.03;
+  const CATS = ['Ногоо', 'Жимс', 'Мах', 'Сүү, өндөг', 'Хуурай хүнс'];
+  const SLOTS = ['Өнөөдөр 11:00–13:00', 'Өнөөдөр 14:00–16:00', 'Өнөөдөр 17:00–19:00', 'Маргааш 08:00–10:00', 'Маргааш 10:00–12:00'];
+  const PAYS = ['Хүргэлтээр бэлнээр', 'Дансаар шилжүүлэх', 'Байгууллагын нэхэмжлэх'];
+
+  function seed() {
+    const sellers = [
+      { id: 's1', name: 'Номин', stall: 12, phone: '99112233' },
+      { id: 's2', name: 'Батаа', stall: 15, phone: '88114455' },
+      { id: 's3', name: 'Цэцгээ', stall: 21, phone: '95116677' },
+      { id: 's4', name: 'Ганаа', stall: 34, phone: '89118899' },
+      { id: 's5', name: 'Оюун', stall: 40, phone: '99001122' },
+    ];
+    const products = [
+      ['p1', 'Төмс', 'Ногоо', 'кг', '🥔'], ['p2', 'Лууван', 'Ногоо', 'кг', '🥕'], ['p3', 'Байцаа', 'Ногоо', 'кг', '🥬'],
+      ['p4', 'Сонгино', 'Ногоо', 'кг', '🧅'], ['p5', 'Сармис', 'Ногоо', 'кг', '🧄'], ['p6', 'Улаан лооль', 'Ногоо', 'кг', '🍅'],
+      ['p7', 'Өргөст хэмх', 'Ногоо', 'кг', '🥒'], ['p8', 'Чинжүү', 'Ногоо', 'кг', '🫑'], ['p9', 'Манжин', 'Ногоо', 'кг', '🟣'],
+      ['p10', 'Алим', 'Жимс', 'кг', '🍎'], ['p11', 'Банана', 'Жимс', 'кг', '🍌'], ['p12', 'Жүрж', 'Жимс', 'кг', '🍊'], ['p13', 'Нимбэг', 'Жимс', 'кг', '🍋'],
+      ['p14', 'Үхрийн мах, ястай', 'Мах', 'кг', '🥩'], ['p15', 'Хонины мах', 'Мах', 'кг', '🍖'], ['p16', 'Тахианы гуя', 'Мах', 'кг', '🍗'],
+      ['p17', 'Өндөг, 30 ш', 'Сүү, өндөг', 'тавиур', '🥚'], ['p18', 'Сүү, 1 л', 'Сүү, өндөг', 'ш', '🥛'], ['p19', 'Цөцгийн тос', 'Сүү, өндөг', 'кг', '🧈'],
+      ['p20', 'Гурил, 1-р зэрэг 25 кг', 'Хуурай хүнс', 'шуудай', '🌾'], ['p21', 'Будаа, 25 кг', 'Хуурай хүнс', 'шуудай', '🍚'], ['p22', 'Ургамлын тос, 5 л', 'Хуурай хүнс', 'ш', '🫗'], ['p23', 'Элсэн чихэр', 'Хуурай хүнс', 'кг', '🧂'],
+    ].map(([id, name, cat, unit, em]) => ({ id, name, cat, unit, em }));
+    // [productId, sellerId, price]
+    const rows = [
+      ['p1', 's1', 1600], ['p1', 's2', 1500], ['p1', 's4', 1700], ['p1', 's3', 1650],
+      ['p2', 's1', 1900], ['p2', 's2', 1800], ['p2', 's3', 2000],
+      ['p3', 's1', 1400], ['p3', 's2', 1300], ['p3', 's4', 1450],
+      ['p4', 's1', 2200], ['p4', 's2', 2100], ['p4', 's3', 2300], ['p4', 's4', 2150],
+      ['p5', 's3', 9500], ['p5', 's4', 9000],
+      ['p6', 's3', 6500], ['p6', 's4', 6800], ['p6', 's1', 6900],
+      ['p7', 's3', 5200], ['p7', 's4', 5000],
+      ['p8', 's3', 8500], ['p8', 's4', 8200],
+      ['p9', 's1', 2400], ['p9', 's2', 2300],
+      ['p10', 's3', 5500], ['p10', 's4', 5300], ['p11', 's3', 6200], ['p11', 's4', 6000], ['p12', 's3', 6800], ['p13', 's4', 9800],
+      ['p14', 's5', 22000], ['p15', 's5', 18500], ['p16', 's5', 13500],
+      ['p17', 's2', 13800], ['p17', 's5', 14200], ['p18', 's2', 3200], ['p19', 's2', 26000],
+      ['p20', 's2', 52000], ['p20', 's5', 51000], ['p21', 's2', 78000], ['p22', 's2', 29500], ['p22', 's5', 30500], ['p23', 's2', 4200],
+    ];
+    const offers = rows.map(([productId, sellerId, price], i) => ({ id: 'o' + (i + 1), productId, sellerId, price, stock: true }));
+    offers.find(o => o.productId === 'p6' && o.sellerId === 's1').stock = false;
+    return { v: 1, role: 'buyer', buyerTab: 'shop', sellerTab: 'orders', sellerId: 's1', cat: 'Ногоо', q: '', open: null, sellers, products, offers, cart: {}, orders: [], seq: 100, profile: { name: '', phone: '', address: '', note: '', slot: SLOTS[0], pay: PAYS[0] } };
+  }
+
+  let S;
+  try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
+  if (!S || S.v !== 1) S = seed();
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '₮';
+  const num = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const qtyText = (q, unit) => `${String(q).replace('.', ',')} ${unit}`;
+  const P = id => S.products.find(p => p.id === id);
+  const SE = id => S.sellers.find(s => s.id === id);
+  const O = id => S.offers.find(o => o.id === id);
+  const stallName = s => `${s.stall}-р лангуу, ${s.name}`;
+  const hhmm = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const stepOf = unit => (unit === 'кг' ? 1 : 1);
+  let toastT = null;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2200); }
+
+  const offersFor = pid => S.offers.filter(o => o.productId === pid).sort((a, b) => (b.stock - a.stock) || a.price - b.price);
+  const bestOffer = pid => offersFor(pid).find(o => o.stock) || null;
+  const cartLines = () => Object.entries(S.cart).filter(([, q]) => q > 0).map(([oid, q]) => ({ offer: O(oid), qty: q })).filter(l => l.offer);
+  const cartTotal = () => cartLines().reduce((s, l) => s + l.offer.price * l.qty, 0);
+  const deliveryFee = sub => (sub >= FREE_FROM || sub === 0 ? 0 : DELIVERY);
+  const cartQtyForProduct = pid => cartLines().filter(l => l.offer.productId === pid).reduce((s, l) => s + l.qty, 0);
+
+  // ---------- order state ----------
+  const itemsTotal = o => o.items.reduce((s, it) => s + (it.status === 'out' ? 0 : it.price * it.qty), 0);
+  const orderTotal = o => itemsTotal(o) + o.fee;
+  const sellersOf = o => [...new Set(o.items.map(it => it.sellerId))].sort((a, b) => SE(a).stall - SE(b).stall);
+  const liveSellers = o => sellersOf(o).filter(sid => o.items.some(it => it.sellerId === sid && it.status !== 'out'));
+  function phase(o) {
+    if (o.status === 'cancel' || o.status === 'done' || o.status === 'onway') return o.status;
+    if (o.items.some(it => it.status === 'new')) return 'new';
+    if (o.items.every(it => it.status === 'out')) return 'empty';
+    const ls = liveSellers(o);
+    if (ls.length && ls.every(sid => o.picked[sid])) return 'picked';
+    if (ls.some(sid => o.picked[sid])) return 'picking';
+    return 'confirmed';
+  }
+  const PHASE_TEXT = { new: 'Лангуунууд шалгаж байна', confirmed: 'Баталсан, хүргэгч цуглуулна', picking: 'Хүргэгч цуглуулж байна', picked: 'Бүгдийг цуглуулсан', onway: 'Замд явж байна', done: 'Хүргэгдсэн', cancel: 'Цуцалсан', empty: 'Бараа дууссан' };
+  const PHASE_STEP = { new: 1, confirmed: 2, picking: 3, picked: 3, onway: 4, done: 5 };
+  function log(o, text) { o.log.push({ t: Date.now(), text }); }
+  function refreshFee(o) { o.fee = deliveryFee(itemsTotal(o)); }
+
+  // ---------- views ----------
+  function render() {
+    document.querySelectorAll('.roles button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === S.role)));
+    const me = SE(S.sellerId);
+    $('who').textContent = S.role === 'seller' ? stallName(me) : S.role === 'driver' ? 'Хүргэлтийн жагсаалт' : 'Захаас шууд хүргэлт';
+    const v = S.role === 'seller' ? sellerView() : S.role === 'driver' ? driverView() : buyerView();
+    $('app').innerHTML = v;
+    renderCartBar();
+  }
+
+  function renderCartBar() {
+    const bar = $('cartbar');
+    const lines = cartLines();
+    if (S.role !== 'buyer' || S.buyerTab !== 'shop' || !lines.length) { bar.hidden = true; return; }
+    const sub = cartTotal();
+    bar.hidden = false;
+    bar.innerHTML = `<div class="in"><div><b>${money(sub)}</b><div class="small muted">${lines.length} бараа, ${new Set(lines.map(l => l.offer.sellerId)).size} лангуунаас</div></div><button class="btn" data-act="tab" data-v="cart">Сагс руу</button></div>`;
+  }
+
+  function buyerView() {
+    const active = S.orders.filter(o => !['done', 'cancel'].includes(o.status)).length;
+    const nCart = cartLines().length;
+    let h = `<nav class="sub" aria-label="Захиалагч">
+      <button data-act="tab" data-v="shop" aria-pressed="${S.buyerTab === 'shop'}">Бараа</button>
+      <button data-act="tab" data-v="cart" aria-pressed="${S.buyerTab === 'cart'}">Сагс${nCart ? `<span class="badge">${nCart}</span>` : ''}</button>
+      <button data-act="tab" data-v="orders" aria-pressed="${S.buyerTab === 'orders'}">Захиалгууд${active ? `<span class="badge">${active}</span>` : ''}</button></nav>`;
+    if (S.buyerTab === 'cart') return h + cartView();
+    if (S.buyerTab === 'orders') return h + buyerOrders();
+    h += `<input class="search" id="q" type="search" placeholder="Юу хайж байна? Жишээ нь сонгино" value="${esc(S.q)}" aria-label="Бараа хайх">`;
+    if (!S.q) h += `<div class="cats" role="group" aria-label="Ангилал">${CATS.map(c => `<button data-act="cat" data-v="${c}" aria-pressed="${S.cat === c}">${c}</button>`).join('')}</div>`;
+    const q = S.q.trim().toLowerCase();
+    const prods = S.products.filter(p => (q ? p.name.toLowerCase().includes(q) : p.cat === S.cat));
+    if (!prods.length) return h + `<p class="empty">“${esc(S.q)}” олдсонгүй. Өөр үгээр хайгаад үз.</p>`;
+    h += '<div class="list">';
+    prods.forEach(p => {
+      const offs = offersFor(p.id), best = bestOffer(p.id), inCart = cartLines().filter(l => l.offer.productId === p.id);
+      const open = S.open === p.id;
+      const stocked = offs.filter(o => o.stock).length;
+      h += `<div class="prod"><span class="em" aria-hidden="true">${p.em}</span><div class="pn"><b>${esc(p.name)}</b>`;
+      h += best ? `<small>${stocked} лангуунд байна. Хамгийн хямд нь ${SE(best.sellerId).stall}-р лангуу.</small><br><button class="link" data-act="open" data-v="${p.id}" aria-expanded="${open}">${open ? 'Хураах' : 'Лангуу сонгох'}</button>` : '<small>Өнөөдөр алга</small>';
+      h += `</div><div class="right">${best ? `<span class="tag">${num(best.price)}<small>₮/${p.unit}</small></span>` : ''}`;
+      if (best) {
+        if (inCart.length === 1) { const l = inCart[0]; h += stepper(l.offer.id, l.qty, p.unit); }
+        else if (inCart.length > 1) h += `<small class="muted">${inCart.length} лангуунаас</small>`;
+        else h += `<button class="add" data-act="add" data-v="${best.id}">Нэмэх</button>`;
+      }
+      h += '</div>';
+      if (open) {
+        h += '<div class="offers">' + offs.map(o => {
+          const s = SE(o.sellerId), q = S.cart[o.id] || 0;
+          return `<div class="offer${q ? ' sel' : ''}"><div class="who">${s.stall}-р лангуу<small>${esc(s.name)}</small></div><span class="tag">${num(o.price)}<small>₮</small></span>${!o.stock ? '<span class="out">дууссан</span>' : q ? stepper(o.id, q, p.unit) : `<button data-act="add" data-v="${o.id}">Авах</button>`}</div>`;
+        }).join('') + '</div>';
+      }
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+  const stepper = (oid, q, unit) => `<span class="step"><button data-act="dec" data-v="${oid}" aria-label="Хасах">−</button><label class="qty"><input type="number" inputmode="decimal" min="0" step="any" value="${q}" data-qty="${oid}" aria-label="Тоо хэмжээ, ${unit}"><small>${unit}</small></label><button data-act="inc" data-v="${oid}" aria-label="Нэмэх">+</button></span>`;
+
+  function cartView() {
+    const lines = cartLines();
+    if (!lines.length) return `<p class="empty">Сагс хоосон байна. “Бараа” хэсгээс сонгоод нэмээрэй.</p>`;
+    const sub = cartTotal(), fee = deliveryFee(sub), pr = S.profile;
+    let h = '<div class="card">';
+    const bySeller = {};
+    lines.forEach(l => { (bySeller[l.offer.sellerId] = bySeller[l.offer.sellerId] || []).push(l); });
+    Object.keys(bySeller).sort((a, b) => SE(a).stall - SE(b).stall).forEach(sid => {
+      const s = SE(sid), ls = bySeller[sid];
+      h += `<div class="stall"><div class="stall-h"><span>${s.stall}-р лангуу, ${esc(s.name)}</span><span class="muted small">${money(ls.reduce((a, l) => a + l.qty * l.offer.price, 0))}</span></div>`;
+      ls.forEach(l => { const p = P(l.offer.productId); h += `<div class="line"><div class="nm">${p.em} ${esc(p.name)}<small>${money(l.offer.price)} / ${p.unit}</small></div>${stepper(l.offer.id, l.qty, p.unit)}</div>`; });
+      h += '</div>';
+    });
+    h += `<div class="sum"><span>Бараа</span><span>${money(sub)}</span><span>Хүргэлт${fee ? ` <small class="muted">(${money(FREE_FROM)}-с дээш үнэгүй)</small>` : ''}</span><span>${fee ? money(fee) : 'үнэгүй'}</span><span class="tot">Нийт</span><span class="tot">${money(sub + fee)}</span></div></div>`;
+    h += `<div class="card"><h3>Хүргэлт</h3>
+      <div class="grid2"><div><label for="fName">Нэр эсвэл байгууллага</label><input class="field" id="fName" autocomplete="organization" value="${esc(pr.name)}" placeholder="Жишээ нь Нарны гуанз"></div>
+      <div><label for="fPhone">Утас</label><input class="field" id="fPhone" type="tel" inputmode="tel" autocomplete="tel" value="${esc(pr.phone)}" placeholder="8 оронтой"></div></div>
+      <label for="fAddr">Хаяг</label><textarea class="field" id="fAddr" autocomplete="street-address" placeholder="Дүүрэг, хороо, байр, орц, тоот">${esc(pr.address)}</textarea>
+      <div class="grid2"><div><label for="fSlot">Хэзээ хүргэх</label><select class="field" id="fSlot">${SLOTS.map(s => `<option${s === pr.slot ? ' selected' : ''}>${s}</option>`).join('')}</select></div>
+      <div><label for="fPay">Төлбөр</label><select class="field" id="fPay">${PAYS.map(s => `<option${s === pr.pay ? ' selected' : ''}>${s}</option>`).join('')}</select></div></div>
+      <label for="fNote">Тэмдэглэл</label><input class="field" id="fNote" value="${esc(pr.note)}" placeholder="Жишээ нь арын хаалгаар орно">
+      <p class="small muted">Бараа дууссан бол лангуу шууд мэдэгдэнэ, та өөр лангуунаас авахыг сонгож болно. Мөнгийг зөвхөн бодит хүргэгдсэн бараагаар бодно.</p>
+      <button class="btn block" data-act="place">Захиалга илгээх, ${money(sub + fee)}</button></div>`;
+    return h;
+  }
+
+  function track(o) {
+    const ph = phase(o), st = PHASE_STEP[ph];
+    if (!st) return '';
+    const names = ['Илгээсэн', 'Баталсан', 'Цуглуулж байна', 'Замд', 'Хүргэгдсэн'];
+    return `<ol class="track">${names.map((n, i) => `<li class="${i + 1 < st || ph === 'done' ? 'done' : i + 1 === st ? 'now' : ''}">${n}</li>`).join('')}</ol>`;
+  }
+  function orderItemsHtml(o, opts) {
+    let h = '';
+    sellersOf(o).forEach(sid => {
+      if (opts.sellerId && sid !== opts.sellerId) return;
+      const s = SE(sid), its = o.items.filter(it => it.sellerId === sid);
+      h += `<div class="stall"><div class="stall-h"><span>${s.stall}-р лангуу, ${esc(s.name)}</span>${opts.picked && o.picked[sid] ? '<span class="pill">авсан</span>' : ''}</div>`;
+      its.forEach(it => {
+        const p = P(it.productId), idx = o.items.indexOf(it);
+        const pill = it.status === 'new' ? '<span class="pill wait">хүлээгдэж байна</span>' : it.status === 'out' ? '<span class="pill no">дууссан</span>' : '<span class="pill">бэлэн</span>';
+        let right = `${money(it.price * it.qty)} ${pill}`;
+        if (opts.buyer && it.status === 'out' && !['onway', 'done', 'cancel'].includes(o.status)) {
+          const alt = S.offers.filter(x => x.productId === it.productId && x.sellerId !== it.sellerId && x.stock).sort((a, b) => a.price - b.price)[0];
+          if (alt) right = `<button class="btn ghost" style="padding:6px 10px" data-act="swap" data-v="${o.id}" data-i="${idx}">${SE(alt.sellerId).stall}-р лангуунаас, ${money(alt.price)}</button>`;
+        }
+        if (opts.sellerId && it.status === 'new') right = `<span class="row"><button class="btn" style="padding:7px 12px" data-act="ok" data-v="${o.id}" data-i="${idx}">Бэлэн</button><button class="btn warn" style="padding:7px 12px" data-act="out" data-v="${o.id}" data-i="${idx}">Дууссан</button></span>`;
+        h += `<div class="line${it.status === 'out' ? ' out' : ''}"><div class="nm">${p.em} ${esc(p.name)}<small>${qtyText(it.qty, p.unit)}, ${money(it.price)} / ${p.unit}</small></div><div class="right">${right}</div></div>`;
+      });
+      h += '</div>';
+    });
+    return h;
+  }
+
+  function buyerOrders() {
+    if (!S.orders.length) return `<p class="empty">Захиалга алга. Бараа сонгоод сагснаас илгээгээрэй.</p>`;
+    return S.orders.slice().reverse().map(o => {
+      const ph = phase(o);
+      return `<div class="card"><h3><span>${o.no}</span><span class="small muted">${hhmm(o.at)}, ${esc(o.slot)}</span></h3>
+        <p class="small" style="margin:4px 0 0">${PHASE_TEXT[ph]}</p>${track(o)}
+        ${orderItemsHtml(o, { buyer: true, picked: true })}
+        <div class="sum"><span>Бараа</span><span>${money(itemsTotal(o))}</span><span>Хүргэлт</span><span>${o.fee ? money(o.fee) : 'үнэгүй'}</span><span class="tot">Нийт</span><span class="tot">${money(orderTotal(o))}</span></div>
+        ${ph === 'new' ? `<div class="row" style="margin-top:10px"><button class="btn warn" data-act="cancel" data-v="${o.id}">Захиалга цуцлах</button></div>` : ''}</div>`;
+    }).join('');
+  }
+
+  function sellerView() {
+    const me = S.sellerId;
+    const mine = S.orders.filter(o => o.items.some(it => it.sellerId === me) && !['cancel'].includes(o.status));
+    const waiting = mine.filter(o => o.items.some(it => it.sellerId === me && it.status === 'new')).length;
+    let h = `<label for="meSel">Лангуу</label><select class="field" id="meSel">${S.sellers.slice().sort((a, b) => a.stall - b.stall).map(s => `<option value="${s.id}"${s.id === me ? ' selected' : ''}>${stallName(s)}</option>`).join('')}</select>
+      <nav class="sub" aria-label="Худалдаачин"><button data-act="stab" data-v="orders" aria-pressed="${S.sellerTab === 'orders'}">Захиалга${waiting ? `<span class="badge">${waiting}</span>` : ''}</button><button data-act="stab" data-v="prices" aria-pressed="${S.sellerTab === 'prices'}">Үнэ, бараа</button><button data-act="stab" data-v="money" aria-pressed="${S.sellerTab === 'money'}">Орлого</button></nav>`;
+    if (S.sellerTab === 'prices') return h + sellerPrices();
+    if (S.sellerTab === 'money') return h + sellerMoney(mine);
+    const open = mine.filter(o => !['done'].includes(o.status));
+    if (!open.length) return h + `<p class="empty">Шинэ захиалга алга. Өглөө үнээ шинэчилбэл захиалагчид хамгийн сүүлийн үнийг харна.</p>`;
+    open.slice().reverse().forEach(o => {
+      const its = o.items.filter(it => it.sellerId === me), sub = its.reduce((s, it) => s + (it.status === 'out' ? 0 : it.price * it.qty), 0);
+      const pending = its.some(it => it.status === 'new');
+      const st = pending ? 'Бэлэн эсэхийг тэмдэглэнэ үү' : o.picked[me] ? 'Хүргэгч авсан' : its.every(it => it.status === 'out') ? 'Бүгд дууссан' : 'Бэлдээд хүргэгчийг хүлээнэ';
+      h += `<div class="card"><h3><span>${o.no}</span><span class="small muted">${hhmm(o.at)}, ${esc(o.slot)}</span></h3><p class="small" style="margin:4px 0 0">${st}</p>${orderItemsHtml(o, { sellerId: me })}<div class="sum"><span>Таны бараа</span><span class="tot">${money(sub)}</span></div></div>`;
+    });
+    return h;
+  }
+  function sellerPrices() {
+    const me = S.sellerId, mine = S.offers.filter(o => o.sellerId === me);
+    let h = `<p class="small muted">Өглөө бүр үнээ шинэчлээрэй. Захиалагч хамгийн хямд, бараатай лангууг эхэнд харна.</p><div class="list">`;
+    mine.forEach(o => {
+      const p = P(o.productId), others = S.offers.filter(x => x.productId === o.productId && x.sellerId !== me && x.stock);
+      const low = others.length ? Math.min(...others.map(x => x.price)) : null;
+      h += `<div class="pricerow"><span class="em" aria-hidden="true">${p.em}</span><div class="pn"><b>${esc(p.name)}</b><small>${low == null ? 'Өөр лангуунд алга' : low < o.price ? `Хамгийн хямд нь ${money(low)}` : 'Та хамгийн хямд'}</small></div>
+        <input type="number" inputmode="numeric" min="0" step="50" value="${o.price}" data-price="${o.id}" aria-label="${esc(p.name)}, ₮ / ${p.unit}">
+        <button class="stock" data-act="stock" data-v="${o.id}" aria-pressed="${o.stock}">${o.stock ? 'Байгаа' : 'Дууссан'}</button></div>`;
+    });
+    h += '</div>';
+    const missing = S.products.filter(p => !mine.some(o => o.productId === p.id));
+    if (missing.length) h += `<div class="card"><h3>Бараа нэмэх</h3><div class="grid2"><div><label for="newP">Бараа</label><select class="field" id="newP">${missing.map(p => `<option value="${p.id}">${p.em} ${esc(p.name)}, ${p.unit}</option>`).join('')}</select></div><div><label for="newPrice">Үнэ, ₮</label><input class="field" id="newPrice" type="number" inputmode="numeric" min="0" step="50" placeholder="0"></div></div><button class="btn block" style="margin-top:12px" data-act="newoffer">Нэмэх</button></div>`;
+    return h;
+  }
+  function sellerMoney(mine) {
+    const me = S.sellerId;
+    const done = mine.filter(o => o.status === 'done');
+    const gross = done.reduce((s, o) => s + o.items.filter(it => it.sellerId === me && it.status !== 'out').reduce((a, it) => a + it.price * it.qty, 0), 0);
+    let h = `<div class="card"><div class="sum" style="margin:0;border:0;padding:0"><span>Хүргэгдсэн захиалга</span><span>${done.length}</span><span>Борлуулалт</span><span>${money(gross)}</span><span>Үйлчилгээний шимтгэл ${Math.round(FEE * 100)}%</span><span>−${money(gross * FEE)}</span><span class="tot">Танд олгох</span><span class="tot">${money(gross * (1 - FEE))}</span></div></div>`;
+    h += `<p class="small muted">Мөнгийг өдрийн эцэст дансанд шилжүүлнэ. Дууссан гэж тэмдэглэсэн бараа тооцоонд орохгүй.</p>`;
+    return h;
+  }
+
+  function driverView() {
+    const list = S.orders.filter(o => ['confirmed', 'picking', 'picked', 'onway'].includes(phase(o)));
+    const wait = S.orders.filter(o => phase(o) === 'new').length;
+    let h = wait ? `<p class="small muted">${wait} захиалга лангуунаас батлагдахыг хүлээж байна.</p>` : '';
+    if (!list.length) return h + `<p class="empty">Цуглуулах захиалга алга. Лангуунууд баталмагц энд гарна.</p>`;
+    list.forEach(o => {
+      const ph = phase(o), ls = liveSellers(o);
+      h += `<div class="card"><h3><span>${o.no}</span><span class="small muted">${esc(o.slot)}</span></h3>
+        <p class="small" style="margin:6px 0 0"><b>${esc(o.buyer.name)}</b>, <a href="tel:${esc(o.buyer.phone)}">${esc(o.buyer.phone)}</a><br>${esc(o.buyer.address)}${o.buyer.note ? `<br><span class="muted">${esc(o.buyer.note)}</span>` : ''}</p>
+        <p class="small muted" style="margin:10px 0 0">Лангуунуудыг дугаарын дарааллаар тойрно.</p>`;
+      ls.forEach(sid => {
+        const s = SE(sid), its = o.items.filter(it => it.sellerId === sid && it.status !== 'out');
+        h += `<div class="stall"><label class="check" style="margin:0;color:var(--ink)"><input type="checkbox" data-pick="${o.id}" data-s="${sid}"${o.picked[sid] ? ' checked' : ''}${ph === 'onway' ? ' disabled' : ''}><span><b>${s.stall}-р лангуу</b>, ${esc(s.name)} <a href="tel:${s.phone}">${s.phone}</a></span></label>`;
+        its.forEach(it => { const p = P(it.productId); h += `<div class="line"><div class="nm">${p.em} ${esc(p.name)}</div><span>${qtyText(it.qty, p.unit)}</span></div>`; });
+        h += '</div>';
+      });
+      h += `<div class="sum"><span>${esc(o.pay)}</span><span class="tot">${money(orderTotal(o))}</span></div><div class="row" style="margin-top:10px">`;
+      h += ph === 'onway' ? `<button class="btn block" data-act="delivered" data-v="${o.id}">Хүргэлээ</button>` : `<button class="btn block" data-act="onway" data-v="${o.id}"${ph === 'picked' ? '' : ' disabled'}>Бүгдийг авсан, замд гарлаа</button>`;
+      h += '</div></div>';
+    });
+    return h;
+  }
+
+  // ---------- actions ----------
+  function readProfile() {
+    const pr = S.profile;
+    [['fName', 'name'], ['fPhone', 'phone'], ['fAddr', 'address'], ['fNote', 'note'], ['fSlot', 'slot'], ['fPay', 'pay']].forEach(([id, k]) => { const el = $(id); if (el) pr[k] = el.value.trim(); });
+  }
+  function placeOrder() {
+    readProfile();
+    const pr = S.profile, lines = cartLines();
+    if (!lines.length) return;
+    if (!pr.name) { toast('Нэр эсвэл байгууллагаа бичнэ үү.'); $('fName').focus(); return; }
+    if (!/^\d{8}$/.test(pr.phone.replace(/\s/g, ''))) { toast('Утасны дугаар 8 оронтой байна.'); $('fPhone').focus(); return; }
+    if (pr.address.length < 8) { toast('Хаягаа дэлгэрэнгүй бичнэ үү.'); $('fAddr').focus(); return; }
+    const o = {
+      id: 'ord' + Date.now(), no: 'З-' + (++S.seq), at: Date.now(), slot: pr.slot, pay: pr.pay,
+      buyer: { name: pr.name, phone: pr.phone.replace(/\s/g, ''), address: pr.address, note: pr.note },
+      items: lines.map(l => ({ offerId: l.offer.id, productId: l.offer.productId, sellerId: l.offer.sellerId, qty: l.qty, price: l.offer.price, status: 'new' })),
+      picked: {}, status: 'open', fee: 0, log: [],
+    };
+    refreshFee(o); log(o, 'Захиалга илгээсэн');
+    S.orders.push(o); S.cart = {}; pr.note = ''; S.buyerTab = 'orders';
+    save(); render(); window.scrollTo(0, 0);
+    toast(`${o.no} илгээгдлээ. ${sellersOf(o).length} лангуунд мэдэгдлээ.`);
+  }
+
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const a = b.dataset.act, v = b.dataset.v;
+    const ord = () => S.orders.find(o => o.id === v);
+    switch (a) {
+      case 'role': S.role = v; break;
+      case 'tab': if (S.buyerTab === 'cart') readProfile(); S.buyerTab = v; window.scrollTo(0, 0); break;
+      case 'stab': S.sellerTab = v; break;
+      case 'cat': S.cat = v; S.open = null; break;
+      case 'open': S.open = S.open === v ? null : v; break;
+      case 'add': { const of = O(v), p = P(of.productId); S.cart[v] = stepOf(p.unit); toast(`${p.name} сагсанд нэмэгдлээ`); break; }
+      case 'inc': { const p = P(O(v).productId); S.cart[v] = (S.cart[v] || 0) + stepOf(p.unit); break; }
+      case 'dec': { if (S.buyerTab === 'cart') readProfile(); const p = P(O(v).productId); S.cart[v] = Math.max(0, (S.cart[v] || 0) - stepOf(p.unit)); if (!S.cart[v]) delete S.cart[v]; break; }
+      case 'place': placeOrder(); return;
+      case 'cancel': { const o = ord(); if (o && phase(o) === 'new') { o.status = 'cancel'; log(o, 'Захиалагч цуцалсан'); toast(`${o.no} цуцлагдлаа`); } break; }
+      case 'swap': {
+        const o = ord(), it = o.items[+b.dataset.i];
+        const alt = S.offers.filter(x => x.productId === it.productId && x.sellerId !== it.sellerId && x.stock).sort((x, y) => x.price - y.price)[0];
+        if (alt) { const from = SE(it.sellerId).stall; Object.assign(it, { offerId: alt.id, sellerId: alt.sellerId, price: alt.price, status: 'new' }); refreshFee(o); log(o, `${P(it.productId).name}: ${from}-р лангуунаас ${SE(alt.sellerId).stall}-р лангуу руу шилжүүлсэн`); toast(`${SE(alt.sellerId).stall}-р лангуунд илгээлээ`); }
+        break;
+      }
+      case 'ok': case 'out': {
+        const o = ord(), it = o.items[+b.dataset.i];
+        it.status = a; if (a === 'out') { const of = O(it.offerId); if (of) of.stock = false; }
+        refreshFee(o); log(o, `${SE(it.sellerId).stall}-р лангуу: ${P(it.productId).name} ${a === 'ok' ? 'бэлэн' : 'дууссан'}`);
+        break;
+      }
+      case 'stock': { const of = O(v); of.stock = !of.stock; toast(`${P(of.productId).name}: ${of.stock ? 'байгаа' : 'дууссан'}`); break; }
+      case 'newoffer': {
+        const pid = $('newP').value, price = parseInt($('newPrice').value, 10);
+        if (!(price > 0)) { toast('Үнээ оруулна уу.'); $('newPrice').focus(); return; }
+        S.offers.push({ id: 'o' + Date.now(), productId: pid, sellerId: S.sellerId, price, stock: true });
+        toast(`${P(pid).name} нэмэгдлээ`); break;
+      }
+      case 'onway': { const o = ord(); if (phase(o) === 'picked') { o.status = 'onway'; log(o, 'Хүргэгч замд гарсан'); toast(`${o.no} замд гарлаа`); } break; }
+      case 'delivered': { const o = ord(); o.status = 'done'; o.doneAt = Date.now(); log(o, 'Хүргэгдсэн'); toast(`${o.no} хүргэгдлээ`); break; }
+      case 'reset': if (confirm('Бүх захиалга, үнийн өөрчлөлт устаж жишээ өгөгдөл сэргэнэ. Үргэлжлүүлэх үү?')) { S = seed(); toast('Жишээ өгөгдөл сэргээлээ'); } break;
+      default: return;
+    }
+    save(); render();
+  });
+
+  document.addEventListener('input', e => {
+    if (e.target.id === 'q' && !e.isComposing) {
+      S.q = e.target.value; S.open = null;
+      const pos = e.target.selectionStart; save(); render();
+      const q = $('q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (err) {}
+    }
+  });
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.id === 'meSel') { S.sellerId = t.value; save(); render(); return; }
+    if (t.dataset.qty) {
+      if (S.buyerTab === 'cart') readProfile();
+      const v = Math.round(parseFloat(String(t.value).replace(',', '.')) * 10) / 10;
+      if (v > 0) S.cart[t.dataset.qty] = v; else delete S.cart[t.dataset.qty];
+      save(); render(); return;
+    }
+    if (t.dataset.price) {
+      const of = O(t.dataset.price), v = parseInt(t.value, 10);
+      if (v > 0 && v !== of.price) { of.price = v; save(); toast(`${P(of.productId).name}: ${money(v)}`); render(); }
+      return;
+    }
+    if (t.dataset.pick) {
+      const o = S.orders.find(x => x.id === t.dataset.pick), sid = t.dataset.s;
+      o.picked[sid] = t.checked; log(o, `${SE(sid).stall}-р лангуунаас ${t.checked ? 'авсан' : 'авсан гэснийг буцаасан'}`);
+      save(); render(); return;
+    }
+    if (['fName', 'fPhone', 'fAddr', 'fNote', 'fSlot', 'fPay'].includes(t.id)) { readProfile(); save(); }
+  });
+
+  document.addEventListener('compositionend', e => { if (e.target.id === 'q') e.target.dispatchEvent(new Event('input', { bubbles: true })); });
+  render();
+})();
+</script>
+</body>
+</html>
