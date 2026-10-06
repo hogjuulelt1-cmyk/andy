@@ -20,6 +20,10 @@
     {
       "source": "/zah/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    },
+    {
+      "source": "/fit/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
   ]
 }
