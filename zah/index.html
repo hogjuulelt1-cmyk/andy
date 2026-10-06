@@ -46,7 +46,7 @@ header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); paddin
 .brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .brand h1 { margin: 0; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
 .brand p { margin: 0; color: var(--muted); font-size: 0.875rem; }
-.roles { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--surface); border: 1px solid var(--rule); border-radius: 999px; padding: 3px; margin-top: 10px; }
+.roles { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border: 1px solid var(--rule); border-radius: 999px; padding: 3px; margin-top: 10px; }
 .roles button { border: 0; background: none; border-radius: 999px; padding: 8px 4px; font-weight: 500; cursor: pointer; }
 .roles button[aria-pressed="true"] { background: var(--leaf); color: var(--leaf-ink); }
 .sub { display: flex; gap: 6px; margin: 12px 0 4px; overflow-x: auto; scrollbar-width: none; }
@@ -141,6 +141,28 @@ textarea.field { min-height: 64px; resize: vertical; }
 .check { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .check input { width: 22px; height: 22px; accent-color: var(--leaf); }
 
+.cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+.col { background: var(--bg); border: 1px solid var(--rule); border-radius: var(--r-m); padding: 10px; }
+.col .k { color: var(--muted); font-size: 0.75rem; }
+.col .v { font-size: 1.125rem; font-weight: 700; line-height: 1.2; }
+.col .x { font-size: 0.75rem; color: var(--muted); }
+.col .s { font-size: 0.75rem; margin-top: 4px; line-height: 1.3; }
+.col .s.muted { color: var(--muted); }
+.col.sel { outline: 2px solid var(--leaf); }
+.col .btn { margin-top: 8px; width: 100%; padding: 8px; font-size: 0.875rem; }
+@media (max-width: 400px) { .cols { grid-template-columns: 1fr; } }
+.bar { display: grid; grid-template-columns: 7em 1fr 3.2em; gap: 8px; align-items: center; font-size: 0.875rem; padding: 3px 0; }
+.bar .track { height: 8px; border-radius: 4px; background: var(--rule); overflow: hidden; }
+.bar .fill { display: block; height: 100%; background: var(--leaf); }
+.bar .num { text-align: right; }
+.spark { width: 100%; height: 44px; display: block; margin-top: 4px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.875rem; }
+th, td { text-align: left; padding: 6px 6px; border-top: 1px solid var(--rule); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; border-top: 0; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td.good { color: var(--leaf); font-weight: 500; } td.bad { color: var(--beet); font-weight: 500; }
+.range { width: 100%; accent-color: var(--leaf); }
 .toast { position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 20; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 0.9375rem; max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity .2s; }
 .toast.show { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
@@ -156,16 +178,18 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       <button data-act="role" data-v="buyer">Захиалагч</button>
       <button data-act="role" data-v="seller">Худалдаачин</button>
       <button data-act="role" data-v="driver">Хүргэгч</button>
+      <button data-act="role" data-v="lab">Судалгаа</button>
     </div>
   </header>
   <main id="app"></main>
   <footer>
-    <p>Туршилтын хувилбар 1. Өгөгдөл энэ утсанд хадгалагдана, гурван дүрийг дээрх товчоор сольж туршина. Үнэ, лангуунууд жишээ.</p>
+    <p>Туршилтын хувилбар 2. Өгөгдөл энэ утсанд хадгалагдана, дүрүүдийг дээрх товчоор сольж туршина. Үнэ, лангуу, захиалагчид, 90 хоногийн түүх бүгд хиймэл; “Судалгаа” хэсэгт загварууд хэр зөв таасныг шалгана.</p>
     <p><button data-act="reset">Жишээ өгөгдлийг сэргээх</button></p>
   </footer>
 </div>
 <div class="cartbar" id="cartbar" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="engine.js?v=3"></script>
 <script>
 (() => {
   'use strict';
@@ -210,13 +234,39 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     ];
     const offers = rows.map(([productId, sellerId, price], i) => ({ id: 'o' + (i + 1), productId, sellerId, price, stock: true }));
     offers.find(o => o.productId === 'p6' && o.sellerId === 's1').stock = false;
-    return { v: 1, role: 'buyer', buyerTab: 'shop', sellerTab: 'orders', sellerId: 's1', cat: 'Ногоо', q: '', open: null, sellers, products, offers, cart: {}, orders: [], seq: 100, profile: { name: '', phone: '', address: '', note: '', slot: SLOTS[0], pay: PAYS[0] } };
+    return { v: 1, role: 'buyer', buyerTab: 'shop', sellerTab: 'orders', sellerId: 's1', cat: 'Ногоо', q: '', open: null, sellers, products, offers, cart: {}, orders: [], seq: 100, profile: { name: '', phone: '', address: '', note: '', slot: SLOTS[0], pay: PAYS[0] }, synth: { days: 90, seed: 7 }, stockQty: {}, lambda: 6 };
   }
 
   let S;
   try { S = JSON.parse(localStorage.getItem(KEY)); } catch (e) { S = null; }
   if (!S || S.v !== 1) S = seed();
+  if (!S.synth) S.synth = { days: 90, seed: 7 }; if (!S.stockQty) S.stockQty = {}; if (S.lambda == null) S.lambda = 6;
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- synthetic history + live orders feed the models ----------
+  // The synthetic market is regenerated from its seed on every load (50 ms), so only the settings are stored.
+  let D = null, cache = {};
+  function data() {
+    if (D && D.key === S.synth.days + ':' + S.synth.seed) return D;
+    const d = ZE.synth({ sellers: S.sellers, products: S.products, offers: S.offers, days: S.synth.days, seed: S.synth.seed });
+    d.key = S.synth.days + ':' + S.synth.seed; D = d; cache = {}; return d;
+  }
+  // Orders placed in this app join the history as "today" (day index = days).
+  function fullHistory() {
+    const d = data();
+    const live = S.orders.filter(o => o.status !== 'cancel').map(o => ({ id: o.id, day: d.days, at: o.at, buyerId: 'me', type: 'live', items: o.items.map(it => ({ productId: it.productId, sellerId: it.sellerId, offerId: it.offerId, qty: it.qty, price: it.price, status: it.status === 'out' ? 'out' : 'ok' })) }));
+    return d.history.concat(live);
+  }
+  const memo = (k, f) => (cache[k] !== undefined ? cache[k] : (cache[k] = f()));
+  function invalidate() { cache = {}; }
+  const reliability = () => memo('rel', () => ZE.sellerReliability(fullHistory(), S.sellers, data().days + 1, 30));
+  const relOf = sid => reliability().find(r => r.id === sid) || { outRate: 0.1, rating: null };
+  const market = () => memo('mkt', () => ZE.marketView(fullHistory(), data().priceHistory, data().days, data().t0, S.products, S.offers));
+  const customers = sid => memo('cust' + sid, () => ZE.customerModel(fullHistory(), data().buyers, data().days + 1, data().t0, sid));
+  const stockPlan = sid => memo('stock' + sid, () => ZE.stockPlan(fullHistory(), data().days + 1, data().t0, sid, S.offers, S.stockQty));
+  const evaluation = () => memo('eval', () => ZE.evaluate(data(), S.offers, S.products, S.sellers));
+  const pct = v => (v == null ? '—' : Math.round(v * 100) + '%');
+  const spark = (vals, color) => { const v = vals.filter(x => x != null); if (v.length < 2) return ''; const mx = Math.max(...v), mn = Math.min(...v), W = 200, H = 44; const pts = vals.map((x, i) => x == null ? null : `${(i / (vals.length - 1) * W).toFixed(1)},${(H - 4 - (mx === mn ? 0.5 : (x - mn) / (mx - mn)) * (H - 8)).toFixed(1)}`).filter(Boolean); return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="${color || 'var(--leaf)'}" stroke-width="2" points="${pts.join(' ')}"/></svg>`; };
 
   // ---------- helpers ----------
   const $ = id => document.getElementById(id);
@@ -263,8 +313,8 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
   function render() {
     document.querySelectorAll('.roles button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === S.role)));
     const me = SE(S.sellerId);
-    $('who').textContent = S.role === 'seller' ? stallName(me) : S.role === 'driver' ? 'Хүргэлтийн жагсаалт' : 'Захаас шууд хүргэлт';
-    const v = S.role === 'seller' ? sellerView() : S.role === 'driver' ? driverView() : buyerView();
+    $('who').textContent = S.role === 'seller' ? stallName(me) : S.role === 'driver' ? 'Хүргэлтийн жагсаалт' : S.role === 'lab' ? 'Загварууд хэр зөв бэ' : 'Захаас шууд хүргэлт';
+    const v = S.role === 'seller' ? sellerView() : S.role === 'driver' ? driverView() : S.role === 'lab' ? labView() : buyerView();
     $('app').innerHTML = v;
     renderCartBar();
   }
@@ -284,8 +334,10 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     let h = `<nav class="sub" aria-label="Захиалагч">
       <button data-act="tab" data-v="shop" aria-pressed="${S.buyerTab === 'shop'}">Бараа</button>
       <button data-act="tab" data-v="cart" aria-pressed="${S.buyerTab === 'cart'}">Сагс${nCart ? `<span class="badge">${nCart}</span>` : ''}</button>
-      <button data-act="tab" data-v="orders" aria-pressed="${S.buyerTab === 'orders'}">Захиалгууд${active ? `<span class="badge">${active}</span>` : ''}</button></nav>`;
+      <button data-act="tab" data-v="orders" aria-pressed="${S.buyerTab === 'orders'}">Захиалгууд${active ? `<span class="badge">${active}</span>` : ''}</button>
+      <button data-act="tab" data-v="smart" aria-pressed="${S.buyerTab === 'smart'}">Зөвлөмж</button></nav>`;
     if (S.buyerTab === 'cart') return h + cartView();
+    if (S.buyerTab === 'smart') return h + smartView();
     if (S.buyerTab === 'orders') return h + buyerOrders();
     h += `<input class="search" id="q" type="search" placeholder="Юу хайж байна? Жишээ нь сонгино" value="${esc(S.q)}" aria-label="Бараа хайх">`;
     if (!S.q) h += `<div class="cats" role="group" aria-label="Ангилал">${CATS.map(c => `<button data-act="cat" data-v="${c}" aria-pressed="${S.cat === c}">${c}</button>`).join('')}</div>`;
@@ -298,7 +350,8 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       const open = S.open === p.id;
       const stocked = offs.filter(o => o.stock).length;
       h += `<div class="prod"><span class="em" aria-hidden="true">${p.em}</span><div class="pn"><b>${esc(p.name)}</b>`;
-      h += best ? `<small>${stocked} лангуунд байна. Хамгийн хямд нь ${SE(best.sellerId).stall}-р лангуу.</small><br><button class="link" data-act="open" data-v="${p.id}" aria-expanded="${open}">${open ? 'Хураах' : 'Лангуу сонгох'}</button>` : '<small>Өнөөдөр алга</small>';
+      const mk = market().find(m => m.productId === p.id), tr = mk ? mk.priceTrend : 0;
+      h += best ? `<small>${stocked} лангуунд байна. Хамгийн хямд нь ${SE(best.sellerId).stall}-р лангуу, найдвартай ${pct(1 - relOf(best.sellerId).outRate)}.${Math.abs(tr) >= 0.05 ? (tr > 0 ? ' Үнэ өсөж байна.' : ' Үнэ буурч байна.') : ''}</small><br><button class="link" data-act="open" data-v="${p.id}" aria-expanded="${open}">${open ? 'Хураах' : 'Лангуу сонгох'}</button>` : '<small>Өнөөдөр алга</small>';
       h += `</div><div class="right">${best ? `<span class="tag">${num(best.price)}<small>₮/${p.unit}</small></span>` : ''}`;
       if (best) {
         if (inCart.length === 1) { const l = inCart[0]; h += stepper(l.offer.id, l.qty, p.unit); }
@@ -317,6 +370,80 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     return h + '</div>';
   }
   const stepper = (oid, q, unit) => `<span class="step"><button data-act="dec" data-v="${oid}" aria-label="Хасах">−</button><label class="qty"><input type="number" inputmode="decimal" min="0" step="any" value="${q}" data-qty="${oid}" aria-label="Тоо хэмжээ, ${unit}"><small>${unit}</small></label><button data-act="inc" data-v="${oid}" aria-label="Нэмэх">+</button></span>`;
+
+  function smartView() {
+    const lines = cartLines().reduce((m, l) => { const k = l.offer.productId; m[k] = (m[k] || 0) + l.qty; return m; }, {});
+    const req = Object.entries(lines).map(([productId, qty]) => ({ productId, qty }));
+    let h = '';
+    if (req.length) {
+      const plans = ZE.basketPlans(req, S.offers, reliability(), { lambda: S.lambda });
+      const cur = cartLines().reduce((s, l) => s + l.offer.price * l.qty, 0);
+      const curStalls = new Set(cartLines().map(l => l.offer.sellerId)).size;
+      const curRisk = 1 - cartLines().reduce((r, l) => r * (1 - relOf(l.offer.sellerId).outRate), 1);
+      const card = (k, title, why) => { const pl = plans[k]; const same = cartLines().every(l => pl.pick[l.offer.productId] && pl.pick[l.offer.productId].id === l.offer.id); return `<div class="col${same ? ' sel' : ''}"><div class="k">${title}</div><div class="v">${money(pl.total)}</div><div class="x">${pl.stalls.length} лангуу · дутах эрсдэл ${pct(pl.risk)}</div><div class="s muted">${why}</div>${same ? '<div class="s">Одоогийн сагс</div>' : `<button class="btn" data-act="plan" data-v="${k}">Сонгох</button>`}</div>`; };
+      h += `<div class="card"><h3>Сагсаа хэрхэн бүрдүүлэх вэ</h3><p class="small muted">Одоогийн сагс: ${money(cur)}, ${curStalls} лангуу, ядаж нэг бараа дутах эрсдэл ${pct(curRisk)}. Эрсдэл = лангуу бүрийн сүүлийн 30 хоногийн “дууссан” хувиас.</p>
+        <div class="cols">${card('cheap', 'Хамгийн хямд', 'Бараа бүрийг хамгийн хямд лангуунаас')}${card('reliable', 'Найдвартай', 'Дууссан гэдэг нь цөөн лангуунаас, бага зэрэг үнэтэй')}${card('fast', 'Хурдан', 'Цөөн лангуу, хүргэгч түргэн цуглуулна')}</div>
+        <label for="lam">Хямд ↔ найдвартай: ${S.lambda}</label><input class="range" id="lam" type="range" min="0" max="15" step="1" value="${S.lambda}"></div>`;
+    } else {
+      h += `<p class="empty">Сагсанд бараа нэмбэл хамгийн хямд, найдвартай, хурдан гурван хувилбарыг энд харуулна.</p>`;
+    }
+    const rel = reliability().slice().sort((a, b) => a.outRate - b.outRate);
+    h += `<div class="card"><h3>Лангуунуудын найдвартай байдал <span class="small muted">сүүлийн 30 хоног</span></h3><div class="scroll"><table><thead><tr><th>Лангуу</th><th class="num">захиалга</th><th class="num">дууссан</th><th class="num">үнэлгээ</th></tr></thead><tbody>` +
+      rel.map(r => { const s = SE(r.id); return `<tr><td>${s.stall}-р, ${esc(s.name)}</td><td class="num">${num(r.ordered)}</td><td class="num ${r.outRate > 0.15 ? 'bad' : r.outRate < 0.05 ? 'good' : ''}">${pct(r.outRate)}</td><td class="num">${r.rating ? r.rating.toFixed(1) + ' ★' : '—'}</td></tr>`; }).join('') + '</tbody></table></div></div>';
+    const mv = market().filter(m => m.minPriceNow != null && Math.abs(m.priceTrend) >= 0.04).sort((a, b) => Math.abs(b.priceTrend) - Math.abs(a.priceTrend)).slice(0, 6);
+    if (mv.length) h += `<div class="card"><h3>Үнэ хаашаа явж байна</h3><p class="small muted">Сүүлийн 7 хоногийн хамгийн хямд үнэ, өмнөх 3 долоо хоногтой харьцуулбал. Өсөж байвал одоо авах, буурч байвал хүлээж болно.</p>` +
+      mv.map(m => { const p = P(m.productId); return `<div class="line"><div class="nm">${p.em} ${esc(p.name)}<small>одоо ${money(m.minPriceNow)} / ${p.unit}${spark(m.series.slice(-30), m.priceTrend > 0 ? 'var(--beet)' : 'var(--leaf)')}</small></div><span class="pill ${m.priceTrend > 0 ? 'no' : ''}">${m.priceTrend > 0 ? '+' : ''}${Math.round(m.priceTrend * 100)}%</span></div>`; }).join('') + '</div>';
+    return h;
+  }
+  function sellerStock() {
+    const me = S.sellerId, plan = stockPlan(me).slice().sort((a, b) => b.week - a.week);
+    const buyList = plan.filter(x => x.buy != null && x.buy > 0);
+    let h = `<p class="small muted">Маргаашийн эрэлт = сүүлийн ${num(data().days)} хоногийн захиалгаас сурсан таамаг (ижил гараг, хандлага, дундаж). Нөөцөө оруулбал хэд авчрахыг, дутах эрсдэлийг хэлнэ.</p>`;
+    if (buyList.length) h += `<div class="card"><h3>Маргааш авчрах</h3>${buyList.map(x => { const p = P(x.productId); return `<div class="line"><div class="nm">${p.em} ${esc(p.name)}<small>нөөц ${qtyText(x.have, p.unit)}, хэрэгтэй ${qtyText(Math.ceil(x.hi), p.unit)} хүртэл</small></div><b>+${qtyText(x.buy, p.unit)}</b></div>`; }).join('')}</div>`;
+    h += `<div class="list">` + plan.map(x => { const p = P(x.productId); const risk = x.outRisk; return `<div class="pricerow"><span class="em" aria-hidden="true">${p.em}</span><div class="pn"><b>${esc(p.name)}</b><small>маргааш ~${qtyText(Math.round(x.next), p.unit)} (${Math.round(x.lo)}–${Math.round(x.hi)}), 7 хоногт ${qtyText(Math.round(x.week), p.unit)}${x.skill > 0.05 ? '' : ', таамаг сул'}</small></div><input type="number" inputmode="decimal" min="0" step="1" value="${x.have == null ? '' : x.have}" placeholder="нөөц" data-stock="${x.offerId}" aria-label="${esc(p.name)} нөөц, ${p.unit}">${risk == null ? '<span class="muted small">нөөц?</span>' : `<span class="pill ${risk > 0.5 ? 'no' : risk > 0.2 ? 'wait' : ''}">${risk > 0.5 ? 'дутна ' : risk > 0.2 ? 'эрсдэл ' : 'хүрнэ '}${pct(risk)}</span>`}</div>`; }).join('') + '</div>';
+    const top = plan.slice(0, 1)[0];
+    if (top) { const y = ZE.dailySeries(fullHistory(), data().days + 1, it => it.sellerId === me && it.productId === top.productId); h += `<div class="card"><h3>${P(top.productId).em} ${esc(P(top.productId).name)}, таны өдрийн борлуулалт</h3>${spark(y.slice(-60))}<p class="small muted">Сүүлийн 60 хоног. 7 хоногт ${qtyText(Math.round(top.sold7), P(top.productId).unit)}, 30 хоногт ${qtyText(Math.round(top.sold30), P(top.productId).unit)}.</p></div>`; }
+    return h;
+  }
+  function sellerCustomers() {
+    const me = S.sellerId, cm = customers(me), cs = cm.customers;
+    const tomorrow = cs.slice().sort((a, b) => b.pTomorrow - a.pTomorrow).slice(0, 8);
+    const regular = cs.filter(c => c.orders30 >= 4).sort((a, b) => b.spend30 - a.spend30).slice(0, 8);
+    const risk = cs.filter(c => c.risk >= 0.3 && c.orders >= 3).sort((a, b) => b.risk - a.risk).slice(0, 6);
+    const wdName = ZE.WEEKDAYS[cm.tomorrowWd];
+    let h = `<div class="card"><h3>Маргааш (${wdName}) захиалах магадлалтай</h3><p class="small muted">Захиалагч бүрийн завсар (хэд хоног захиалаагүй) ба гарагийн зуршлаас. Хажууд нь ихэвчлэн авдаг бараа.</p>` +
+      tomorrow.map(c => `<div class="line"><div class="nm">${esc(c.name)} <small class="muted">${c.typeLabel}</small><small>${c.basket.slice(0, 3).map(b => `${P(b.productId).em} ${P(b.productId).name} ~${qtyText(b.qty, P(b.productId).unit)}`).join(', ')}</small></div><span class="pill ${c.pTomorrow >= 0.5 ? '' : 'wait'}">${pct(c.pTomorrow)}</span></div>`).join('') + '</div>';
+    h += `<div class="card"><h3>Байнгын хэрэглэгчид <span class="small muted">30 хоногт 4+ захиалга</span></h3>` + (regular.length ? regular.map(c => `<div class="line"><div class="nm">${esc(c.name)}<small>${c.orders30} захиалга, ${money(c.spend30)}, танаас ${pct(c.loyalty)}</small></div><div class="bar" style="width:110px;grid-template-columns:1fr 3.2em"><span class="track"><span class="fill" style="width:${Math.round(c.loyalty * 100)}%"></span></span><span class="num">${pct(c.loyalty)}</span></div></div>`).join('') : '<p class="muted small">Байнгын хэрэглэгч хараахан алга.</p>') + `<p class="small muted">“Танаас” = тэр хэрэглэгчийн бараанаас хэдэн хувийг таны лангуунаас авдаг. Бага бол үнэ, бараагаар татаж болно.</p></div>`;
+    h += `<div class="card"><h3>Алдах эрсдэлтэй</h3><p class="small muted">Ердийн завсраасаа хавьгүй удаан захиалаагүй хүмүүс. Залгах, хямдрал санал болгох шалтгаан.</p>` + (risk.length ? risk.map(c => `<div class="line"><div class="nm">${esc(c.name)} <small class="muted">${c.typeLabel}</small><small>${c.gap} хоног захиалаагүй, ердийн нь ${c.typicalGap} хоног тутам</small></div><span class="pill no">${pct(c.risk)}</span></div>`).join('') : '<p class="muted small">Одоогоор алга.</p>') + '</div>';
+    h += `<details><summary>Завсар хэдэн хоног болоход дахин захиалдаг вэ</summary><div class="scroll"><table><thead><tr><th>Хоног захиалаагүй</th><th class="num">дараагийн өдөр захиалсан</th><th class="num">тохиолдол</th></tr></thead><tbody>${cm.gapRates.filter(g => g.n > 0).map(g => `<tr><td>${g.label}</td><td class="num">${pct(g.rate)}</td><td class="num muted">${num(g.n)}</td></tr>`).join('')}</tbody></table></div></details>`;
+    return h;
+  }
+  function sellerMarket() {
+    const me = S.sellerId, ws = evaluation().winShare;
+    let h = `<p class="small muted">Хамгийн хямд лангуу захиалгын ${pct(ws[0].share)}-ийг, 10%-с дээш үнэтэй нь ${pct(ws[3].share)}-ийг авдаг (түүхээс). Доор бараа бүрээр таны байрлал.</p><div class="scroll"><table><thead><tr><th>Бараа</th><th class="num">таны үнэ</th><th class="num">хамгийн хямд</th><th class="num">зах 7 хоног</th><th>байрлал</th></tr></thead><tbody>`;
+    S.offers.filter(o => o.sellerId === me).forEach(o => {
+      const p = P(o.productId), others = S.offers.filter(x => x.productId === o.productId && x.sellerId !== me && x.stock), low = others.length ? Math.min(...others.map(x => x.price)) : null;
+      const mk = market().find(m => m.productId === o.productId);
+      const rel = low == null ? null : (o.price - low) / low;
+      const pos = rel == null ? 'Ганцаараа' : rel <= 0 ? 'Хамгийн хямд' : rel <= 0.05 ? `${Math.round(rel * 100)}% дээр` : `${Math.round(rel * 100)}% дээр, ${money(low - o.price)} болгох уу`;
+      h += `<tr><td>${p.em} ${esc(p.name)}</td><td class="num">${money(o.price)}</td><td class="num">${low == null ? '—' : money(low)}</td><td class="num">${mk ? qtyText(Math.round(mk.demandWeek), p.unit) : '—'}</td><td class="${rel != null && rel > 0.05 ? 'bad' : rel != null && rel <= 0 ? 'good' : ''}">${pos}</td></tr>`;
+    });
+    return h + '</tbody></table></div>';
+  }
+  function labView() {
+    const ev = evaluation(), d = data();
+    const skillText = ev.demandSkill > ev.nullMax ? `санамсаргүй холисон өгөгдөл дээр хамгийн ихдээ ${pct(ev.nullMax)} гардаг тул бодит дохио` : 'санамсаргүйгээс ялгарахгүй, өгөгдөл цөөн эсвэл хэв маяг сул';
+    let h = `<div class="card"><h3>Хиймэл зах</h3><p class="small muted">${num(d.buyers.length)} захиалагч (ресторан, дэлгүүр, гуанз, айл), ${num(d.history.length)} захиалга, ${num(d.days)} хоног. Дотор нь: гарагийн зуршил, амралт, алдагдсан хэрэглэгч, сонгины хомсдол (${d.shock.day}-р өдрөөс), үнээ дооруулж аваад “дууссан” гэдэг нэг лангуу, улирлын үнийн хандлага. Загварууд эдгээрийг хэлж өгөөгүй, өөрсдөө олох ёстой.</p>
+      <div class="grid2"><div><label for="synDays">Хоног</label><input class="field" id="synDays" type="number" inputmode="numeric" min="30" max="365" value="${d.days}"></div><div><label for="synSeed">Үр (seed)</label><input class="field" id="synSeed" type="number" inputmode="numeric" min="1" max="9999" value="${S.synth.seed}"></div></div>
+      <button class="btn block" style="margin-top:12px" data-act="regen">Дахин үүсгэх</button></div>`;
+    h += `<div class="card"><h3>Эрэлтийн таамаг</h3><p class="small">Алдаа naive (7 хоногийн дундаж) таамгаас <b>${pct(ev.demandSkill)}</b> бага. ${skillText}.</p><div class="scroll"><table><thead><tr><th>Бараа</th><th class="num">маргааш</th><th class="num">алдаа</th><th class="num">naive</th><th class="num">сайжрал</th><th>гол загвар</th></tr></thead><tbody>${ev.demand.map(x => { const p = P(x.productId), top = x.weights.slice().sort((a, b) => b.w - a.w)[0]; return `<tr><td>${p.em} ${esc(p.name)}</td><td class="num">${Math.round(x.next)}</td><td class="num">${x.mae.toFixed(1)}</td><td class="num">${x.naiveMae.toFixed(1)}</td><td class="num ${x.skill > 0.03 ? 'good' : x.skill < -0.03 ? 'bad' : ''}">${pct(x.skill)}</td><td>${top.label} ${pct(top.w)}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+    h += `<div class="card"><h3>Хэн маргааш захиалах вэ</h3><p class="small">Сүүлийн 10 өдөр дээр шалгахад захиалах/захиалахгүйг <b>${pct(ev.customerAcc)}</b> зөв таасан; хамгийн магадлалтай 5-ын <b>${pct(ev.customerTop5)}</b> нь үнэхээр захиалсан. Дундаж өдөр захиалагчдын ${pct(ev.baseRate)} нь захиалдаг, тэгэхээр 5-аас санамсаргүй сонговол ${pct(ev.baseRate)} таарна.</p></div>`;
+    h += `<div class="card"><h3>Үнийн байрлал захиалга авахад</h3>${ev.winShare.map(w => `<div class="bar"><span>${w.label}</span><span class="track"><span class="fill" style="width:${Math.round((w.share || 0) * 100)}%"></span></span><span class="num">${pct(w.share)}</span></div>`).join('')}<p class="small muted">Тухайн бараанд санал болгосон лангуунуудаас хэн авагдсан бэ. Хямд байх нь тусалдаг ч бүгдийг шийддэггүй: үнэнч байдал, чанар бас тоглоно.</p></div>`;
+    const flagged = ev.bait.filter(b => b.flagged);
+    h += `<div class="card"><h3>Зүй бус хэв маяг</h3><p class="small muted">Лангуу хамгийн хямд үнэтэй байхдаа “дууссан” гэх нь бусад үеэс их юу. Санамсаргүй холилтоор 200 удаа шалгасан p утга.</p><div class="scroll"><table><thead><tr><th>Лангуу</th><th class="num">хямд үед дууссан</th><th class="num">бусад үед</th><th class="num">p</th></tr></thead><tbody>${ev.bait.map(b => { const s = SE(b.id); return `<tr><td>${s.stall}-р, ${esc(s.name)}${b.flagged ? ' <span class="pill no">сэжигтэй</span>' : ''}</td><td class="num">${pct(b.cheapRate)} <small class="muted">(${b.cheapN})</small></td><td class="num">${pct(b.otherRate)} <small class="muted">(${b.otherN})</small></td><td class="num">${b.p == null ? '—' : b.p.toFixed(3)}</td></tr>`; }).join('')}</tbody></table></div>${flagged.length ? `<p class="small">${flagged.map(b => SE(b.id).stall + '-р лангуу').join(', ')}: хямд үнээр захиалга аваад бараагүй гэдэг нь санамсаргүйгээр тайлбарлагдахгүй. Захиалагчдад “найдвартай” хувилбарт энэ лангуу орохгүй.</p>` : ''}</div>`;
+    h += `<div class="card"><h3>Өөр салбарт хэрхэн шилжих вэ</h3><p class="small muted">Энэ хуудасны загварууд “хэн, хэзээ, юуг, хэнээс авах вэ” гэсэн ерөнхий асуултад ажилладаг. Захиалагч → үйлчлүүлэгч, лангуу → салбар/нийлүүлэгч, бараа → үйлчилгээ гэж солиход: эмнэлгийн давтан үзлэг, фитнесийн гишүүнчлэл сунгалт, бөөний нийлүүлэлт, түрээсийн төлбөр, аль ч захиалгын бизнест ижил код ажиллана. Шаардлага нэг: өдөр бүрийн бодит бүртгэл.</p></div>`;
+    return h;
+  }
 
   function cartView() {
     const lines = cartLines();
@@ -389,8 +516,10 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     const mine = S.orders.filter(o => o.items.some(it => it.sellerId === me) && !['cancel'].includes(o.status));
     const waiting = mine.filter(o => o.items.some(it => it.sellerId === me && it.status === 'new')).length;
     let h = `<label for="meSel">Лангуу</label><select class="field" id="meSel">${S.sellers.slice().sort((a, b) => a.stall - b.stall).map(s => `<option value="${s.id}"${s.id === me ? ' selected' : ''}>${stallName(s)}</option>`).join('')}</select>
-      <nav class="sub" aria-label="Худалдаачин"><button data-act="stab" data-v="orders" aria-pressed="${S.sellerTab === 'orders'}">Захиалга${waiting ? `<span class="badge">${waiting}</span>` : ''}</button><button data-act="stab" data-v="prices" aria-pressed="${S.sellerTab === 'prices'}">Үнэ, бараа</button><button data-act="stab" data-v="money" aria-pressed="${S.sellerTab === 'money'}">Орлого</button></nav>`;
-    if (S.sellerTab === 'prices') return h + sellerPrices();
+      <nav class="sub" aria-label="Худалдаачин"><button data-act="stab" data-v="orders" aria-pressed="${S.sellerTab === 'orders'}">Захиалга${waiting ? `<span class="badge">${waiting}</span>` : ''}</button><button data-act="stab" data-v="prices" aria-pressed="${S.sellerTab === 'prices'}">Үнэ</button><button data-act="stab" data-v="stock" aria-pressed="${S.sellerTab === 'stock'}">Нөөц</button><button data-act="stab" data-v="cust" aria-pressed="${S.sellerTab === 'cust'}">Хэрэглэгч</button><button data-act="stab" data-v="money" aria-pressed="${S.sellerTab === 'money'}">Орлого</button></nav>`;
+    if (S.sellerTab === 'prices') return h + sellerPrices() + `<details style="margin-top:12px"><summary>Зах зээл дээрх байрлал</summary>${sellerMarket()}</details>`;
+    if (S.sellerTab === 'stock') return h + sellerStock();
+    if (S.sellerTab === 'cust') return h + sellerCustomers();
     if (S.sellerTab === 'money') return h + sellerMoney(mine);
     const open = mine.filter(o => !['done'].includes(o.status));
     if (!open.length) return h + `<p class="empty">Шинэ захиалга алга. Өглөө үнээ шинэчилбэл захиалагчид хамгийн сүүлийн үнийг харна.</p>`;
@@ -479,6 +608,13 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
     const ord = () => S.orders.find(o => o.id === v);
     switch (a) {
       case 'role': S.role = v; break;
+      case 'plan': {
+        const req = Object.entries(cartLines().reduce((m, l) => { m[l.offer.productId] = (m[l.offer.productId] || 0) + l.qty; return m; }, {})).map(([productId, qty]) => ({ productId, qty }));
+        const pl = ZE.basketPlans(req, S.offers, reliability(), { lambda: S.lambda })[v];
+        S.cart = {}; req.forEach(l => { const o = pl.pick[l.productId]; if (o) S.cart[o.id] = l.qty; });
+        toast('Сагс шинэчлэгдлээ'); break;
+      }
+      case 'regen': { S.synth = { days: Math.min(365, Math.max(30, parseInt($('synDays').value, 10) || 90)), seed: Math.max(1, parseInt($('synSeed').value, 10) || 7) }; invalidate(); toast('Хиймэл зах дахин үүслээ'); break; }
       case 'tab': if (S.buyerTab === 'cart') readProfile(); S.buyerTab = v; window.scrollTo(0, 0); break;
       case 'stab': S.sellerTab = v; break;
       case 'cat': S.cat = v; S.open = null; break;
@@ -509,13 +645,14 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       }
       case 'onway': { const o = ord(); if (phase(o) === 'picked') { o.status = 'onway'; log(o, 'Хүргэгч замд гарсан'); toast(`${o.no} замд гарлаа`); } break; }
       case 'delivered': { const o = ord(); o.status = 'done'; o.doneAt = Date.now(); log(o, 'Хүргэгдсэн'); toast(`${o.no} хүргэгдлээ`); break; }
-      case 'reset': if (confirm('Бүх захиалга, үнийн өөрчлөлт устаж жишээ өгөгдөл сэргэнэ. Үргэлжлүүлэх үү?')) { S = seed(); toast('Жишээ өгөгдөл сэргээлээ'); } break;
+      case 'reset': if (confirm('Бүх захиалга, үнийн өөрчлөлт устаж жишээ өгөгдөл сэргэнэ. Үргэлжлүүлэх үү?')) { S = seed(); invalidate(); toast('Жишээ өгөгдөл сэргээлээ'); } break;
       default: return;
     }
-    save(); render();
+    invalidate(); save(); render();
   });
 
   document.addEventListener('input', e => {
+    if (e.target.id === 'lam') { S.lambda = parseInt(e.target.value, 10); save(); render(); return; }
     if (e.target.id === 'q' && !e.isComposing) {
       S.q = e.target.value; S.open = null;
       const pos = e.target.selectionStart; save(); render();
@@ -531,9 +668,14 @@ footer button { border: 0; background: none; color: var(--leaf); padding: 0; cur
       if (v > 0) S.cart[t.dataset.qty] = v; else delete S.cart[t.dataset.qty];
       save(); render(); return;
     }
+    if (t.dataset.stock) {
+      const v = parseFloat(String(t.value).replace(',', '.'));
+      if (isNaN(v) || t.value === '') delete S.stockQty[t.dataset.stock]; else S.stockQty[t.dataset.stock] = Math.max(0, v);
+      invalidate(); save(); render(); return;
+    }
     if (t.dataset.price) {
       const of = O(t.dataset.price), v = parseInt(t.value, 10);
-      if (v > 0 && v !== of.price) { of.price = v; save(); toast(`${P(of.productId).name}: ${money(v)}`); render(); }
+      if (v > 0 && v !== of.price) { of.price = v; invalidate(); save(); toast(`${P(of.productId).name}: ${money(v)}`); render(); }
       return;
     }
     if (t.dataset.pick) {
