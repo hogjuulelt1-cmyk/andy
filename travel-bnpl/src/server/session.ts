@@ -89,3 +89,19 @@ export function todayInSeoul(): string {
 export function newId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// ---- travel profile (matching) ----
+import type { TravelProfile } from "@/lib/matching";
+
+const PROFILE_COOKIE = "demo_profile";
+
+export async function getProfile(): Promise<TravelProfile | null> {
+  const jar = await cookies();
+  return parse<TravelProfile | null>(jar.get(PROFILE_COOKIE)?.value, null);
+}
+
+export async function setProfile(profile: TravelProfile | null): Promise<void> {
+  const jar = await cookies();
+  if (profile) jar.set(PROFILE_COOKIE, JSON.stringify(profile), COOKIE_OPTS);
+  else jar.delete(PROFILE_COOKIE);
+}

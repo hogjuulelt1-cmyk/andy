@@ -1,15 +1,64 @@
 {
-  "_note": "Placeholder departures for 2027 season. Dates are Asia/Seoul calendar days; prices are estimates, 'booked' is example data.",
+  "_note": "Placeholder departures for the 2027 season. Dates are Asia/Seoul calendar days; prices are estimates; 'booked' and 'members' are example data (member ids index src/server/members.ts POOL).",
   "departures": [
+    {
+      "id": "gc-2027-06-12",
+      "packageSlug": "gobi-central-9d",
+      "startDate": "2027-06-12",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 2190000,
+      "depositKrw": 600000,
+      "booked": 3,
+      "members": [0, 3, 7],
+      "status": "open"
+    },
+    {
+      "id": "gc-2027-07-03",
+      "packageSlug": "gobi-central-9d",
+      "startDate": "2027-07-03",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 2390000,
+      "depositKrw": 700000,
+      "booked": 5,
+      "members": [1, 2, 4, 6, 9],
+      "status": "confirmed"
+    },
+    {
+      "id": "gc-2027-07-24",
+      "packageSlug": "gobi-central-9d",
+      "startDate": "2027-07-24",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 2390000,
+      "depositKrw": 700000,
+      "booked": 6,
+      "members": [0, 1, 2, 3, 4, 5],
+      "status": "full"
+    },
+    {
+      "id": "gc-2027-08-14",
+      "packageSlug": "gobi-central-9d",
+      "startDate": "2027-08-14",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 2290000,
+      "depositKrw": 650000,
+      "booked": 2,
+      "members": [8, 10],
+      "status": "open"
+    },
     {
       "id": "gobi-2027-05-29",
       "packageSlug": "gobi-7d",
       "startDate": "2027-05-29",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1350000,
+      "priceKrw": 1690000,
       "depositKrw": 550000,
       "booked": 2,
+      "members": [5, 11],
       "status": "open"
     },
     {
@@ -18,9 +67,10 @@
       "startDate": "2027-06-19",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1550000,
-      "depositKrw": 700000,
+      "priceKrw": 1790000,
+      "depositKrw": 600000,
       "booked": 4,
+      "members": [0, 2, 6, 9],
       "status": "confirmed"
     },
     {
@@ -29,9 +79,10 @@
       "startDate": "2027-07-10",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1800000,
-      "depositKrw": 900000,
+      "priceKrw": 1890000,
+      "depositKrw": 700000,
       "booked": 6,
+      "members": [1, 3, 4, 7, 8, 10],
       "status": "full"
     },
     {
@@ -40,9 +91,10 @@
       "startDate": "2027-08-07",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1700000,
-      "depositKrw": 850000,
+      "priceKrw": 1890000,
+      "depositKrw": 700000,
       "booked": 1,
+      "members": [11],
       "status": "open"
     },
     {
@@ -51,9 +103,58 @@
       "startDate": "2027-09-11",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1300000,
+      "priceKrw": 1690000,
       "depositKrw": 550000,
       "booked": 0,
+      "members": [],
+      "status": "open"
+    },
+    {
+      "id": "central-2027-06-05",
+      "packageSlug": "central-6d",
+      "startDate": "2027-06-05",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1390000,
+      "depositKrw": 550000,
+      "booked": 3,
+      "members": [2, 5, 9],
+      "status": "open"
+    },
+    {
+      "id": "central-2027-07-17",
+      "packageSlug": "central-6d",
+      "startDate": "2027-07-17",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1590000,
+      "depositKrw": 700000,
+      "booked": 4,
+      "members": [1, 4, 6, 10],
+      "status": "confirmed"
+    },
+    {
+      "id": "central-2027-08-21",
+      "packageSlug": "central-6d",
+      "startDate": "2027-08-21",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1490000,
+      "depositKrw": 650000,
+      "booked": 2,
+      "members": [3, 8],
+      "status": "open"
+    },
+    {
+      "id": "central-2027-10-02",
+      "packageSlug": "central-6d",
+      "startDate": "2027-10-02",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1390000,
+      "depositKrw": 550000,
+      "booked": 1,
+      "members": [7],
       "status": "open"
     },
     {
@@ -62,9 +163,10 @@
       "startDate": "2027-04-30",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 850000,
-      "depositKrw": 400000,
+      "priceKrw": 890000,
+      "depositKrw": 490000,
       "booked": 3,
+      "members": [0, 4, 11],
       "status": "open"
     },
     {
@@ -73,9 +175,10 @@
       "startDate": "2027-06-04",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1000000,
+      "priceKrw": 990000,
       "depositKrw": 550000,
       "booked": 5,
+      "members": [1, 2, 5, 8, 10],
       "status": "confirmed"
     },
     {
@@ -84,9 +187,10 @@
       "startDate": "2027-10-08",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 900000,
-      "depositKrw": 450000,
+      "priceKrw": 890000,
+      "depositKrw": 490000,
       "booked": 0,
+      "members": [],
       "status": "open"
     },
     {
@@ -95,9 +199,10 @@
       "startDate": "2027-06-26",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1600000,
-      "depositKrw": 750000,
+      "priceKrw": 1690000,
+      "depositKrw": 650000,
       "booked": 2,
+      "members": [6, 9],
       "status": "open"
     },
     {
@@ -106,9 +211,10 @@
       "startDate": "2027-07-24",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1900000,
-      "depositKrw": 900000,
+      "priceKrw": 1890000,
+      "depositKrw": 750000,
       "booked": 4,
+      "members": [3, 5, 7, 11],
       "status": "confirmed"
     },
     {
@@ -117,9 +223,10 @@
       "startDate": "2027-08-14",
       "capacity": 6,
       "minToConfirm": 4,
-      "priceKrw": 1750000,
-      "depositKrw": 850000,
+      "priceKrw": 1790000,
+      "depositKrw": 700000,
       "booked": 3,
+      "members": [0, 2, 10],
       "status": "open"
     }
   ]

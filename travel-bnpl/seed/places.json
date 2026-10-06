@@ -1,0 +1,102 @@
+{
+  "_note": "Key places used by itineraries. lat/lon approximate (route map only). scene = illustration type.",
+  "places": {
+    "ub": { "lat": 47.92, "lon": 106.92, "ko": "울란바토르", "en": "Ulaanbaatar", "scene": "city" },
+    "tsagaan-suvarga": {
+      "lat": 44.6,
+      "lon": 105.75,
+      "ko": "차강 소브라가",
+      "en": "Tsagaan Suvarga",
+      "scene": "canyon"
+    },
+    "yolyn-am": {
+      "lat": 43.49,
+      "lon": 104.07,
+      "ko": "욜린암",
+      "en": "Yolyn Am",
+      "scene": "canyon"
+    },
+    "khongoryn-els": {
+      "lat": 43.8,
+      "lon": 102.3,
+      "ko": "홍고린 엘스",
+      "en": "Khongoryn Els",
+      "scene": "dunes"
+    },
+    "bayanzag": {
+      "lat": 44.14,
+      "lon": 103.73,
+      "ko": "바양작",
+      "en": "Bayanzag",
+      "scene": "cliffs"
+    },
+    "ongi": {
+      "lat": 45.33,
+      "lon": 104.0,
+      "ko": "옹기 사원",
+      "en": "Ongi monastery",
+      "scene": "monastery"
+    },
+    "baga-gazriin-chuluu": {
+      "lat": 46.23,
+      "lon": 106.03,
+      "ko": "바가 가즈린 촐로",
+      "en": "Baga Gazriin Chuluu",
+      "scene": "rocks"
+    },
+    "terelj": { "lat": 47.98, "lon": 107.45, "ko": "테를지", "en": "Terelj", "scene": "rocks" },
+    "tsonjin-boldog": {
+      "lat": 47.81,
+      "lon": 107.53,
+      "ko": "칭기즈칸 기마상",
+      "en": "Chinggis Khaan statue",
+      "scene": "steppe"
+    },
+    "hustai": { "lat": 47.7, "lon": 105.9, "ko": "후스타이", "en": "Hustai", "scene": "horses" },
+    "murun": { "lat": 49.64, "lon": 100.16, "ko": "무릉", "en": "Murun", "scene": "steppe" },
+    "khatgal": { "lat": 50.44, "lon": 100.16, "ko": "하트갈", "en": "Khatgal", "scene": "lake" },
+    "khuvsgul": {
+      "lat": 50.9,
+      "lon": 100.3,
+      "ko": "흡스굴 호수",
+      "en": "Lake Khuvsgul",
+      "scene": "lake"
+    },
+    "elsen-tasarkhai": {
+      "lat": 47.35,
+      "lon": 103.68,
+      "ko": "엘승 타사르하이",
+      "en": "Elsen Tasarkhai",
+      "scene": "dunes"
+    },
+    "kharkhorin": {
+      "lat": 47.2,
+      "lon": 102.83,
+      "ko": "하르허린",
+      "en": "Kharkhorin",
+      "scene": "monastery"
+    },
+    "orkhon-falls": {
+      "lat": 46.78,
+      "lon": 101.96,
+      "ko": "어르헝 폭포",
+      "en": "Orkhon Falls",
+      "scene": "steppe"
+    },
+    "tsenkher": {
+      "lat": 47.33,
+      "lon": 101.68,
+      "ko": "쳉헤르 온천",
+      "en": "Tsenkher hot springs",
+      "scene": "hotspring"
+    },
+    "terkhiin-tsagaan": {
+      "lat": 48.17,
+      "lon": 99.72,
+      "ko": "테르힝 차강 호수",
+      "en": "Terkhiin Tsagaan lake",
+      "scene": "lake"
+    },
+    "ugii": { "lat": 47.78, "lon": 102.76, "ko": "우기 호수", "en": "Ugii lake", "scene": "lake" }
+  }
+}

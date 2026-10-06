@@ -1,18 +1,20 @@
 {
   "app": {
-    "name": "Mongolia Companions",
-    "tagline": "Pay the flight first, the rest via Toss before departure",
-    "description": "Mongolia package trips for Koreans in their 20s and 30s. Join a companion group and lock your seat by paying only the flight portion."
+    "name": "Monggle",
+    "tagline": "Mongolia, together. Pay the flight first, the rest via Toss before departure",
+    "description": "Mongolia companion packages for people in their 20s and 30s. Find a group that matches your travel style and lock your seat by paying only the flight portion."
   },
   "home": {
-    "title": "Stars, steppe, ger. The easiest way to get to Mongolia",
+    "title": "Stars, steppe, ger. To Mongolia with people like you",
     "steps": {
       "browse": "Pick a package",
       "join": "Join a companion group",
       "deposit": "Pay the flight portion to lock your seat",
       "installments": "Rest paid via Toss before departure (card installments available)"
     },
-    "cta": "Browse packages"
+    "cta": "Browse packages",
+    "matchCta": "Find companions like me",
+    "illustrationNote": "illustration"
   },
   "nav": {
     "language": "Language",
@@ -25,7 +27,8 @@
     "my": "My trips",
     "login": "Log in",
     "logout": "Log out",
-    "demo": "Demo"
+    "demo": "Demo",
+    "match": "Find companions"
   },
   "packages": {
     "heading": "Packages",
@@ -49,7 +52,10 @@
     "stay": "Stay",
     "price": "Price",
     "remaining": "Remainder paid via Toss by 7 days before departure, card installments available",
-    "priceNote": "Estimate. The exact price is shown when you pick a departure."
+    "priceNote": "Estimate. The exact price is shown when you pick a departure.",
+    "route": "Route",
+    "routeNote": "Approximate route. The order of stops can change with local conditions.",
+    "badge": "Highlights"
   },
   "departure": {
     "seats": "{booked}/{capacity} seats",
@@ -161,6 +167,82 @@
       "remainder": "Pay the remainder (7 days before departure)"
     },
     "notMember": "Join this departure to see the chat and checklist.",
-    "join": "Join"
+    "join": "Join",
+    "match": "{n}% match with you",
+    "matchHint": "Fill in your travel style under Find companions to see per-member matches",
+    "setProfile": "Set my travel style"
+  },
+  "match": {
+    "heading": "Find companions like me",
+    "lead": "Answer 7 questions and we'll rank departure groups by fit. MBTI is optional.",
+    "mbti": "MBTI (optional)",
+    "mbtiPlaceholder": "e.g. ENFP",
+    "mbtiHint": "Leave blank if unsure. For travel we weigh N/S and J/P most.",
+    "gender": "Gender",
+    "genderF": "Female",
+    "genderM": "Male",
+    "genderO": "Other",
+    "q": {
+      "pace": "Travel pace?",
+      "food": "Food?",
+      "drink": "Drinks?",
+      "wake": "Early bird or night owl?",
+      "photo": "Photos?",
+      "budget": "Camps and vehicle?",
+      "mix": "Group gender mix?"
+    },
+    "a": {
+      "pace": {
+        "active": "See as much as possible",
+        "relaxed": "Slow and easy"
+      },
+      "food": {
+        "korean": "Need Korean food",
+        "local": "Happy with local food",
+        "any": "I eat anything"
+      },
+      "drink": {
+        "yes": "A drink in the evening",
+        "some": "Depends on the mood",
+        "no": "I don't drink"
+      },
+      "wake": {
+        "early": "Up early for sunrise",
+        "late": "Up late for stars"
+      },
+      "photo": {
+        "lots": "Photos matter a lot",
+        "some": "A few is fine"
+      },
+      "budget": {
+        "value": "Best value",
+        "comfort": "Prefer camps with showers"
+      },
+      "mix": {
+        "any": "Doesn't matter",
+        "same": "Same gender only"
+      }
+    },
+    "submit": "Show matching groups",
+    "edit": "Change answers",
+    "results": "Recommended departures",
+    "resultsLead": "Ranked by fit with members who already joined. Empty departures: you'd be the first.",
+    "score": "{n}% match",
+    "empty": "Be the first",
+    "reasons": "What fits",
+    "reason": {
+      "pace": "pace",
+      "food": "food",
+      "wake": "rhythm",
+      "drink": "drinks",
+      "photo": "photos",
+      "budget": "budget",
+      "mbti": "MBTI",
+      "mix": "group mix"
+    },
+    "mixWarn": "Not a same-gender group",
+    "viewGroup": "See group",
+    "join": "Join",
+    "saved": "Saved your travel style"
   }
 }

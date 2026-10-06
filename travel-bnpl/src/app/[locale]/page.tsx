@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SceneArt } from "@/components/art";
 import { PackageCard } from "@/components/package-card";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, isLocale, localePath } from "@/lib/i18n";
@@ -25,14 +26,23 @@ export default async function Home({ params }: Props) {
       <SiteHeader locale={locale} />
 
       <section className="flex flex-col gap-3">
+        <SceneArt scene="stars" seed={7} title={m.home.title} />
         <h1 className="text-3xl font-bold leading-tight text-balance">{m.home.title}</h1>
         <p className="text-base text-zinc-600 dark:text-zinc-300">{m.app.tagline}</p>
-        <Link
-          href={localePath(locale, "/packages")}
-          className="mt-2 w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          {m.home.cta}
-        </Link>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Link
+            href={localePath(locale, "/match")}
+            className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900"
+          >
+            {m.home.matchCta}
+          </Link>
+          <Link
+            href={localePath(locale, "/packages")}
+            className="rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-semibold dark:border-zinc-700"
+          >
+            {m.home.cta}
+          </Link>
+        </div>
       </section>
 
       <ol className="flex flex-col gap-3">

@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SceneArt } from "@/components/art";
 import { Checklist, GroupChat } from "@/components/group-tools";
+import { MatchBadge } from "@/components/match-badge";
 import { SiteHeader } from "@/components/site-header";
 import { formatRange } from "@/lib/dates";
 import { t } from "@/lib/format";
 import { getMessages, isLocale, localePath } from "@/lib/i18n";
 import { daysBetween } from "@/lib/installments";
+import { pairMatch } from "@/lib/matching";
 import { getDeparture, getPackage } from "@/server/catalog";
-import { mockChat, mockMembers } from "@/server/members";
-import { findBookingForDeparture, getUser, todayInSeoul } from "@/server/session";
+import { membersOf, mockChat } from "@/server/members";
+import { findBookingForDeparture, getProfile, getUser, todayInSeoul } from "@/server/session";
 
 type Props = Readonly<{ params: Promise<{ locale: string; id: string }> }>;
 
@@ -31,17 +34,12 @@ export default async function GroupPage({ params }: Props) {
   if (!pkg) notFound();
   const m = getMessages(locale);
   const user = await getUser();
+  const profile = await getProfile();
   const booking = await findBookingForDeparture(dep.id);
   const isMember = !!user && !!booking && booking.status !== "pending_deposit";
 
-  const others = mockMembers(dep.id, dep.booked, locale);
-  const members = isMember
-    ? [
-        ...others,
-        { id: "you", name: user.name, intro: "", gender: "f" as const, age: "", isYou: true },
-      ]
-    : others;
-  const booked = members.length;
+  const others = membersOf(dep.id, dep.memberIndexes, locale);
+  const booked = others.length + (isMember ? 1 : 0);
   const left = Math.max(0, dep.capacity - booked);
   const confirmed = dep.status === "confirmed" || booked >= dep.minToConfirm;
   const dDay = daysBetween(todayInSeoul(), dep.startDate);
@@ -51,6 +49,8 @@ export default async function GroupPage({ params }: Props) {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-4 py-10">
       <SiteHeader locale={locale} path={`/departures/${dep.id}/group`} />
+
+      <SceneArt scene={pkg.hero} seed={dep.startDate.length + dep.id.length} title={pkg.title} />
 
       <section className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">{m.group.heading}</h1>
@@ -82,35 +82,54 @@ export default async function GroupPage({ params }: Props) {
             {t(m.group.seats, { booked, capacity: dep.capacity, left })}
           </span>
         </div>
+        {!profile && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            {m.group.matchHint}{" "}
+            <Link href={localePath(locale, "/match")} className="underline underline-offset-4">
+              {m.group.setProfile}
+            </Link>
+          </p>
+        )}
         <ul className="flex flex-col gap-2">
-          {members.map((p) => (
-            <li
-              key={p.id}
-              className="flex items-center gap-3 rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-800"
-            >
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold dark:bg-zinc-700">
-                {p.name.slice(0, 1)}
-              </span>
-              <div className="flex min-w-0 flex-col">
-                <span className="text-sm font-semibold">
-                  {p.name}
-                  {p.isYou && (
-                    <span className="ml-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">
-                      ({m.group.you})
-                    </span>
-                  )}
-                  {p.age && (
+          {others.map((p) => {
+            const score = profile ? pairMatch(profile, p.profile).score : null;
+            return (
+              <li
+                key={p.id}
+                className="flex items-center gap-3 rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-800"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-sm font-semibold dark:bg-zinc-700">
+                  {p.name.slice(0, 1)}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-sm font-semibold">
+                    {p.name}
                     <span className="ml-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">
                       {p.age}
+                      {p.profile.mbti && ` · ${p.profile.mbti}`}
                     </span>
-                  )}
-                </span>
-                {p.intro && (
+                  </span>
                   <span className="text-xs text-zinc-600 dark:text-zinc-300">{p.intro}</span>
+                </div>
+                {score !== null && (
+                  <MatchBadge score={score} label={t(m.group.match, { n: score })} />
                 )}
-              </div>
+              </li>
+            );
+          })}
+          {isMember && user && (
+            <li className="flex items-center gap-3 rounded-2xl border border-zinc-200 px-4 py-3 dark:border-zinc-800">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-sm font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900">
+                {user.name.slice(0, 1)}
+              </span>
+              <span className="text-sm font-semibold">
+                {user.name}
+                <span className="ml-1.5 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                  ({m.group.you}){profile?.mbti && ` · ${profile.mbti}`}
+                </span>
+              </span>
             </li>
-          ))}
+          )}
           {Array.from({ length: left }, (_, i) => (
             <li
               key={`empty-${i}`}
@@ -122,7 +141,7 @@ export default async function GroupPage({ params }: Props) {
         </ul>
       </section>
 
-      {isMember ? (
+      {isMember && user ? (
         <>
           <GroupChat
             departureId={dep.id}

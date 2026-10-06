@@ -41,6 +41,9 @@ export async function SiteHeader({ locale, path = "/" }: { locale: Locale; path?
         <Link href={localePath(locale, "/packages")} className={pill}>
           {m.nav.packages}
         </Link>
+        <Link href={localePath(locale, "/match")} className={pill}>
+          {m.nav.match}
+        </Link>
         <Link href={localePath(locale, "/my")} className={pill}>
           {m.nav.my}
         </Link>

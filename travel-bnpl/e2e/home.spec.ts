@@ -13,7 +13,7 @@ test("home page renders in Korean at / without horizontal overflow", async ({ pa
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/$/);
-  await expect(page).toHaveTitle(/몽골/);
+  await expect(page).toHaveTitle(/몽글/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "ko");
 
@@ -24,7 +24,7 @@ test("home page renders in Korean at / without horizontal overflow", async ({ pa
 test("/en renders the English version and links back to Korean", async ({ page }) => {
   await page.goto("/en");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(page).toHaveTitle(/Mongolia/);
+  await expect(page).toHaveTitle(/Monggle/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Mongolia");
   await expectNoOverflow(page);
 

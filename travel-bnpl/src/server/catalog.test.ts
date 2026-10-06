@@ -10,14 +10,26 @@ import {
 } from "./catalog";
 
 describe("catalog", () => {
-  it("lists the three seed packages in Korean and English", async () => {
+  it("lists the seed packages in Korean and English with places and a route", async () => {
     const ko = await listPackages("ko");
     const en = await listPackages("en");
-    expect(ko.map((p) => p.slug)).toEqual(["gobi-7d", "terelj-hustai-4d", "khuvsgul-6d"]);
-    expect(ko[0].title).toBe("고비 사막 7일");
-    expect(en[0].title).toBe("Gobi 7 days");
-    expect(ko[0].itinerary[0].title).toContain("울란바토르");
-    expect(en[0].itinerary[0].title).toBe("Arrive Ulaanbaatar");
+    expect(ko.map((p) => p.slug)).toEqual([
+      "gobi-central-9d",
+      "gobi-7d",
+      "central-6d",
+      "terelj-hustai-4d",
+      "khuvsgul-6d",
+    ]);
+    const gobiKo = ko.find((p) => p.slug === "gobi-7d")!;
+    const gobiEn = en.find((p) => p.slug === "gobi-7d")!;
+    expect(gobiKo.title).toBe("남고비 6박 7일");
+    expect(gobiEn.title).toBe("South Gobi 7 days");
+    expect(gobiKo.itinerary[0].title).toContain("울란바토르");
+    expect(gobiEn.itinerary[0].title).toBe("Arrive Ulaanbaatar");
+    expect(gobiKo.itinerary[3].place.name).toBe("홍고린 엘스");
+    expect(gobiKo.route).toHaveLength(7);
+    expect(gobiKo.route[0].label).toBe("울란바토르");
+    expect(gobiKo.hero).toBe("stars");
   });
 
   it("returns null for an unknown package", async () => {
@@ -44,6 +56,7 @@ describe("catalog", () => {
     expect(full && seatsLeft(full)).toBe(0);
     expect(full && isJoinable(full)).toBe(false);
     expect(open && seatsLeft(open)).toBe(4);
+    expect(open?.memberIndexes).toEqual([5, 11]);
     expect(open && isJoinable(open)).toBe(true);
     expect(seatsLeft({ capacity: 6, booked: 9 })).toBe(0);
   });

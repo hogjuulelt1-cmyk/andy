@@ -28,7 +28,7 @@ test("full demo flow: login → join → mock Toss deposit → my trips → grou
   await expect(page).toHaveURL(/\/my\?paid=/);
   await expect(page.getByRole("status")).toContainText("좌석이 확정");
   await expect(page.getByText("좌석 확정 · 잔금 남음")).toBeVisible();
-  await expect(page.getByText(/잔금 800,000원 · .*까지/)).toBeVisible();
+  await expect(page.getByText(/잔금 1,140,000원 · .*까지/)).toBeVisible();
 
   // Group page shows me as a member with chat + checklist.
   await page.getByRole("link", { name: "동행 그룹" }).click();
@@ -44,7 +44,7 @@ test("full demo flow: login → join → mock Toss deposit → my trips → grou
   // Pay the remainder with card 3개월 무이자.
   await page.goto("/my");
   await page.getByRole("link", { name: "잔금 결제" }).click();
-  await expect(page.getByText("800,000원").first()).toBeVisible();
+  await expect(page.getByText("1,140,000원").first()).toBeVisible();
   await page.getByLabel("할부").selectOption("3");
   await page.getByRole("button", { name: /결제하기/ }).click();
   await expect(page.getByText("결제 완료")).toBeVisible();

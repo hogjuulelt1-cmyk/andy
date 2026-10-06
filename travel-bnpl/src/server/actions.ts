@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { defaultLocale, isLocale, localePath, type Locale } from "@/lib/i18n";
 import { remainderDueDate } from "@/lib/installments";
 import { assertKrw } from "@/lib/money";
+import { OPTIONS, isValidMbti, type QuestionKey, type TravelProfile } from "@/lib/matching";
 import { getDeparture, isJoinable } from "@/server/catalog";
 import {
   findBookingForDeparture,
@@ -12,6 +13,7 @@ import {
   listBookings,
   newId,
   saveBookings,
+  setProfile,
   setUser,
   todayInSeoul,
   type DemoBooking,
@@ -136,4 +138,35 @@ export async function cancelPendingAction(form: FormData): Promise<void> {
     await saveBookings((await listBookings()).filter((x) => x.id !== bookingId));
   }
   redirect(localePath(locale, b ? `/departures/${b.departureId}/join` : "/my"));
+}
+
+export async function saveProfileAction(form: FormData): Promise<void> {
+  const locale = localeOf(form);
+  const pickOpt = <K extends QuestionKey>(k: K): TravelProfile[K] => {
+    const v = String(form.get(k) ?? "");
+    return ((OPTIONS[k] as readonly string[]).includes(v) ? v : OPTIONS[k][0]) as TravelProfile[K];
+  };
+  const mbtiRaw = String(form.get("mbti") ?? "")
+    .trim()
+    .toUpperCase();
+  const genderRaw = String(form.get("gender") ?? "f");
+  const profile: TravelProfile = {
+    mbti: isValidMbti(mbtiRaw) ? mbtiRaw : "",
+    pace: pickOpt("pace"),
+    food: pickOpt("food"),
+    drink: pickOpt("drink"),
+    wake: pickOpt("wake"),
+    photo: pickOpt("photo"),
+    budget: pickOpt("budget"),
+    mix: pickOpt("mix"),
+    gender: genderRaw === "m" ? "m" : genderRaw === "other" ? "other" : "f",
+  };
+  await setProfile(profile);
+  redirect(localePath(locale, "/match") + "?saved=1");
+}
+
+export async function clearProfileAction(form: FormData): Promise<void> {
+  const locale = localeOf(form);
+  await setProfile(null);
+  redirect(localePath(locale, "/match"));
 }

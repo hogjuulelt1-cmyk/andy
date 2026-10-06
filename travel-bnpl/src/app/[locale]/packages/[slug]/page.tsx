@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { RouteMap, SceneArt } from "@/components/art";
 import { DepartureList } from "@/components/departure-list";
 import { SiteHeader } from "@/components/site-header";
 import { getMessages, isLocale, localePath, locales } from "@/lib/i18n";
@@ -47,7 +48,12 @@ export default async function PackagePage({ params }: Props) {
         </Link>
       </nav>
 
+      <SceneArt scene={pkg.hero} seed={pkg.slug.length} title={pkg.title} />
+
       <section className="flex flex-col gap-3">
+        <span className="w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          {pkg.badge}
+        </span>
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-2xl font-bold leading-tight text-balance">{pkg.title}</h1>
           <span className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
@@ -94,17 +100,29 @@ export default async function PackagePage({ params }: Props) {
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-xl font-bold">{m.detail.route}</h2>
+        <RouteMap stops={pkg.route} />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">{m.detail.routeNote}</p>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-xl font-bold">{m.detail.itinerary}</h2>
         <ol className="flex flex-col">
           {pkg.itinerary.map((d) => (
             <li
               key={d.dayNumber}
-              className="flex gap-4 border-b border-zinc-200 py-3 last:border-b-0 dark:border-zinc-800"
+              className="flex gap-3 border-b border-zinc-200 py-3 last:border-b-0 dark:border-zinc-800"
             >
-              <span className="w-14 shrink-0 text-sm font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
-                {t(m.detail.day, { n: d.dayNumber })}
-              </span>
+              <SceneArt
+                scene={d.place.scene}
+                seed={d.dayNumber * 13 + pkg.slug.length}
+                title={d.place.name}
+                className="w-20 shrink-0 rounded-xl"
+              />
               <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-xs font-semibold text-zinc-500 tabular-nums dark:text-zinc-400">
+                  {t(m.detail.day, { n: d.dayNumber })} · {d.place.name}
+                </span>
                 <p className="text-sm">{d.title}</p>
                 {d.stay && (
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">
