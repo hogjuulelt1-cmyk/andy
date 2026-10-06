@@ -4,6 +4,10 @@
 
 Энэ хавтас `andy` repo-гийн дэд хавтас (Chinbilig Tracker-тэй хамаагүй). Бүх командыг `travel-bnpl/` дотроос ажиллуул.
 
+## Демо горим
+
+Одоогоор апп бүхэлдээ **mock** горимоор ажиллана: нэвтрэлт cookie (нэр л оруулна), захиалга cookie-д, Toss checkout нь `src/components/toss-checkout.tsx` дээрх дууриамал дэлгэц, бүлгийн гишүүд/чат `src/server/members.ts`-ийн mock өгөгдөл + localStorage. DB, Auth.js, Toss SDK ирэхээр `src/server/session.ts`, `actions.ts`, `catalog.ts` гурван файлыг л солино.
+
 ## Ажиллуулах
 
 ```bash

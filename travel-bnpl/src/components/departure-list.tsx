@@ -93,6 +93,12 @@ export function DepartureList({ departures, locale }: { departures: Departure[];
                     <dt className="text-zinc-500 dark:text-zinc-400">{m.departure.depositLabel}</dt>
                     <dd className="text-right tabular-nums">{formatKrw(d.depositKrw)}</dd>
                   </dl>
+                  <Link
+                    href={localePath(locale, `/departures/${d.id}/group`)}
+                    className="text-sm text-zinc-500 underline-offset-4 hover:underline dark:text-zinc-400"
+                  >
+                    {m.departure.group} →
+                  </Link>
                   {joinable ? (
                     <Link
                       href={localePath(locale, `/departures/${d.id}/join`)}

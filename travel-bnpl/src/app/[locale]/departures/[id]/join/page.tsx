@@ -6,16 +6,14 @@ import { formatDay, formatRange } from "@/lib/dates";
 import { getMessages, isLocale, localePath } from "@/lib/i18n";
 import { remainderDueDate } from "@/lib/installments";
 import { formatKrw } from "@/lib/money";
+import { startBookingAction } from "@/server/actions";
 import { getDeparture, getPackage, isJoinable } from "@/server/catalog";
+import { findBookingForDeparture, getUser, todayInSeoul } from "@/server/session";
 
 type Props = Readonly<{ params: Promise<{ locale: string; id: string }> }>;
 
-// The due date depends on today's date, so this page is rendered per request.
+// The due date depends on today's date and the session, so render per request.
 export const dynamic = "force-dynamic";
-
-function todayInSeoul(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(new Date());
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -33,14 +31,20 @@ export default async function JoinPage({ params }: Props) {
   if (!pkg) notFound();
   const m = getMessages(locale);
   const joinable = isJoinable(dep);
+  const user = await getUser();
+  const existing = await findBookingForDeparture(dep.id);
 
   const remainderKrw = dep.priceKrw - dep.depositKrw;
   const { dueDate, payWithDeposit } = remainderDueDate(todayInSeoul(), dep.startDate);
   const payTodayKrw = dep.depositKrw + (payWithDeposit ? remainderKrw : 0);
+  const joinPath = `/departures/${dep.id}/join`;
+
+  const ctaClass =
+    "flex w-full items-center justify-center rounded-full bg-zinc-900 px-5 py-3 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900";
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-4 py-10">
-      <SiteHeader locale={locale} path={`/departures/${dep.id}/join`} />
+      <SiteHeader locale={locale} path={joinPath} />
 
       <nav className="text-sm">
         <Link
@@ -113,14 +117,39 @@ export default async function JoinPage({ params }: Props) {
       )}
 
       <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          disabled
-          className="rounded-full bg-zinc-900 px-5 py-3 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          {m.join.cta} · {formatKrw(payTodayKrw)}
-        </button>
-        <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">{m.join.ctaSoon}</p>
+        {existing && existing.status !== "pending_deposit" ? (
+          <>
+            <p className="text-center text-sm text-zinc-600 dark:text-zinc-300">
+              {m.join.alreadyJoined}
+            </p>
+            <Link href={localePath(locale, "/my")} className={ctaClass}>
+              {m.join.goMy}
+            </Link>
+          </>
+        ) : !user ? (
+          <>
+            <p className="text-center text-sm text-zinc-600 dark:text-zinc-300">
+              {m.join.loginFirst}
+            </p>
+            <Link
+              href={
+                localePath(locale, "/login") +
+                `?next=${encodeURIComponent(localePath(locale, joinPath))}`
+              }
+              className={ctaClass}
+            >
+              {m.join.login}
+            </Link>
+          </>
+        ) : (
+          <form action={startBookingAction} className="flex flex-col gap-2">
+            <input type="hidden" name="locale" value={locale} />
+            <input type="hidden" name="departureId" value={dep.id} />
+            <button type="submit" disabled={!joinable} className={ctaClass}>
+              {payWithDeposit ? m.join.ctaFull : m.join.cta} · {formatKrw(payTodayKrw)}
+            </button>
+          </form>
+        )}
       </div>
     </main>
   );

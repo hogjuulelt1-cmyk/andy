@@ -12,14 +12,14 @@
 - Package list + detail page (Korean), itinerary per day, price range.
 - Departures calendar with seat fill (e.g. 4/6).
 
-## M2 — Join + deposit (in progress)
+## M2 — Join + deposit (demo done ✅ — mock login + mock Toss in src/server/session.ts & actions.ts; real Auth.js + Toss SDK pending keys)
 
 - Kakao/Naver login, profile (name as in passport, gender, age range, intro).
 - Join a departure → Toss Payments checkout for the deposit → server confirm + webhook → seat held.
 - Remainder due date (≥7 days before departure) shown on the booking; paid via a second Toss checkout (card 무이자 할부 available there). ✅ date logic in `src/lib/installments.ts`; join page at /departures/[id]/join.
 - Reminder emails before the remainder due date.
 
-## M3 — Matching + group (core product)
+## M3 — Matching + group (core product; demo group page done ✅ — members/chat/checklist are mock + localStorage)
 
 - Group page per departure: members (first name + intro), seat fill, confirmed/open status, countdown.
 - Group chat (Supabase Realtime or polling), checklist (passport, eSIM, insurance).

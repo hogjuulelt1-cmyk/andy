@@ -21,7 +21,11 @@
       "en": "English"
     },
     "home": "Home",
-    "packages": "Packages"
+    "packages": "Packages",
+    "my": "My trips",
+    "login": "Log in",
+    "logout": "Log out",
+    "demo": "Demo"
   },
   "packages": {
     "heading": "Packages",
@@ -61,7 +65,8 @@
     "join": "Join",
     "joinSoon": "Joining opens soon",
     "depositLabel": "Deposit",
-    "totalLabel": "Total"
+    "totalLabel": "Total",
+    "group": "See the group"
   },
   "join": {
     "heading": "Join this departure",
@@ -79,6 +84,83 @@
     "ctaSoon": "Toss Payments is being connected.",
     "notJoinable": "This departure cannot be joined.",
     "remainderDue": "Remainder due",
-    "remainderHow": "Paid through Toss Payments. You can choose interest-free card installments there."
+    "remainderHow": "Paid through Toss Payments. You can choose interest-free card installments there.",
+    "loginFirst": "Log in to join this departure.",
+    "login": "Log in and join",
+    "alreadyJoined": "You already joined this departure.",
+    "goMy": "See my trips",
+    "ctaFull": "Pay in full with Toss"
+  },
+  "login": {
+    "heading": "Log in",
+    "lead": "This is the demo. Enter a name to log in. The real service uses Kakao or Naver accounts.",
+    "name": "Name (shown to your group)",
+    "namePlaceholder": "e.g. Jimin",
+    "kakao": "Continue with Kakao",
+    "naver": "Continue with Naver",
+    "errorName": "Please enter a name."
+  },
+  "pay": {
+    "heading": "Checkout",
+    "demoNote": "Demo checkout. In the real service the Toss Payments window opens and card details are entered at Toss only.",
+    "deposit": "Deposit",
+    "remainder": "Remainder",
+    "full": "Full amount",
+    "method": "Payment method",
+    "card": "Card",
+    "tosspay": "Toss Pay",
+    "kakaopay": "Kakao Pay",
+    "naverpay": "Naver Pay",
+    "installment": "Installments",
+    "lump": "Lump sum",
+    "months": "{n} months interest-free",
+    "installmentNote": "Interest-free installments are provided by the card issuer. We charge no interest or fees.",
+    "pay": "Pay {amount}",
+    "cancel": "Cancel",
+    "orderName": "{pkg} · {date}"
+  },
+  "my": {
+    "heading": "My trips",
+    "empty": "You haven't joined a trip yet.",
+    "browse": "Browse packages",
+    "paidBanner": "Payment complete. Your seat is confirmed!",
+    "status": {
+      "pending_deposit": "Deposit unpaid",
+      "seat_held": "Seat confirmed · remainder due",
+      "paid_in_full": "Paid in full"
+    },
+    "remainderDue": "Remainder {amount} · by {date}",
+    "payRemainder": "Pay remainder",
+    "continueDeposit": "Continue deposit payment",
+    "group": "Companion group",
+    "cancel": "Cancel",
+    "paidVia": "Paid via {method}",
+    "installmentVia": "Card, {n} months interest-free"
+  },
+  "group": {
+    "heading": "Companion group",
+    "members": "Members",
+    "you": "you",
+    "seats": "{booked}/{capacity} seats · {left} left",
+    "confirmed": "Departure confirmed!",
+    "needMore": "{n} more to confirm",
+    "countdown": "D-{n} to departure",
+    "today": "Departing today!",
+    "chat": "Group chat",
+    "chatPlaceholder": "Write a message",
+    "send": "Send",
+    "chatNote": "Demo: messages stay on this device only.",
+    "checklist": "Checklist",
+    "checklistNote": "Demo: checks are saved on this device only.",
+    "items": {
+      "passport": "Passport valid 6+ months",
+      "esim": "eSIM / SIM ready",
+      "insurance": "Travel insurance",
+      "cash": "Some cash (tugrik)",
+      "clothes": "Layers for cold nights, hat, sunscreen",
+      "remainder": "Pay the remainder (7 days before departure)"
+    },
+    "notMember": "Join this departure to see the chat and checklist.",
+    "join": "Join"
   }
 }
