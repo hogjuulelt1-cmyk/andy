@@ -271,6 +271,31 @@ svg.wheel{width:100%;max-width:330px;height:auto;display:block;margin:0 auto;ove
 .chip.pchip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);min-height:38px} .chip.pchip svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} .chip.pchip span{color:var(--ink)}
 .jump{padding:8px 10px;border-radius:12px;background:var(--sunk);display:flex;flex-direction:column;gap:6px}
 @media (prefers-reduced-motion:no-preference){.wheel .ph.cur circle{animation:pulse 1.6s ease-in-out infinite}}
+/* roll graph */
+.rollcard{padding-top:12px}
+.rollcv{background:var(--sunk)}
+.rn circle.b{fill:var(--surface);stroke:currentColor;stroke-width:2}
+.rn circle.hit{fill:transparent}
+.rn text.lb{font-weight:600;fill:var(--ink)}
+.rn.cur circle.b{fill:currentColor;stroke:currentColor;stroke-width:3} .rn.cur .ic{color:#fff} .rn.cur text.lb{font-weight:700}
+.rn.df circle.b{stroke-dasharray:4 3}
+.rn.ring2{opacity:.5} .rn.ring2 text.lb{font-size:9.5px}
+.rn.trail{opacity:.55} .rn.trail circle.b{stroke:var(--muted)} .rn.trail .ic{color:var(--muted)}
+.rn.fin circle.b{fill:var(--ok-soft)}
+.rn.start circle.hit{r:30}
+line.g-edge{stroke:var(--line);stroke-width:2;stroke-linecap:round}
+line.g-edge.step{stroke-width:2.5}
+line.g-edge.df{stroke-dasharray:5 4}
+line.g-edge.faint{opacity:.3;stroke-width:1.5}
+line.g-edge.trail{stroke:var(--accent);stroke-width:3;opacity:.6}
+line.g-edge.works,line.g-edge.tap{stroke-dasharray:none}
+.canvas text.more{font-size:10px;fill:var(--muted);font-weight:600}
+.canvas .fbar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.canvas .pillb{border:0;background:var(--surface);box-shadow:var(--shadow);border-radius:999px;padding:8px 14px;font-weight:600;font-size:.84rem;color:var(--accent);min-height:38px}
+.canvas .pillb.strong{background:var(--accent);color:var(--accent-ink)}
+.canvas .pillb:disabled{opacity:.4}
+.qline{font-size:.95rem}
+@media (prefers-reduced-motion:no-preference){.rn.cur circle.b{animation:pulse 1.6s ease-in-out infinite}}
 .roll{display:flex;flex-direction:column;gap:8px}
 .roll h3{color:var(--ink);text-transform:none;letter-spacing:0;font-size:1.05rem}
 .crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:.76rem}

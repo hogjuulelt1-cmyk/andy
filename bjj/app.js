@@ -286,15 +286,15 @@ VIEWS.tech = function () {
   if (UI.tech.view === "plans") return h + vPlans();
   if (UI.tech.view === "rolls") return h + vRolls();
   const R = UI.roll;
-  h += '<div class="card wheelcard">' + wheelSvg();
-  if (R) h += rollPanel();
-  else {
-    const cat = UI.walkCat;
-    h += '<div class="walk"><h3>Where are you?</h3>';
-    if (cat) h += '<p class="muted small">' + esc(CATS.find((c) => c[0] === cat)[1]) + ' · pick the position</p><div class="chips">' + positions().filter((p) => p.cat === cat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[cat] + '">' + iconFor(p) + '<span>' + esc(p.n) + "</span></button>").join("") + "</div>";
-    else h += '<p class="muted small">Tap a phase on the wheel, then the position. From there you answer one question at a time: what do you do, what do they do, what do you do next. It loops until a submission or points.</p><div class="actions"><button class="btn" data-act="walk-pos" data-id="st">Start standing</button></div>';
-    h += "</div>";
-  }
+  h += '<div class="card rollcard">';
+  if (R) {
+    const trail = R.steps.map((st, i) => '<button type="button" class="crumb ' + st.k + (i === R.steps.length - 1 ? " last" : "") + '" data-act="roll-rewind" data-i="' + i + '">' + esc(st.n) + "</button>").join('<span class="sep">›</span>');
+    h += '<div class="histwrap"><div class="hist" id="hist">' + trail + "</div></div>";
+    if (UI.walkCat) h += '<div class="jump"><p class="muted small">I ended up in…</p><div class="chips">' + positions().filter((p) => p.cat === UI.walkCat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div></div>";
+  } else h += '<div class="card-head"><h3>Where are you?</h3><span class="muted small">tap a position to start</span></div>';
+  h += rollGraphSvg();
+  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> · " + q + ' <span class="muted">tap a node</span></p>'; }
+  else h += '<div class="legend">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + '</div><p class="muted small">You jump from node to node: the position you are in sits in the middle, every move you could make orbits it, and what comes after each move is faded further out. It loops until a submission or points.</p>';
   h += "</div>";
   const all = positions();
   h += '<details class="card fold"><summary><h3>All positions</h3><span class="muted small">' + all.length + " · browse & edit</span></summary><div class=\"list\">" + CATS.map(([cat, label]) => { const ps = all.filter((p) => p.cat === cat); return ps.length ? '<div class="group-label" style="color:' + CAT_COLOR[cat] + '">' + label + "</div>" + ps.map((p) => '<button class="node-row" data-act="open" data-id="' + p.id + '"><span class="pict" style="color:' + CAT_COLOR[cat] + '">' + iconFor(p) + '</span><div class="txt"><b>' + esc(p.n) + "</b>" + (p.en ? "<small>" + esc(p.en) + "</small>" : "") + '</div><span class="cnt">' + kids(p.id).length + "</span>" + CHEV + "</button>").join("") : ""; }).join("") + '</div><button class="btn ghost wide" data-act="add-node" data-p="">+ Add position</button></details>';
@@ -352,7 +352,7 @@ const TICON = {
 };
 const svgIcon = (inner) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>";
 function pictSvg(cat) { return svgIcon(PICT[cat] || PICT.guard); }
-function iconFor(n) { return svgIcon(n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : TICON[n.t] || TICON.trans); }
+function iconFor(n) { return svgIcon(n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : TICON[n.t] || TICON.trans); }
 function nodeColor(n) { return n.k === "pos" ? CAT_COLOR[n.cat] || "var(--ink)" : n.k === "df" ? "var(--df-ink)" : typeColor(n.t); }
 
 /* ======================= GRAPHS ======================= */
@@ -377,42 +377,95 @@ function iconNode(n, cx, cy, r, opt) {
   if (opt.badge) h += '<g class="g-badge"><circle cx="' + (cx + r * 0.75) + '" cy="' + (cy - r * 0.75) + '" r="8.5"/><text x="' + (cx + r * 0.75) + '" y="' + (cy - r * 0.75 + 3.3) + '" text-anchor="middle">+' + opt.badge + "</text></g>";
   return h + "</g>";
 }
-function canvasHtml(id, svgInner, bounds, legend) {
-  const sid = id.replace(/[^a-z0-9]/gi, "_");
-  return '<div class="canvas" data-graph="' + id + '" data-x0="' + bounds.x + '" data-y0="' + bounds.y + '" data-w="' + bounds.w + '" data-h="' + bounds.h + '"><svg class="g" aria-label="Technique graph"><defs><pattern id="dots-' + sid + '" width="22" height="22" patternUnits="userSpaceOnUse"><circle class="g-dots" cx="1" cy="1" r="1"/></pattern><marker id="arr-' + sid + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="context-stroke"/></marker></defs><rect class="bgp" x="-5000" y="-5000" width="10000" height="10000" fill="url(#dots-' + sid + ')"/><g class="vp">' + svgInner + "</g></svg>" +
+function canvasHtml(id, svgInner, bounds, legend, roll) {
+  const sid = id.replace(/[^a-z0-9]/gi, "_"); const R = UI.roll;
+  const bar = roll && R ? '<div class="fbar"><button type="button" class="pillb" data-act="roll-undo"' + (R.steps.length < 2 ? " disabled" : "") + '>↶ Undo</button><button type="button" class="pillb" data-act="roll-other">Elsewhere…</button><button type="button" class="pillb strong" data-act="roll-end">End roll</button></div>' : "";
+  return '<div class="canvas' + (roll ? " rollcv" : "") + '" data-graph="' + id + '" data-x0="' + bounds.x + '" data-y0="' + bounds.y + '" data-w="' + bounds.w + '" data-h="' + bounds.h + '"><svg class="g" aria-label="Technique graph"><defs><pattern id="dots-' + sid + '" width="22" height="22" patternUnits="userSpaceOnUse"><circle class="g-dots" cx="1" cy="1" r="1"/></pattern><marker id="arr-' + sid + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="context-stroke"/></marker></defs><rect class="bgp" x="-5000" y="-5000" width="10000" height="10000" fill="url(#dots-' + sid + ')"/><g class="vp">' + svgInner + "</g></svg>" +
     '<div class="ctl"><button type="button" data-g="in" aria-label="Zoom in">+</button><button type="button" data-g="out" aria-label="Zoom out">−</button><button type="button" data-g="fit" aria-label="Fit to screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>' +
-    '<div class="hint">drag · pinch · tap</div><div class="gchip"></div></div>' + (legend || "");
+    '<div class="hint">' + (roll ? (R ? "tap the next step" : "tap a position") : "drag · pinch · tap") + '</div><div class="gchip"></div>' + bar + "</div>" + (legend || "");
 }
 
-/* --- the wheel: 5 phases in a loop, finish in the middle, the current roll drawn on top --- */
-const PHASES = CATS.map((c) => c[0]);
-function wheelSvg() {
-  const C = 150, RR = 102, LR = 138, W = 300, H = 300; const R = UI.roll;
-  const ang = (i) => (-90 + i * 72) * Math.PI / 180; const pt = (i, r) => [C + Math.cos(ang(i)) * r, C + Math.sin(ang(i)) * r];
-  const phaseOf = (pid) => { const p = node(pid); return p ? PHASES.indexOf(p.cat) : -1; };
-  const steps = R ? R.steps : []; const posSteps = steps.filter((x) => x.k === "pos"); const curPh = R ? phaseOf(R.pos) : -1;
-  const visits = {}; for (const x of posSteps) { const i = phaseOf(x.id); visits[i] = (visits[i] || 0) + 1; }
-  let h = '<svg class="wheel" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Roll wheel"><defs><marker id="warr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 1L9 5L0 9z" fill="context-stroke"/></marker></defs>';
-  // ring with direction arrows
-  h += '<circle class="ring" cx="' + C + '" cy="' + C + '" r="' + RR + '"/>';
-  for (let i = 0; i < 5; i++) { const a1 = ang(i) + 0.42, a2 = ang(i + 1) - 0.42; const [x1, y1] = [C + Math.cos(a1) * RR, C + Math.sin(a1) * RR], [x2, y2] = [C + Math.cos(a2) * RR, C + Math.sin(a2) * RR]; h += '<path class="ringarr" marker-end="url(#warr)" d="M' + x1.toFixed(1) + " " + y1.toFixed(1) + " A" + RR + " " + RR + " 0 0 1 " + x2.toFixed(1) + " " + y2.toFixed(1) + '"/>'; }
-  // trail chords
-  let last = -1, lastId = null; const seen = {};
-  for (const x of posSteps) { const i = phaseOf(x.id); if (last >= 0 && i !== last) { const [x1, y1] = pt(last, RR - 14), [x2, y2] = pt(i, RR - 14); const k = last + ">" + i; seen[k] = (seen[k] || 0) + 1; const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, dm = Math.hypot(mx - C, my - C); let qx, qy; if (dm < 48) { const px = -(y2 - y1), py = x2 - x1, pl = Math.hypot(px, py) || 1; qx = mx + (px / pl) * 52; qy = my + (py / pl) * 52; } else { qx = mx + (C - mx) * 0.35; qy = my + (C - my) * 0.35; } h += '<path class="trail" style="stroke-width:' + (2 + seen[k]) + '" marker-end="url(#warr)" d="M' + x1.toFixed(1) + " " + y1.toFixed(1) + " Q" + qx.toFixed(1) + " " + qy.toFixed(1) + " " + x2.toFixed(1) + " " + y2.toFixed(1) + '"/>'; } else if (last >= 0 && i === last && x.id !== lastId) { const [x1, y1] = pt(i, RR - 14); h += '<circle class="trail-dot" cx="' + x1.toFixed(1) + '" cy="' + y1.toFixed(1) + '" r="5"/>'; } last = i; lastId = x.id; }
-  const subTried = steps.some((x) => x.k === "mv" && x.t === "sub"); const finished = R && R.finished;
-  if (subTried && curPh >= 0) { const [x1, y1] = pt(curPh, RR - 14); h += '<path class="trail' + (finished ? " win" : " try") + '" marker-end="url(#warr)" d="M' + x1.toFixed(1) + " " + y1.toFixed(1) + " L" + C + " " + C + '"/>'; }
-  // center
-  h += '<g class="ph center' + (finished ? " win" : "") + '"><circle cx="' + C + '" cy="' + C + '" r="30"/><svg x="' + (C - 13) + '" y="' + (C - 17) + '" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + PICT.finish + '</svg><text x="' + C + '" y="' + (C + 20) + '" text-anchor="middle">finish</text></g>';
-  // phases
-  CATS.forEach(([cat, label], i) => {
-    const [x, y] = pt(i, RR), [lx, ly] = pt(i, LR); const cur = i === curPh, vis = !!visits[i]; const anchor = Math.abs(Math.cos(ang(i))) < 0.3 ? "middle" : Math.cos(ang(i)) > 0 ? "start" : "end";
-    h += '<g class="ph' + (cur ? " cur" : "") + (vis ? " vis" : "") + (UI.walkCat === cat && !R ? " pick" : "") + '" data-act="walk-phase" data-cat="' + cat + '" style="color:' + CAT_COLOR[cat] + '"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="22"/><svg x="' + (x - 13).toFixed(1) + '" y="' + (y - 13).toFixed(1) + '" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + PICT[cat] + "</svg>" +
-      '<text class="lb" x="' + lx.toFixed(1) + '" y="' + (ly + 4).toFixed(1) + '" text-anchor="' + anchor + '">' + esc(label.split(",")[0]) + "</text>" + (visits[i] > 1 ? '<g class="g-badge"><circle cx="' + (x + 17).toFixed(1) + '" cy="' + (y - 17).toFixed(1) + '" r="9"/><text x="' + (x + 17).toFixed(1) + '" y="' + (y - 13.5).toFixed(1) + '" text-anchor="middle">×' + visits[i] + "</text></g>" : "") + "</g>";
+/* --- roll graph ("second brain" view): the node you are in sits in the middle, every legal next step
+   orbits it, what lies behind those is faded further out, the way you came trails off to the left.
+   Tap a node to jump there. --- */
+const FINISH = { id: "finish", k: "fin", n: "Tap!", t: "", cat: "" };
+function nextOf(n) {
+  if (!n || n.k === "fin") return [];
+  const out = kids(n.id).map((c) => ({ n: c, how: c.k === "df" ? "they" : "me" }));
+  if (n.k === "mv") { if (n.to && node(n.to)) out.push({ n: node(n.to), how: "works" }); if (n.t === "sub") out.push({ n: FINISH, how: "tap" }); }
+  return out;
+}
+function gNode(n, x, y, r, role, attrs) {
+  const col = n.k === "fin" ? "var(--ok)" : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : TICON[n.t] || TICON.trans;
+  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const ls = role === "ring2" ? [] : wrapText(n.n, role === "cur" ? 20 : 15);
+  return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
+    '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
+    '<svg class="ic" x="' + (-ir / 2) + '" y="' + (-ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>" +
+    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + fs + 'px">' + esc(l) + "</text>").join("") + "</g>";
+}
+function gEdge(ka, a, kb, b, cls, color) { return '<line class="g-edge ' + cls + '" data-a="' + ka + '" data-b="' + kb + '" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>"; }
+function rollGraphSvg() {
+  const R = UI.roll; let nodesOut = "", edges = ""; const P = {}; let minX = -40, maxX = 40, minY = -40, maxY = 40;
+  const put = (key, n, x, y, r, role, attrs) => { P[key] = [x, y]; nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || "")); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
+  if (!R) {
+    const CR = 150; CATS.forEach(([cat], i) => { const a = (-90 + i * 72) * Math.PI / 180; const cx = Math.cos(a) * CR, cy = Math.sin(a) * CR; const ps = positions().filter((p) => p.cat === cat); const rr = ps.length > 1 ? 30 + ps.length * 7 : 0; ps.forEach((p, j) => { const b = a + (j / ps.length) * 2 * Math.PI; put("s:" + p.id, p, cx + Math.cos(b) * rr, cy + Math.sin(b) * rr, 15, "start"); }); });
+    const seen = {}; for (const m of nodes()) if (m.k === "mv" && m.to && P["s:" + m.to]) { const from = posOf(m.id).id; const k = from + ">" + m.to; if (from === m.to || !P["s:" + from] || seen[k]) continue; seen[k] = 1; edges += gEdge("s:" + from, P["s:" + from], "s:" + m.to, P["s:" + m.to], "faint", CAT_COLOR[node(from).cat]); }
+    return canvasHtml("roll", edges + nodesOut, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }, "", true);
+  }
+  const cur = R.cur === "finish" ? FINISH : node(R.cur) || node(R.pos);
+  // trail (the way you came), to the left
+  const prev = R.steps.slice(0, -1); let lastKey = "c";
+  for (let i = 0; i < Math.min(4, prev.length); i++) { const st = prev[prev.length - 1 - i]; const n = node(st.id); if (!n) break; const key = "t" + i; const x = -(i + 1) * 78, y = i % 2 ? 18 : -18; put(key, n, x, y, 11, "trail", 'data-i="' + (prev.length - 1 - i) + '"'); edges += gEdge(key, [x, y], lastKey, lastKey === "c" ? [0, 0] : P[lastKey], "trail"); lastKey = key; }
+  // next steps on the right
+  const next = nextOf(cur); const n1 = next.length; const r1 = Math.min(170, Math.max(112, 96 + n1 * 9)); const span = n1 > 1 ? Math.min(200, 60 + n1 * 28) : 0;
+  next.forEach((e, k) => {
+    const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "n:" + e.n.id;
+    put(key, e.n, x, y, 17, "next", 'data-how="' + e.how + '"');
+    edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : nodeColor(e.n));
+    const next2 = nextOf(e.n).slice(0, 3); const sector = n1 > 1 ? Math.min(44, span / (n1 - 1) * 0.9) : 60;
+    next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 92), y2 = Math.sin(a2) * (r1 + 92); const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, 10, "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint", e2.n.k === "fin" ? "var(--ok)" : nodeColor(e2.n)); });
+    if (nextOf(e.n).length > 3) { const a3 = (deg + sector / 2 + 10) * Math.PI / 180; nodesOut += '<text class="more" x="' + (Math.cos(a3) * (r1 + 92)).toFixed(1) + '" y="' + (Math.sin(a3) * (r1 + 92) + 4).toFixed(1) + '" text-anchor="middle">+' + (nextOf(e.n).length - 3) + "</text>"; }
   });
-  if (R) { const p = node(R.pos); if (p) { const [x, y] = pt(curPh, RR); h += '<text class="curlb" x="' + C + '" y="' + (H - 4) + '" text-anchor="middle">now: ' + esc(p.n) + "</text>"; } }
-  return h + "</svg>";
+  put("c", cur, 0, 0, 26, "cur");
+  if (!n1) nodesOut += '<text class="more" x="70" y="4">no next step written · add one or tap “Elsewhere”</text>';
+  return canvasHtml("roll", edges + nodesOut, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }, "", true);
 }
-
+/* animate nodes from where they were in the previous frame */
+function animateRoll(el) {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches; const prev = UI.graph.rollPrev || {}; const now = {}; const items = [];
+  el.querySelectorAll(".rn").forEach((g) => { const key = g.dataset.k, id = g.dataset.id, to = [+g.dataset.x, +g.dataset.y]; const from = prev[key] || prev["id:" + id] || null; now[key] = to; now["id:" + id] = to; items.push({ g, key, from, to }); });
+  UI.graph.rollPrev = now; if (reduced) return;
+  const lines = [...el.querySelectorAll("line.g-edge")]; const cur = {}; const t0 = performance.now(), D = 460;
+  for (const it of items) if (!it.from) { it.g.style.opacity = "0"; }
+  const frame = (t) => {
+    const k = Math.min(1, (t - t0) / D), e = 1 - Math.pow(1 - k, 3);
+    for (const it of items) { const p = it.from ? [it.from[0] + (it.to[0] - it.from[0]) * e, it.from[1] + (it.to[1] - it.from[1]) * e] : it.to; cur[it.key] = p; it.g.style.transform = "translate(" + p[0].toFixed(1) + "px," + p[1].toFixed(1) + "px)"; if (!it.from) it.g.style.opacity = String(Math.max(0, (k - 0.3) / 0.7)); }
+    for (const l of lines) { const a = cur[l.dataset.a], b = cur[l.dataset.b]; if (a) { l.setAttribute("x1", a[0]); l.setAttribute("y1", a[1]); } if (b) { l.setAttribute("x2", b[0]); l.setAttribute("y2", b[1]); } }
+    if (k < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+function rollTap(g) {
+  const role = g.dataset.role, id = g.dataset.id;
+  if (role === "start") { rollStart(id); return; }
+  const R = UI.roll; if (!R) return;
+  if (role === "trail") { rollRewind(+g.dataset.i); return; }
+  if (role === "cur") { quickSheet(id); return; }
+  if (role === "ring2") { rollStepTo(g.dataset.p); if (UI.roll && UI.roll.cur === g.dataset.p) rollStepTo(id); return; }
+  rollStepTo(id);
+}
+function rollStepTo(id) {
+  const R = UI.roll; if (!R) return;
+  if (id === "finish") { R.finished = true; rollEndSheet(true); return; }
+  const n = node(id); if (!n) return;
+  if (n.k === "pos") rollGoto(id, "worked"); else rollPick(id);
+}
+function rollRewind(i) { const R = UI.roll; if (!R || i >= R.steps.length - 1) return; R.steps = R.steps.slice(0, i + 1); const last = R.steps[i]; R.cur = last.id; const lp = R.steps.slice().reverse().find((x) => x.k === "pos"); R.pos = lp ? lp.id : R.pos; R.finished = false; render(); toast("Back to " + last.n); }
+function quickSheet(id) {
+  const n = node(id); if (!n) return;
+  const b = '<div class="actions" style="align-items:center"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + "</span>" + tbadge(n) + (n.en ? '<span class="muted small">' + esc(n.en) + "</span>" : "") + "</div>" + (n.s && n.s.length ? '<ol class="steps">' + n.s.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>" : "") + (n.x ? '<p class="small">' + esc(n.x) + "</p>" : "") + (!n.s.length && !n.x ? '<p class="muted small">No steps written yet.</p>' : "") + '<button class="btn ghost wide" data-act="open" data-id="' + n.id + '">Open & edit</button>';
+  openSheet(n.n, b, {});
+}
 /* --- technique mind map: root on the left, branches to the right (2 levels, tap +N for more) --- */
 function mindMapSvg(root) {
   const gid = "n:" + root.id, st = gState(gid); const R = 15, RR = 24, GAPX = 44, ROW = 40, DEPTH = 2;
@@ -442,18 +495,18 @@ function initGraphs() {
     if (el.dataset.ready) return; el.dataset.ready = "1";
     const id = el.dataset.graph, st = gState(id), vp = el.querySelector(".vp"), bgp = el.querySelector(".bgp");
     const bx = +el.dataset.x0, by = +el.dataset.y0, bw = +el.dataset.w, bh = +el.dataset.h; const S0 = 1;
-    el.style.height = Math.min(460, Math.max(220, Math.round(bh * S0 + 70))) + "px";
+    if (id !== "roll") el.style.height = Math.min(460, Math.max(220, Math.round(bh * S0 + 70))) + "px";
     const W = el.clientWidth || 358, H = el.clientHeight || 440;
     const apply = () => { vp.setAttribute("transform", "translate(" + st.tx + " " + st.ty + ") scale(" + st.s + ")"); bgp.setAttribute("transform", "translate(" + (st.tx % (22 * st.s)) + " " + (st.ty % (22 * st.s)) + ") scale(" + st.s + ")"); };
     const fit = () => { const s = Math.min(1.2, Math.max(0.5, Math.min((W - 24) / bw, (H - 24) / bh))); st.s = s; st.tx = (W - bw * s) / 2 - bx * s; st.ty = bh * s > H - 24 ? 12 - by * s : (H - bh * s) / 2 - by * s; apply(); };
     const zoomAt = (f, cx, cy) => { const ns = Math.min(3, Math.max(0.35, st.s * f)); const k = ns / st.s; st.tx = cx - (cx - st.tx) * k; st.ty = cy - (cy - st.ty) * k; st.s = ns; apply(); };
     const home = () => { const s = Math.min(S0, Math.max(0.8, (W - 16) / bw)); st.s = s; st.tx = bw * s <= W - 16 ? (W - bw * s) / 2 - bx * s : 8 - bx * s; st.ty = bh * s <= H - 24 ? (H - bh * s) / 2 - by * s : H / 2; apply(); };
     const centerOn = (nid) => { const g = el.querySelector('.g-node[data-id="' + nid + '"] circle.b'); if (!g) return; const cx = +g.getAttribute("cx"), cy = +g.getAttribute("cy"); st.tx = W / 2 - cx * st.s; st.ty = H / 2 - cy * st.s; apply(); };
-    if (!st.s) home(); else apply();
+    if (id === "roll") { el.style.height = (UI.roll ? 420 : 400) + "px"; const W2 = el.clientWidth || 358, H2 = el.clientHeight || 420; if (!st.s || !UI.roll) st.s = UI.roll ? 1 : Math.min(1, (W2 - 16) / bw); st.tx = UI.roll ? W2 * 0.42 : W2 / 2; st.ty = H2 / 2 - (UI.roll ? 14 : 0); apply(); if (UI.roll) el.querySelector(".ctl").hidden = true; animateRoll(el); }
+    else { if (!st.s) home(); else apply(); updateChip(id, el.querySelector(".gchip")); }
     if (st.focus) { centerOn(st.focus); st.focus = null; }
-    updateChip(id, el.querySelector(".gchip"));
     const ptrs = new Map(); let moved = false, down = null, lastT = 0, vx = 0, vy = 0, raf = 0, pinch0 = null;
-    el.addEventListener("pointerdown", (e) => { if (e.target.closest(".ctl,.gchip")) return; cancelAnimationFrame(raf); el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 1) { down = { x: e.clientX, y: e.clientY, t: Date.now(), target: e.target }; moved = false; vx = vy = 0; lastT = performance.now(); } else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), s: st.s }; } });
+    el.addEventListener("pointerdown", (e) => { if (e.target.closest(".ctl,.gchip,.fbar")) return; cancelAnimationFrame(raf); el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 1) { down = { x: e.clientX, y: e.clientY, t: Date.now(), target: e.target }; moved = false; vx = vy = 0; lastT = performance.now(); } else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), s: st.s }; } });
     el.addEventListener("pointermove", (e) => {
       if (!ptrs.has(e.pointerId)) return; const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (ptrs.size === 1) { const dx = e.clientX - prev.x, dy = e.clientY - prev.y; if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) moved = true; if (moved) { st.tx += dx; st.ty += dy; const now = performance.now(), dt = Math.max(1, now - lastT); vx = dx / dt; vy = dy / dt; lastT = now; apply(); } }
@@ -462,7 +515,7 @@ function initGraphs() {
     const up = (e) => {
       if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = null;
       if (ptrs.size === 0 && down) {
-        if (!moved && Date.now() - down.t < 600) { const g = down.target.closest ? down.target.closest(".g-node") : null; tapNode(id, g ? g.dataset.id : null, el); }
+        if (!moved && Date.now() - down.t < 600) { const g = down.target.closest ? down.target.closest(".g-node") : null; if (id === "roll") { if (g) rollTap(g); } else tapNode(id, g ? g.dataset.id : null, el); }
         else if (moved && Math.hypot(vx, vy) > 0.08 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) { let last = performance.now(); const step = (t) => { const dt = Math.min(40, t - last); last = t; st.tx += vx * dt; st.ty += vy * dt; const k = Math.pow(0.93, dt / 16); vx *= k; vy *= k; apply(); if (Math.hypot(vx, vy) > 0.01) raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
         down = null;
       }
@@ -496,7 +549,7 @@ function updateChip(gid, chip) {
 function rollStart(posId) {
   const p = node(posId) || positions()[0]; if (!p) return;
   UI.roll = { pos: p.id, cur: p.id, steps: [{ id: p.id, k: "pos", n: p.n, t: "" }], t0: Date.now() };
-  UI.tech.id = null; UI.tech.view = "pos"; UI.tech.q = ""; UI.walkCat = null; render();
+  UI.tech.id = null; UI.tech.view = "pos"; UI.tech.q = ""; UI.walkCat = null; { const pv = UI.graph.rollPrev && UI.graph.rollPrev["id:" + p.id]; const np = {}; np["id:" + p.id] = pv || [0, 0]; UI.graph.rollPrev = np; } render();
 }
 function rollGoto(posId, how) {
   const R = UI.roll, p = node(posId); if (!R || !p) return;
@@ -510,31 +563,6 @@ function rollPick(nid) {
   if (n.k === "mv" && !kids(n.id).length) { if (n.to && node(n.to)) { rollGoto(n.to, "auto"); return; } if (n.t === "sub") { R.cur = n.id; } }
   render();
 }
-function rollPanel() {
-  const R = UI.roll; const cur = node(R.cur) || node(R.pos); const kind = cur.k; const ch = kids(cur.id);
-  const trail = R.steps.map((st, i) => '<button type="button" class="crumb ' + st.k + (i === R.steps.length - 1 ? " last" : "") + '" data-act="roll-rewind" data-i="' + i + '">' + esc(st.n) + "</button>").join('<span class="sep">›</span>');
-  let h = '<div class="walk"><div class="histwrap"><div class="hist" id="hist">' + trail + "</div></div>";
-  if (UI.walkCat) h += '<div class="jump"><p class="muted small">I ended up in…</p><div class="chips">' + positions().filter((p) => p.cat === UI.walkCat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div></div>";
-  const row = (n, act, extra) => '<button class="row choice" data-act="' + act + '" data-id="' + n.id + '"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + '</span><div class="txt"><b>' + esc(n.n) + "</b>" + (extra ? "<small>" + extra + "</small>" : "") + "</div>" + CHEV + "</button>";
-  const ok = (label, sub, act, attrs) => '<button class="row choice ok" data-act="' + act + '" ' + (attrs || "") + '><span class="pict" style="color:var(--ok)">' + svgIcon('<path d="M5 12l5 5L19 7"/>') + '</span><div class="txt"><b>' + label + "</b><small>" + sub + "</small></div>" + CHEV + "</button>";
-  if (kind === "pos") {
-    h += '<h3><span class="q">You are in</span> ' + esc(cur.n) + '</h3><p class="qsub">What do you do?</p>';
-    h += ch.length ? '<div class="list">' + ch.map((n) => row(n, "roll-pick", (TNAME[n.t] || "") + (n.to && node(n.to) ? " · leads to " + esc(node(n.to).n) : ""))).join("") + "</div>" : '<p class="empty">No options written for this position yet.</p>';
-  } else if (kind === "mv") {
-    h += '<h3><span class="q">You go for</span> ' + esc(cur.n) + '</h3><p class="qsub">What does the opponent do?</p>';
-    h += '<div class="list">' + ch.map((n) => row(n, "roll-pick", kids(n.id).length ? kids(n.id).length + " answers ready" : "no answer yet")).join("");
-    if (cur.t === "sub") h += ok("Tap! It’s over", "finish the roll with this submission", "roll-finish");
-    if (cur.to && node(cur.to)) h += ok("It works → " + esc(node(cur.to).n), "continue from the new position", "roll-goto", 'data-pos="' + cur.to + '"');
-    if (!ch.length && !cur.to && cur.t !== "sub") h += '<p class="empty">No defense written yet.</p>';
-    h += "</div>";
-  } else {
-    h += '<h3><span class="q">They</span> ' + esc(cur.n.replace(/^They /i, "").toLowerCase()) + '</h3><p class="qsub">What do you do now?</p>';
-    h += ch.length ? '<div class="list">' + ch.map((n) => row(n, "roll-pick", (TNAME[n.t] || "") + (n.to && node(n.to) ? " · leads to " + esc(node(n.to).n) : ""))).join("") + "</div>" : '<p class="empty">No answer written yet. This is a gap in your game.</p>';
-  }
-  h += '<div class="actions" style="margin-top:6px"><button class="btn ghost" data-act="roll-other">Something else happened…</button><button class="btn ghost" data-act="roll-undo"' + (R.steps.length < 2 ? " disabled" : "") + '>Undo</button></div>';
-  h += '<div class="actions"><button class="btn" data-act="roll-end">End: points / time</button><button class="btn ghost danger" data-act="roll-cancel">' + (UI.confirm === "roll-cancel" ? "Discard this roll?" : "Discard") + '</button></div></div>';
-  return h;
-}
 function rollOtherSheet() {
   const b = '<p class="small muted">Pick the position you ended up in. The step is marked as a gap so you can add what happened to your tree later.</p>' + field("f-pos", "Now I’m in", '<select id="f-pos">' + positions().map((p) => '<option value="' + p.id + '">' + esc(p.n) + "</option>").join("") + "</select>");
   openSheet("Something else happened", b, { saveLabel: "Continue", onSave() { rollGoto(sv("f-pos"), "gap"); return true; } });
@@ -542,7 +570,7 @@ function rollOtherSheet() {
 function rollEndSheet(finished) {
   const R = UI.roll; if (!R) return;
   const b = '<div class="field"><span class="lbl">How did it end?</span>' + chips("res", [["sub", "I finished a sub"], ["points", "Won on points"], ["tapped", "I got tapped"], ["time", "Time ran out"], ["drill", "Just drilling"]], finished ? "sub" : "time") + "</div>" + field("f-note", "Note", ta("f-note", "", "What worked, what to fix…")) + '<div class="field"><span class="lbl">Date</span>' + inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"') + "</div>";
-  openSheet("End roll", b, { state: { picks: { res: finished ? "sub" : "time" } }, saveLabel: "Save roll", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), res: pickVal("res", "time"), note: sv("f-note").trim(), steps: R.steps, sec: Math.round((Date.now() - R.t0) / 1000) }; S.rolls.items.push(rec); save("rolls"); UI.roll = null; UI.tech.view = "rolls"; UI.rollId = rec.id; render(); toast("Roll saved"); return true; } });
+  openSheet("End roll", b, { state: { picks: { res: finished ? "sub" : "time" } }, saveLabel: "Save roll", delLabel: "Discard", onDelete() { UI.roll = null; render(); return true; }, onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), res: pickVal("res", "time"), note: sv("f-note").trim(), steps: R.steps, sec: Math.round((Date.now() - R.t0) / 1000) }; S.rolls.items.push(rec); save("rolls"); UI.roll = null; UI.tech.view = "rolls"; UI.rollId = rec.id; render(); toast("Roll saved"); return true; } });
 }
 function rollStatsFor(nid) { let used = 0; for (const r of S.rolls.items) if (r.steps.some((s) => s.id === nid)) used++; return { used }; }
 const RES_NAME = { sub: "Finished with a submission", points: "Won on points", tapped: "Got tapped", time: "Time ran out", drill: "Drilling" };
@@ -948,7 +976,7 @@ document.addEventListener("click", (e) => {
     case "roll-pick": rollPick(ds.id); break;
     case "roll-goto": rollGoto(ds.pos, "worked"); break;
     case "roll-other": rollOtherSheet(); break;
-    case "roll-rewind": if (UI.roll) { const i = +ds.i; if (i < UI.roll.steps.length - 1) { UI.roll.steps = UI.roll.steps.slice(0, i + 1); const last = UI.roll.steps[i]; UI.roll.cur = last.id; const lp = UI.roll.steps.slice().reverse().find((x) => x.k === "pos"); UI.roll.pos = lp ? lp.id : UI.roll.pos; UI.roll.finished = false; render(); toast("Rewound to " + last.n); } } break;
+    case "roll-rewind": rollRewind(+ds.i); break;
     case "roll-undo": if (UI.roll && UI.roll.steps.length > 1) { UI.roll.steps.pop(); const last = UI.roll.steps[UI.roll.steps.length - 1]; UI.roll.cur = last.id; const lp = UI.roll.steps.slice().reverse().find((x) => x.k === "pos"); UI.roll.pos = lp ? lp.id : UI.roll.pos; render(); } break;
     case "roll-finish": UI.roll.finished = true; rollEndSheet(true); break;
     case "roll-end": rollEndSheet(false); break;
