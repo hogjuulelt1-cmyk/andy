@@ -80,7 +80,7 @@ header.top{display:flex;flex-direction:column;gap:10px;padding-block:18px 4px}
 .top-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .who{display:flex;flex-direction:column;gap:6px;min-width:0}
 .who h1{font-size:1.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
-.belt{display:flex;height:14px;width:200px;max-width:60vw;border-radius:2px;overflow:hidden;border:1px solid var(--line)}
+.belt{display:flex;height:14px;width:200px;max-width:min(60vw,100%);border-radius:2px;overflow:hidden;border:1px solid var(--line)}
 .belt .b-main{flex:1}
 .belt .b-bar{width:34%;display:flex;gap:4px;align-items:stretch;justify-content:flex-end;padding:0 6px}
 .belt .b-bar i{width:4px;background:#fff}
@@ -305,7 +305,7 @@ button.row.agenda{width:100%;background:none;border-left:0;border-right:0;border
         <h1 id="who-name">Тамирчин</h1>
         <div class="belt" id="belt" aria-label="Бүс"></div>
       </div>
-      <button class="icon-btn" data-act="tab" data-v="settings">Тохиргоо</button>
+      <div style="display:flex;gap:8px;flex:none"><a class="icon-btn" href="/bjj/" style="text-decoration:none;display:inline-flex;align-items:center">Жиу-житсу</a><button class="icon-btn" data-act="tab" data-v="settings">Тохиргоо</button></div>
     </div>
     <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Холбогдож байна…</span></div>
   </header>
