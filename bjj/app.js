@@ -81,8 +81,8 @@ function seedAll(force) {
 }
 function mergeSeed() {
   const ver = SEED.version || 1; if ((S.settings.seedVer || 1) >= ver) return false;
-  const have = new Set(nodes().map((n) => n.id)); let added = 0;
-  for (const n of SEED.nodes()) if (!have.has(n.id) && (!n.p || have.has(n.p))) { nodes().push(n); have.add(n.id); added++; }
+  const have = new Map(nodes().map((n) => [n.id, n])); let added = 0; const FIELDS = ["gi", "belt", "pts", "energy", "when", "oc", "bait", "kids", "legal", "f", "rank"];
+  for (const n of SEED.nodes()) { const ex = have.get(n.id); if (!ex) { if (!n.p || have.has(n.p)) { nodes().push(n); have.set(n.id, n); added++; } } else for (const k of FIELDS) if (ex[k] === undefined && n[k] !== undefined) ex[k] = n[k]; }
   S.settings.seedVer = ver; return added;
 }
 function normalize() {
@@ -175,6 +175,31 @@ const CATS = [["stand", "Standing"], ["guard", "Guard, bottom"], ["pass", "Passi
 const CAT_COLOR = { stand: "var(--t-td)", guard: "var(--t-sweep)", pass: "var(--t-pass)", top: "var(--t-sub)", escape: "var(--t-esc)" };
 const TYPES = [["sub", "Submission"], ["sweep", "Sweep"], ["pass", "Pass"], ["td", "Takedown"], ["esc", "Escape"], ["trans", "Transition"], ["grip", "Grip"], ["ctl", "Control"]];
 const TNAME = Object.fromEntries(TYPES);
+const BELT_ORDER = ["white", "blue", "purple", "brown", "black"];
+const BELT_COLOR = { white: "#9a9aa2", blue: "#1f5fd6", purple: "#7a3fc4", brown: "#7a4a1f", black: "#111114" };
+const RANK = { "-2": ["Hard", "bad"], "-1": ["Tough", "warn"], "0": ["Neutral", "na"], "1": ["Good", "ok"], "2": ["Dominant", "ok"] };
+const GI_NAME = { gi: "Gi", nogi: "No-gi", both: "Gi · No-gi" };
+function myBeltIdx() { const b = (S.belt.belt || "white").split("-")[0]; const i = BELT_ORDER.indexOf(b); return i < 0 ? 0 : i; }
+function allowed(n) {
+  if (!n || n.k !== "mv") return true; const st = S.settings;
+  if (st.rules === "gi" && n.gi === "nogi") return false; if (st.rules === "nogi" && n.gi === "gi") return false;
+  if (st.beltFilter && BELT_ORDER.indexOf(n.belt || "white") > myBeltIdx()) return false;
+  return true;
+}
+function kidsWarn(n) { return n && n.kids === false && S.belt.track === "kids"; }
+function bolts(e) { let h = ""; for (let i = 1; i <= 3; i++) h += '<i class="' + (i <= (e || 2) ? "on" : "") + '"></i>'; return '<span class="bolts" title="Energy">' + h + "</span>"; }
+function metaBadges(n, full) {
+  if (!n) return ""; let h = "";
+  if (n.k === "pos") { const r = RANK[String(n.rank || 0)]; h += '<span class="pill ' + r[1] + '">' + r[0] + "</span>"; return h; }
+  if (n.k === "df") { if (n.f === "rare") h += '<span class="pill na">rare</span>'; else if (full) h += '<span class="pill na">common</span>'; if (n.bait) h += '<span class="pill warn">their trap</span>'; return h; }
+  if (n.gi && n.gi !== "both") h += '<span class="pill na">' + GI_NAME[n.gi] + "</span>";
+  if (n.belt && n.belt !== "white") h += '<span class="pill belt" style="background:' + BELT_COLOR[n.belt] + '">' + n.belt + "+</span>";
+  if (n.pts) h += '<span class="pill ok">+' + n.pts + "</span>";
+  if (n.bait) h += '<span class="pill warn">trap</span>';
+  if (kidsWarn(n)) h += '<span class="pill bad">not for kids</span>';
+  if (full) h += bolts(n.energy);
+  return h;
+}
 const nodes = () => S.tree.nodes;
 const node = (id) => nodes().find((n) => n.id === id);
 const kids = (id) => nodes().filter((n) => n.p === id);
@@ -256,7 +281,7 @@ function picker(key, label, source, opt) {
 }
 function pickedHtml(key, counts) {
   const list = UI.sheet.pk[key] || [];
-  return list.map((x, i) => '<span class="chip on">' + esc(x.n) + (counts ? ' <button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-dec" data-pk="' + key + '" data-i="' + i + '" aria-label="Remove">−</button><b>' + (x.c || 1) + '</b><button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-inc" data-pk="' + key + '" data-i="' + i + '" aria-label="Add">+</button>' : "") + '<button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-rm" data-pk="' + key + '" data-i="' + i + '" aria-label="Delete">×</button></span>').join("") || '<span class="muted small">None selected</span>';
+  return list.map((x, i) => '<span class="chip on">' + esc(x.n) + (counts ? ' <button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-dec" data-pk="' + key + '" data-i="' + i + '" aria-label="Remove">−</button><b>' + (key === "oc" ? (x.c >= 2 ? "rare" : "common") : (x.c || 1)) + '</b><button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-inc" data-pk="' + key + '" data-i="' + i + '" aria-label="Add">+</button>' : "") + '<button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-rm" data-pk="' + key + '" data-i="' + i + '" aria-label="Delete">×</button></span>').join("") || '<span class="muted small">None selected</span>';
 }
 function pkSource(src) {
   if (src === "mv") return nodes().filter((n) => n.k === "mv").map((n) => ({ id: n.id, n: n.n, sub: (posOf(n.id) || {}).n || "" }));
@@ -301,7 +326,7 @@ VIEWS.tech = function () {
     if (UI.walkCat) h += '<div class="jump"><p class="muted small">I ended up in…</p><div class="chips">' + positions().filter((p) => p.cat === UI.walkCat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div></div>";
   } else h += '<div class="card-head"><h3>Where are you?</h3><span class="muted small">tap a position to start</span></div>';
   h += rollGraphSvg();
-  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> · " + q + ' <span class="muted">tap a node</span></p>'; }
+  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> " + (cur.k === "pos" ? metaBadges(cur) : "") + " · " + q + "</p>"; }
   else h += '<div class="legend">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + '</div><p class="muted small">Jump node to node. It only ends with a submission or points.</p>';
   h += "</div>";
   const all = positions();
@@ -318,15 +343,20 @@ function vNode(n) {
   let h = '<button class="back" data-act="back" data-id="' + back + '"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>' + (n.p ? esc(node(n.p).n) : "Positions") + "</button>";
   h += '<div class="card"><div class="path">' + path.map((x, i) => '<button class="pn ' + x.k + (i === path.length - 1 ? " cur" : "") + '" data-act="open" data-id="' + x.id + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + kindLabel(x) + '</span><span class="nm">' + esc(x.n) + "</span></span></button>").join("") + "</div>";
   h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1"></span>') + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
+  { const mb = metaBadges(n, true); if (mb) h += '<div class="meta">' + mb + "</div>"; }
+  if (n.k === "mv" && n.when) h += '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>";
+  if (n.bait) h += '<div class="tip"><b>' + (n.k === "df" ? "Their trap" : "Trap") + ":</b> " + esc(n.bait) + "</div>";
+  if (n.k === "mv" && n.oc && n.oc.length) h += '<p class="small"><span class="muted">Lands in:</span> ' + n.oc.filter((o) => node(o.to)).map((o) => '<button class="to-link sm" data-act="open" data-id="' + o.to + '">' + esc(node(o.to).n) + (o.f === "rare" ? " · rare" : "") + "</button>").join(" ") + "</p>";
+  if (n.legal) h += '<p class="muted small">Rules: ' + esc(n.legal) + "</p>";
   if (n.s && n.s.length) h += '<ol class="steps">' + n.s.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol>";
   if (n.x) h += '<p class="small">' + esc(n.x) + "</p>";
-  if (n.to && node(n.to)) h += '<div><button class="to-link" data-act="open" data-id="' + n.to + '">→ Next: ' + esc(node(n.to).n) + "</button></div>";
+  if (n.to && node(n.to) && !(n.oc && n.oc.length)) h += '<div><button class="to-link" data-act="open" data-id="' + n.to + '">→ Next: ' + esc(node(n.to).n) + "</button></div>";
   if (n.k === "mv") { const st = logStats(n.id); const bits = []; if (st.drilled) bits.push(st.drilled + " sessions drilled"); if (st.given) bits.push(st.given + " times finished"); if (st.got) bits.push(st.got + " times caught"); const rs = rollStatsFor(n.id); if (rs.used) bits.push("used in " + rs.used + " roll" + (rs.used > 1 ? "s" : "")); if (bits.length) h += '<p class="muted small">' + bits.join(" · ") + "</p>"; }
   if (n.k === "pos") h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="' + n.id + '">Roll from here</button></div>';
   h += "</div>";
   h += '<div class="card"><div class="card-head"><h3>' + childHeading(n) + "</h3>" + seg([["map", "Map"], ["list", "List"]], UI.tech.map ? "map" : "list", "techmap") + "</div>";
   if (UI.tech.map && ch.length) h += mindMapSvg(n) + '<p class="muted small">Tap a branch for its next step. Dashed amber = their defense.</p>';
-  else if (ch.length) { const rowOf = (c) => '<button class="node-row' + (c.k === "df" ? " df" : "") + '" data-act="open" data-id="' + c.id + '"><span class="pict" style="color:' + nodeColor(c) + '">' + iconFor(c) + '</span><div class="txt"><b>' + esc(c.n) + "</b>" + (c.en ? "<small>" + esc(c.en) + "</small>" : "") + "</div>" + (c.k === "df" ? '<span class="cnt">' + kids(c.id).length + " answers</span>" : tbadge(c)) + (c.k !== "df" && kids(c.id).length ? '<span class="cnt">' + kids(c.id).length + "</span>" : "") + CHEV + "</button>";
+  else if (ch.length) { const rowOf = (c) => '<button class="node-row' + (c.k === "df" ? " df" : "") + '" data-act="open" data-id="' + c.id + '"><span class="pict" style="color:' + nodeColor(c) + '">' + iconFor(c) + '</span><div class="txt"><b>' + esc(c.n) + "</b>" + (c.en ? "<small>" + esc(c.en) + "</small>" : "") + "</div>" + (c.k === "df" ? (c.f === "rare" ? '<span class="pill na">rare</span>' : "") + '<span class="cnt">' + kids(c.id).length + " answers</span>" : metaBadges(c) + tbadge(c)) + (c.k !== "df" && kids(c.id).length ? '<span class="cnt">' + kids(c.id).length + "</span>" : "") + CHEV + "</button>";
     if (n.k === "pos" && ch.length > 6) h += '<div class="list">' + TYPES.map(([t, label]) => { const g = ch.filter((c) => (c.t || "trans") === t); return g.length ? '<div class="group-label" style="color:' + typeColor(t) + '">' + label + (g.length > 1 ? "s" : "") + " · " + g.length + "</div>" + g.map(rowOf).join("") : ""; }).join("") + "</div>";
     else h += '<div class="list">' + ch.map(rowOf).join("") + "</div>"; }
   else h += '<p class="empty">' + (n.k === "mv" ? "Write how the opponent defends, then add your answer." : "Nothing here yet. Add your first option.") + "</p>";
@@ -349,6 +379,8 @@ const PICT = {
   finish: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/>',
 };
 const TICON = {
+  sit: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  bait: '<path d="M12 3v9a4 4 0 0 0 8 0M12 3h-3M12 3h3"/><circle cx="12" cy="18" r="2"/>',
   sub: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   sweep: '<path d="M20 12a8 8 0 1 1-3-6.3M20 4v4h-4"/>',
   pass: '<path d="M4 16c3-9 13-9 16 0M20 16l-1-4M20 16l-4-1"/>',
@@ -401,12 +433,16 @@ function canvasHtml(id, svgInner, bounds, legend, roll) {
 const FINISH = { id: "finish", k: "fin", n: "Tap!", t: "", cat: "" };
 function nextOf(n) {
   if (!n || n.k === "fin") return [];
-  const out = kids(n.id).map((c) => ({ n: c, how: c.k === "df" ? "they" : "me" }));
-  if (n.k === "mv") { if (n.to && node(n.to)) out.push({ n: node(n.to), how: "works" }); if (n.t === "sub") out.push({ n: FINISH, how: "tap" }); }
+  const out = kids(n.id).filter(allowed).map((c) => ({ n: c, how: c.k === "df" ? "they" : "me", f: c.f || "" }));
+  if (n.k === "mv") {
+    const oc = (n.oc && n.oc.length ? n.oc : n.to ? [{ to: n.to, f: "common" }] : []).filter((o) => node(o.to));
+    for (const o of oc) out.push({ n: node(o.to), how: "works", f: o.f || "common", label: o.n || "" });
+    if (n.t === "sub") out.push({ n: FINISH, how: "tap" });
+  }
   return out;
 }
 function gNode(n, x, y, r, role, attrs, badge) {
-  const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? typeColor(n.t) : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : TICON[n.t] || TICON.trans;
+  const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? (n.t ? typeColor(n.t) : "var(--accent)") : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : n.k === "grp" && !n.t ? TICON.sit : TICON[n.t] || TICON.trans;
   const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const ls = role === "ring2" ? [] : wrapText(n.n, role === "cur" ? 20 : 15);
   return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
     '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
@@ -428,18 +464,20 @@ function rollGraphSvg() {
   for (let i = 0; i < Math.min(4, prev.length); i++) { const st = prev[prev.length - 1 - i]; const n = node(st.id); if (!n) break; const key = "t" + i; const x = -(i + 1) * 78, y = i % 2 ? 18 : -18; put(key, n, x, y, 11, "trail", 'data-i="' + (prev.length - 1 - i) + '"'); edges += gEdge(key, [x, y], lastKey, lastKey === "c" ? [0, 0] : P[lastKey], "trail"); lastKey = key; }
   // next steps on the right; many options are bundled by type into hubs
   const all = nextOf(cur); let next = all, hubs = null;
-  if (cur.k === "pos" && all.length > 7) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
+  const whens = cur.k === "pos" ? [...new Set(all.map((e) => e.n.when || ""))] : [];
+  if (cur.k === "pos" && whens.length > 1 && whens.length <= 8 && all.length > 5) { hubs = {}; for (const e of all) (hubs[e.n.when || ""] = hubs[e.n.when || ""] || []).push(e); next = Object.keys(hubs).sort((a, b) => (a === "" ? -1 : b === "" ? 1 : 0)).map((w) => ({ n: { id: "g:" + (w || "any"), k: "grp", n: w || "Any time", t: "", cat: "", when: w }, how: "group", items: hubs[w] })); }
+  else if (cur.k === "pos" && all.length > 7) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
   const n1 = next.length; const r1 = Math.min(170, Math.max(112, 96 + n1 * 9)); const span = n1 > 1 ? Math.min(200, 60 + n1 * 28) : 0;
   next.forEach((e, k) => {
     if (e.how === "group") {
-      const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "h:" + e.n.t; const open = R.grp === e.n.t;
-      put(key, e.n, x, y, open ? 19 : 16, "group" + (open ? " open" : ""), 'data-t="' + e.n.t + '"', e.items.length);
-      edges += gEdge("c", [0, 0], key, [x, y], "step" + (open ? "" : " faint"), typeColor(e.n.t));
-      if (open) { const m = e.items.length; const sector = Math.min(110, 30 + m * 22); e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 96), y2 = Math.sin(a2) * (r1 + 96); const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next", 'data-how="' + it.how + '"'); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n)); }); }
+      const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const gk = e.n.t || e.n.id; const key = "h:" + gk; const open = R.grp === gk;
+      put(key, e.n, x, y, open ? 19 : 16, "group" + (open ? " open" : ""), 'data-t="' + esc(gk) + '"', e.items.length);
+      edges += gEdge("c", [0, 0], key, [x, y], "step" + (open ? "" : " faint"), e.n.t ? typeColor(e.n.t) : "var(--accent)");
+      if (open) { const m = e.items.length; const sector = Math.min(120, 30 + m * 22); e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 96), y2 = Math.sin(a2) * (r1 + 96); const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next" + (it.f === "rare" ? " rare" : ""), 'data-how="' + it.how + '"'); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n)); }); }
       return;
     }
     const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "n:" + e.n.id;
-    put(key, e.n, x, y, 17, "next", 'data-how="' + e.how + '"');
+    put(key, e.n, x, y, e.f === "rare" ? 14 : 17, "next" + (e.f === "rare" ? " rare" : "") + (e.how === "works" ? " works" : ""), 'data-how="' + e.how + '"');
     edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : nodeColor(e.n));
     const next2 = nextOf(e.n).slice(0, 3); const sector = n1 > 1 ? Math.min(44, span / (n1 - 1) * 0.9) : 60;
     next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 92), y2 = Math.sin(a2) * (r1 + 92); const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, 10, "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint", e2.n.k === "fin" ? "var(--ok)" : nodeColor(e2.n)); });
@@ -472,6 +510,7 @@ function rollTap(g) {
   if (role === "trail") { rollRewind(+g.dataset.i); return; }
   if (role === "cur") { quickSheet(id); return; }
   if (role.indexOf("group") === 0) { R.grp = R.grp === g.dataset.t ? null : g.dataset.t; render(); return; }
+  if (role.indexOf("next") === 0 && g.dataset.how === "works" && R.cur !== id) { /* an outcome: the move worked and we landed here */ }
   if (role === "ring2") { rollStepTo(g.dataset.p); if (UI.roll && UI.roll.cur === g.dataset.p) rollStepTo(id); return; }
   rollStepTo(id);
 }
@@ -484,7 +523,7 @@ function rollStepTo(id) {
 function rollRewind(i) { const R = UI.roll; if (!R || i >= R.steps.length - 1) return; R.steps = R.steps.slice(0, i + 1); const last = R.steps[i]; R.cur = last.id; const lp = R.steps.slice().reverse().find((x) => x.k === "pos"); R.pos = lp ? lp.id : R.pos; R.finished = false; render(); toast("Back to " + last.n); }
 function quickSheet(id) {
   const n = node(id); if (!n) return;
-  const b = '<div class="actions" style="align-items:center"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + "</span>" + tbadge(n) + (n.en ? '<span class="muted small">' + esc(n.en) + "</span>" : "") + "</div>" + (n.s && n.s.length ? '<ol class="steps">' + n.s.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>" : "") + (n.x ? '<p class="small">' + esc(n.x) + "</p>" : "") + (!n.s.length && !n.x ? '<p class="muted small">No steps written yet.</p>' : "") + '<button class="btn ghost wide" data-act="open" data-id="' + n.id + '">Open & edit</button>';
+  const b = '<div class="actions" style="align-items:center"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + "</span>" + tbadge(n) + metaBadges(n, true) + "</div>" + (n.when ? '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>" : "") + (n.bait ? '<div class="tip"><b>Trap:</b> ' + esc(n.bait) + "</div>" : "") + (n.s && n.s.length ? '<ol class="steps">' + n.s.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>" : "") + (n.x ? '<p class="small">' + esc(n.x) + "</p>" : "") + (!n.s.length && !n.x ? '<p class="muted small">No steps written yet.</p>' : "") + '<button class="btn ghost wide" data-act="open" data-id="' + n.id + '">Open & edit</button>';
   openSheet(n.n, b, {});
 }
 /* --- technique mind map: root on the left, branches to the right (2 levels, tap +N for more) --- */
@@ -638,15 +677,23 @@ function nodeSheet(id, parentId) {
   if (kind === "mv") b += '<div class="field"><span class="lbl">Type</span>' + chips("t", TYPES, n ? n.t : "sub") + "</div>";
   if (kind !== "df") b += field("f-s", "Steps (one per line)", ta("f-s", (n ? n.s : []).join("\n"), "Step 1\nStep 2"));
   b += field("f-x", kind === "df" ? "Note" : "Notes, tips", ta("f-x", n ? n.x : "", ""));
-  if (kind === "mv") b += field("f-to", "Which position does it lead to", '<select id="f-to"><option value="">—</option>' + positions().map((p) => '<option value="' + p.id + '"' + (n && n.to === p.id ? " selected" : "") + ">" + esc(p.n) + "</option>").join("") + "</select>");
-  openSheet(title, b, {
-    state: { picks: { cat: n ? n.cat : "guard", t: n ? n.t : "sub" } },
+  if (kind === "mv") b += field("f-to", "Usual result (position)", '<select id="f-to"><option value="">—</option>' + positions().map((p) => '<option value="' + p.id + '"' + (n && n.to === p.id ? " selected" : "") + ">" + esc(p.n) + "</option>").join("") + "</select>");
+  if (kind === "mv") b += field("f-when", "Opens when (situation)", inp("f-when", n ? n.when : "", "text", 'placeholder="They push / they extend an arm / they stand up"')) +
+    '<div class="grid2"><div class="field"><span class="lbl">Gi / no-gi</span>' + chips("gi", [["both", "Both"], ["gi", "Gi"], ["nogi", "No-gi"]], n ? n.gi || "both" : "both") + '</div><div class="field"><span class="lbl">From belt</span>' + chips("belt", [["white", "White"], ["blue", "Blue"], ["purple", "Purple"], ["brown", "Brown"]], n ? n.belt || "white" : "white") + "</div></div>" +
+    '<div class="grid2">' + field("f-pts", "IBJJF points", inp("f-pts", n ? n.pts || 0 : 0, "number", 'inputmode="numeric" min="0" max="4"')) + '<div class="field"><span class="lbl">Energy (1–3)</span>' + scale("energy", n ? n.energy || 2 : 2, 1, 3) + "</div></div>" +
+    field("f-bait", "Trap (what you offer, what you want them to do)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="Leave the arm loose so they reach…"')) +
+    '<div class="field"><span class="lbl">Kids rules</span>' + chips("kids", [["ok", "Allowed"], ["no", "Not for kids"]], n && n.kids === false ? "no" : "ok") + "</div>";
+  if (kind === "df") b += '<div class="field"><span class="lbl">How common</span>' + chips("f", [["common", "Common"], ["rare", "Rare"]], n ? n.f || "common" : "common") + "</div>" + field("f-bait", "Their trap (what they bait with)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="They offer the underhook to…"'));
+  if (kind === "pos") b += '<div class="field"><span class="lbl">Position quality</span>' + chips("rank", [["-2", "Hard"], ["-1", "Tough"], ["0", "Neutral"], ["1", "Good"], ["2", "Dominant"]], n ? String(n.rank || 0) : "0") + "</div>";
+  openSheet(title, () => b + (kind === "mv" ? picker("oc", "Can also land in (tap + to mark rare)", "pos", { ph: "Position…", counts: true }) : ""), {
+    state: { picks: { cat: n ? n.cat : "guard", t: n ? n.t : "sub", gi: n ? n.gi || "both" : "both", belt: n ? n.belt || "white" : "white", energy: n ? n.energy || 2 : 2, kids: n && n.kids === false ? "no" : "ok", f: n ? n.f || "common" : "common", rank: n ? String(n.rank || 0) : "0" }, pk: { oc: kind === "mv" && n && n.oc ? n.oc.filter((o) => node(o.to)).map((o) => ({ id: o.to, n: node(o.to).n, c: o.f === "rare" ? 2 : 1 })) : [] } },
     onSave() {
       const name = sv("f-n").trim(); if (!name) { $("f-n").focus(); return false; }
       const rec = n || { id: uid(), k: kind, p: parentId || null };
       rec.n = name; rec.en = sv("f-en").trim(); rec.x = sv("f-x").trim();
-      if (kind === "pos") rec.cat = pickVal("cat", "guard");
-      if (kind === "mv") { rec.t = pickVal("t", "sub"); rec.to = sv("f-to"); }
+      if (kind === "pos") { rec.cat = pickVal("cat", "guard"); rec.rank = +pickVal("rank", "0"); }
+      if (kind === "mv") { rec.t = pickVal("t", "sub"); rec.to = sv("f-to"); rec.when = sv("f-when").trim(); rec.gi = pickVal("gi", "both"); rec.belt = pickVal("belt", "white"); rec.pts = +sv("f-pts") || 0; rec.energy = pickVal("energy", 2); rec.bait = sv("f-bait").trim(); rec.kids = pickVal("kids", "ok") === "no" ? false : true; rec.oc = (UI.sheet.pk.oc || []).filter((x) => x.id).map((x) => ({ to: x.id, f: x.c >= 2 ? "rare" : "common" })); if (!rec.to && rec.oc.length) rec.to = rec.oc[0].to; }
+      if (kind === "df") { rec.f = pickVal("f", "common"); rec.bait = sv("f-bait").trim(); }
       if (kind !== "df") rec.s = lines(sv("f-s"));
       if (!n) { nodes().push(rec); if (kind === "pos") UI.tech.id = null; else UI.tech.id = parentId; }
       save("tree"); toast(n ? "Saved" : "Added"); render(); return true;
@@ -983,10 +1030,11 @@ function matchSheet(eid, i) {
 function settingsSheet() {
   const b = '<div class="field"><span class="lbl">Theme</span>' + chips("theme", [["system", "Device"], ["light", "Light"], ["dark", "Dark"]], S.settings.theme || "system") + "</div>" +
     '<div class="field"><span class="lbl">Data</span><div class="actions"><button class="btn ghost" data-act="backup">Download backup (JSON)</button><label class="btn ghost" style="display:flex;align-items:center;justify-content:center">Restore from backup<input id="imp-file" type="file" accept="application/json" hidden></label></div></div>' +
+    '<div class="field"><span class="lbl">Ruleset</span>' + chips("rules", [["both", "Gi & no-gi"], ["gi", "Gi only"], ["nogi", "No-gi only"]], S.settings.rules || "both") + '</div><div class="field"><span class="lbl">Belt filter</span>' + chips("beltf", [["0", "Show all"], ["1", "Only up to my belt"]], S.settings.beltFilter ? "1" : "0") + "</div>" +
     '<div class="field"><span class="lbl">Technique library</span><button class="btn ghost' + (UI.confirm === "reset" ? " danger" : "") + '" data-act="reset-seed">' + (UI.confirm === "reset" ? "Really reset? Everything you added will be lost" : "Reload the starter library") + "</button></div>" +
     '<p class="muted small">' + (mode === "cloud" ? "Signed in: " + esc((SB.session || {}).email || "") : "Local mode: data stays on this device only.") + "</p>" +
     (mode === "cloud" ? '<button class="btn ghost danger" data-act="logout">' + (UI.confirm === "logout" ? "Sign out?" : "Sign out") + "</button>" : "");
-  openSheet("Settings", b, { state: { picks: { theme: S.settings.theme || "system" } } });
+  openSheet("Settings", b, { state: { picks: { theme: S.settings.theme || "system", rules: S.settings.rules || "both", beltf: S.settings.beltFilter ? "1" : "0" } } });
 }
 function applyTheme() { const t = S.settings.theme || "system"; if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; try { localStorage.setItem("bjj-theme", t); } catch (e) {} }
 function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
@@ -1000,7 +1048,7 @@ document.addEventListener("click", (e) => {
   if (act === "sheet-close") { closeSheet(); return; }
   if (act === "sheet-save") { if (UI.sheetSave && UI.sheetSave() !== false) closeSheet(); return; }
   if (act === "sheet-del") { if (armConfirmSheet(el)) { if (UI.sheetDel && UI.sheetDel() !== false) closeSheet(); } return; }
-  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
+  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
   if (act === "pk-add") { pkAdd(ds.pk, ds.id, ds.n); return; }
   if (act === "pk-inc") { pkChange(ds.pk, +ds.i, 1); return; }
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }

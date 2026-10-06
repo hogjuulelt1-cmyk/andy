@@ -782,6 +782,131 @@ window.BJJ_SEED = (function () {
   };
   for (const p of POS) if (MORE[p.id]) p.c = (p.c || []).concat(MORE[p.id]);
 
+  // ───────── Library v3: situational options, traps and counter-traps (from rules + systems research) ─────────
+  const MORE2 = {
+    st: [
+      { n: 'Snap down → front headlock', en: 'Снап даун', t: 'td', pts: 0, energy: 2, when: 'They bend forward, head heavy', legal: 'No points until you settle a top position', oc: [{ to: 'tt_t', f: 'common' }, { to: 'bk_t', f: 'rare' }],
+        s: ['Collar tie or collar grip, pull the head down as they lean', 'Step back, chin to your chest', 'Go behind, or attack the neck'],
+        c: [
+          { n: 'They circle up and grab your legs', en: 'Хөлнөөс чинь барина', f: 'common', c: [
+            { n: 'Sprawl and re-snap', en: 'Спрол, дахин снап', t: 'ctl', s: ['Hips back, hands on the head', 'Snap again as they come up'] },
+            { n: 'Guillotine as they come up', en: 'Гилотин', t: 'sub', s: ['Wrap the neck as the head rises', 'Sit back to guard to finish'] },
+          ] },
+          { n: 'They sit back to guard', en: 'Гард руу сууна', f: 'rare', c: [
+            { n: 'Pass before the grips are set', en: 'Шууд давах', t: 'pass', to: 'og_t', s: ['Stay heavy on the head', 'Pass to the open side'] },
+          ] },
+        ] },
+      { n: 'Arm drag (standing)', en: 'Арм драг (зогсоо)', t: 'trans', energy: 2, when: 'They reach or extend an arm', oc: [{ to: 'bk_t', f: 'common' }, { to: 'tt_t', f: 'common' }, { to: 'sc_t', f: 'rare' }],
+        s: ['Grab the wrist, cup the tricep', 'Pull the arm across as you step past', 'Hug the waist, trip or ride to the back'],
+        c: [
+          { n: 'They square up and pull the arm back', en: 'Гараа татна', f: 'common', c: [
+            { n: 'Drag the other side', en: 'Нөгөө талд драг', t: 'trans', to: 'bk_t', s: ['Use their pull, switch the drag'] },
+            { n: 'Ankle pick on the recoil', en: 'Ankle pick', t: 'td', to: 'sc_t', s: ['As they pull back, drop to the ankle'] },
+          ] },
+          { n: 'They over-commit into the drag to counter-drag you', en: 'Чамайг эсрэгээр драглана', f: 'rare', bait: 'They lean into your drag so your arm comes across and they can drag you', c: [
+            { n: 'Sprawl and re-drag', en: 'Спрол, дахин драг', t: 'trans', to: 'bk_t', s: ['Hips back as they drive', 'Re-grip and drag again'] },
+          ] },
+        ] },
+      { n: 'Overhook + inside trip', en: 'Оверхук, дотор хусалт', t: 'td', energy: 2, when: 'Clinch or underhook battle', oc: [{ to: 'hg_t', f: 'common' }, { to: 'sc_t', f: 'common' }],
+        s: ['Overhook the underhooking arm, elbow tight', 'Step in, hook their inside leg', 'Drive over the trapped leg'],
+        c: [
+          { n: 'They drive forward', en: 'Урагш түлхэнэ', f: 'common', c: [
+            { n: 'Sumi gaeshi with the overhook', en: 'Суми гаеши', t: 'td', to: 'mt_t', s: ['Sit under, hook, roll them over'] },
+          ] },
+        ] },
+      { n: 'Trap: offer the collar', en: 'Trap: зах санал болгох', t: 'grip', gi: 'gi', energy: 1, when: 'Neutral, both standing', bait: 'Stand slightly square so they take a collar grip; the grip gives you seoi nage or the drag you wanted',
+        s: ['Let them grip the collar', 'Grab that sleeve above the elbow', 'Seoi nage or arm drag off their own grip'] },
+      { n: 'Trap: fake guard pull → ankle grab', en: 'Trap: хуурамч гард татаж шагай авах', t: 'td', gi: 'gi', energy: 2, when: 'They stand square or stall', bait: 'Drop as if pulling guard; when they base and lean back, grab the ankle for 2 points', oc: [{ to: 'og_t', f: 'common' }, { to: 'sc_t', f: 'common' }],
+        s: ['Sit as if pulling guard with a sleeve grip', 'Catch the ankle as they base', 'Come up and drive them over'] },
+      { n: 'Seated guard drag (after a safe pull)', en: 'Суугаад арм драг', t: 'trans', energy: 2, when: 'They stand square or stall', pts: 0, oc: [{ to: 'bk_t', f: 'common' }, { to: 'slx_b', f: 'rare' }],
+        s: ['Sit to butterfly/seated with a wrist grip', 'Drag the arm as they step in', 'Take the back, or switch to single leg X if they pull out'] },
+    ],
+    cg_b: [
+      { n: 'Open to butterfly', en: 'Баттерфлай руу нээх', t: 'trans', pts: 0, energy: 1, when: 'They posture up, hands on your hips', oc: [{ to: 'bf_b', f: 'common' }],
+        s: ['Open the guard, sit up on the elbow', 'Hooks inside the thighs, underhook'] },
+      { n: 'Trap: loose guard to invite the stand-up', en: 'Trap: босголтыг урих', t: 'sweep', energy: 2, when: 'They stand up', bait: 'Relax the lock so they stand; the moment both feet are planted grab the ankles for the double ankle sweep', oc: [{ to: 'mt_t', f: 'common' }, { to: 'og_t', f: 'rare' }],
+        s: ['Loosen the guard, let them stand', 'Both ankles, knees into the hips', 'Come up to mount'],
+        c: [
+          { n: 'They stand but step one leg back first (they know the sweep)', en: 'Нэг хөлөө хойш авна', f: 'common', bait: 'A trained passer stands with a staggered base to bait you into the double ankle and pass', c: [
+            { n: 'Switch to de la Riva on the front leg', en: 'Де ла Рива', t: 'trans', to: 'dlr_b', s: ['Hook the forward leg, grip the heel'] },
+          ] },
+        ] },
+    ],
+    hg_b: [
+      { n: 'Knee lever sweep (as they smash)', en: 'Өвдөг хөшүүрэг свип', t: 'sweep', belt: 'blue', energy: 2, when: 'They smash the knee shield', oc: [{ to: 'sc_t', f: 'common' }, { to: 'hg_t', f: 'common' }],
+        s: ['As they drive, grab the far knee', 'Lever with the shield leg, roll them over'] },
+      { n: 'Limp arm to the back', en: 'Лимп арм → ар', t: 'trans', belt: 'blue', energy: 2, when: 'They whizzer your underhook', oc: [{ to: 'bk_t', f: 'common' }],
+        s: ['Go limp with the underhook arm, pull it out downward', 'Circle behind'] },
+      { n: 'Sit-up guard single leg', en: 'Суугаад ганц хөл', t: 'sweep', energy: 2, when: 'They stand or sit back', oc: [{ to: 'sc_t', f: 'common' }, { to: 'hg_t', f: 'common' }],
+        s: ['Sit up, hug the near leg', 'Drive forward, come up on top'] },
+      { n: 'Trap: loose knee shield', en: 'Trap: сул нип шилд', t: 'sweep', belt: 'blue', energy: 2, when: 'They smash the knee shield', bait: 'Make the shield look weak so they commit forward, then knee lever or kimura as they drive', oc: [{ to: 'sc_t', f: 'common' }],
+        s: ['Soften the shield', 'As they drive, lever or grab the wrist for the kimura'] },
+    ],
+    sc_t: [
+      { n: 'Trap: give the underhook', en: 'Trap: андерхук өгөх', t: 'sub', energy: 2, when: 'They fight for the underhook', bait: 'Let them have the underhook and come up to their knees; their head comes forward into the guillotine or d’arce',
+        s: ['Release the far arm', 'As they come up, wrap the neck (guillotine) or thread for the d’arce', 'Sit back or roll to finish'],
+        c: [
+          { n: 'They keep the head up and go for a single leg', en: 'Толгойгоо дээш, ганц хөл', f: 'common', bait: 'A trained player knows the bait and uses the underhook for a single leg instead', c: [
+            { n: 'Sprawl and re-pass', en: 'Спрол, дахин давах', t: 'pass', to: 'sc_t', s: ['Hips back, cross face', 'Walk around to the other side'] },
+          ] },
+        ] },
+      { n: 'Step over the frame to mount', en: 'Фрэймийг давж маунт', t: 'trans', to: 'mt_t', energy: 1, when: 'They frame on your neck',
+        s: ['Pin the framing elbow with your hip', 'Step the far leg over the frame'] },
+      { n: 'Ride the bridge to knee on belly', en: 'Гүүрийг нь дагаж нип он бэлли', t: 'trans', to: 'kob_t', energy: 1, when: 'They bridge or turn away',
+        s: ['Let the bridge lift you, post the knee on the belly as they land'] },
+    ],
+    mt_t: [
+      { n: 'Trap: loose post to invite the upa', en: 'Trap: упа урих', t: 'ctl', energy: 1, when: 'They bridge', bait: 'Lean forward with a loose base so they bridge; ride it into technical mount or S-mount, or arm triangle the exposed side',
+        s: ['Lean, look loose', 'As they bridge, base wide and slide to technical mount'],
+        c: [
+          { n: 'They bridge for real and you were too loose', en: 'Жинхэнэ гүүр', f: 'common', c: [
+            { n: 'Post wide, grapevine the legs', en: 'Өргөн тулж, хөлийг нь ороох', t: 'ctl', s: ['Hands wide, hooks around the legs'] },
+          ] },
+        ] },
+      { n: 'Palm-up cross grip (dilemma)', en: 'Кросс барьц дилемм', t: 'ctl', belt: 'blue', energy: 1, when: 'They defend with elbows in', bait: 'Cross grip one wrist palm up: if they ignore it you isolate the arm; if they strip it the other arm and the back open (gift wrap)',
+        s: ['Cross grip the wrist palm up', 'Lift the arm to the underhook side', 'Arm triangle, mounted triangle or armbar from S-mount'] },
+      { n: 'Technical mount when the knee comes in', en: 'Техникал маунт', t: 'ctl', energy: 1, when: 'They turn or elbow-escape',
+        s: ['Post the hand, slide to the side of the knee', 'Hook the far arm, back or armbar from here'] },
+    ],
+    bk_t: [
+      { n: 'Straight-jacket: offer the weak side', en: 'Стрэйт жакет', t: 'ctl', belt: 'blue', energy: 1, when: 'They defend the neck with both hands', bait: 'Show the overhook side as the threat so both their hands go there, then trap the near arm with your leg and choke one-handed',
+        s: ['Threaten over the shoulder', 'Trap the arm with the leg', 'One-handed RNC or bow and arrow'] },
+      { n: 'Back mount when they go belly down', en: 'Гэдэргээ хэвтэхэд бэк маунт', t: 'ctl', pts: 4, energy: 1, when: 'They turn away / slide down', legal: 'IBJJF: back mount = 4 points, hooks not needed',
+        s: ['Sit on the hips, knees wide', 'RNC or bow and arrow (gi)'] },
+      { n: 'Re-hook or take mount as they slide down', en: 'Дахин хуки эсвэл маунт', t: 'trans', to: 'mt_t', energy: 1, when: 'They turn away / slide down',
+        s: ['Follow with the top hook', 'If they clear it, swing over to mount'] },
+    ],
+    sc_b: [
+      { n: 'Underhook back → come up to a single leg', en: 'Андерхук → ганц хөл', t: 'esc', energy: 3, when: 'They reach for the underhook', oc: [{ to: 'tt_b', f: 'common' }, { to: 'sc_t', f: 'common' }],
+        s: ['Underhook first, head up', 'Come to the knees, hug the near leg', 'Drive to top'],
+        c: [
+          { n: 'They guillotine the exposed head', en: 'Гилотин', f: 'common', c: [
+            { n: 'Keep the head up, drive through', en: 'Толгой дээш', t: 'esc', to: 'sc_t', s: ['Never duck the head on the way up'] },
+          ] },
+        ] },
+      { n: 'Turn to turtle when they go north-south', en: 'Норт-саут → мөлхөөн', t: 'esc', energy: 2, when: 'They switch position', oc: [{ to: 'tt_b', f: 'common' }, { to: 'hg_b', f: 'rare' }],
+        s: ['Sit up into them as they switch', 'Turn to the knees'] },
+      { n: 'Trap: expose the far arm', en: 'Trap: гараа харуулах', t: 'esc', belt: 'blue', energy: 2, when: 'They hunt an arm', bait: 'Give them the far arm so they reach for the kimura; use their reach to turn in and come up', oc: [{ to: 'tt_b', f: 'common' }, { to: 'hg_b', f: 'common' }],
+        s: ['Let the arm show', 'As they grab, turn into them and sit up'] },
+      { n: 'Re-guard before they settle', en: 'Хурдан гард сэргээх', t: 'esc', energy: 2, when: 'They switch position', oc: [{ to: 'hg_b', f: 'common' }, { to: 'bf_b', f: 'rare' }],
+        s: ['The moment the weight lifts, knee shield or hook inside'] },
+    ],
+    mt_b: [
+      { n: 'Trap: show the arm for the americana', en: 'Trap: гараа американад өгөх', t: 'esc', belt: 'blue', energy: 3, when: 'They hunt for arm attacks', bait: 'Let one arm look available so both their hands go to it, then bridge and roll while they are committed', oc: [{ to: 'cg_t', f: 'common' }],
+        s: ['Show the arm', 'As they grab, trap the same-side leg and bridge'] },
+    ],
+    tt_b: [
+      { n: 'Trap: give the back on purpose', en: 'Trap: ар өгөх', t: 'esc', belt: 'blue', energy: 3, when: 'They chase the back aggressively', bait: 'Turn to turtle so they chase hooks; roll them over the shoulder (Peterson roll) or sit out as the hook goes in loosely', oc: [{ to: 'sc_t', f: 'common' }, { to: 'hg_b', f: 'rare' }],
+        s: ['Turtle, feel the hook', 'Grab the hooking leg, roll over the shoulder'],
+        c: [
+          { n: 'They keep the seat belt and ride it', en: 'Сийт бэлт барьсаар дагана', f: 'common', c: [
+            { n: 'Sit out instead', en: 'Сит аут', t: 'esc', to: 'hg_b', s: ['Sit through to the open side'] },
+          ] },
+        ] },
+    ],
+  };
+  for (const p of POS) if (MORE2[p.id]) p.c = (p.c || []).concat(MORE2[p.id]);
+
   const PLANS = [
     { n: 'Against a big, strong opponent', x: 'Never flat on the bottom. Half guard, knee shield, frames, keep changing angles. Movement over strength. On top, do not settle into side control: knee on belly and a mobile top game.', tags: ['hg_b', 'dlr_b', 'kob_t'] },
     { n: 'Against a tall, long-legged opponent', x: 'Do not pass from far away, get close and pass with pressure (knee cut, stack). On the bottom stay out of the triangle, elbows in. Takedowns: level change, single leg.', tags: ['og_t', 'st'] },
@@ -851,12 +976,25 @@ window.BJJ_SEED = (function () {
     'nogi_f': { n: 'Adult, female (no-gi)', c: [['Rooster', 46.5], ['Light Feather', 51.5], ['Feather', 56.5], ['Light', 61.5], ['Middle', 66.5], ['Medium Heavy', 71.5], ['Heavy', 76.5], ['Super Heavy', null]] },
   };
 
+  const ENERGY = { td: 3, sweep: 2, pass: 2, sub: 2, esc: 3, trans: 2, grip: 1, ctl: 1 };
+  const RANKS = { st: 0, cg_b: 0, hg_b: -1, dlr_b: 0, sp_b: 0, bf_b: 0, xg_b: 1, slx_b: 1, cg_t: 0, og_t: 0, hg_t: 1, sc_t: 1, kob_t: 2, mt_t: 2, bk_t: 2, tt_t: 1, sc_b: -1, mt_b: -2, bk_b: -2, tt_b: -1 };
+  // Per-node annotations (gi/no-gi, belt, points, energy, situation, outcomes, traps, rules). Keyed by path id.
+  const META = window.BJJ_META || {};
   // Flatten to a list with stable, path-based ids
   function flatten() {
     const out = [];
     function walk(node, parent, kind, path) {
       const id = node.id || path;
       const rec = { id, k: kind, p: parent, n: node.n, en: node.en || '', t: node.t || '', s: node.s || [], x: node.x || '', to: node.to || '', cat: node.cat || '' };
+      const m = META[id] || {};
+      if (kind === 'pos') rec.rank = m.rank != null ? m.rank : (RANKS[id] != null ? RANKS[id] : 0);
+      if (kind === 'mv') {
+        rec.gi = m.gi || node.gi || 'both'; rec.belt = m.belt || node.belt || 'white'; rec.energy = m.energy || node.energy || ENERGY[rec.t] || 2;
+        rec.pts = m.pts != null ? m.pts : node.pts != null ? node.pts : (rec.t === 'td' ? 2 : rec.t === 'sweep' ? 2 : rec.t === 'pass' ? 3 : rec.to === 'mt_t' || rec.to === 'bk_t' ? 4 : rec.to === 'kob_t' ? 2 : 0);
+        rec.when = m.when || node.when || ''; rec.bait = m.bait || node.bait || ''; rec.kids = m.kids === false || node.kids === false ? false : true; rec.legal = m.legal || node.legal || '';
+        rec.oc = m.oc || node.oc || (rec.to ? [{ to: rec.to, f: 'common' }] : []);
+      }
+      if (kind === 'df') { rec.f = m.f || node.f || 'common'; rec.bait = m.bait || node.bait || ''; }
       out.push(rec);
       (node.c || []).forEach((ch, i) => walk(ch, id, kind === 'mv' ? 'df' : 'mv', id + '.' + (i + 1)));
     }
@@ -864,5 +1002,5 @@ window.BJJ_SEED = (function () {
     return out;
   }
 
-  return { version: 2, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
+  return { version: 3, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
 })();
