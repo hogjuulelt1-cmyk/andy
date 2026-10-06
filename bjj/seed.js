@@ -1023,5 +1023,24 @@ window.BJJ_SEED = (function () {
     return out;
   }
 
-  return { version: 5, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
+  // Clubs known to compete in Mongolia (AJP Tour national championships, public pages). Details are
+  // placeholders until each coach claims the club with the coach code and fills them in.
+  const CLUBS = [
+    { id: 'garuda', n: 'Garuda BJJ & MMA Academy', city: 'Ulaanbaatar', addr: 'Chinggis avenue, Tumen Ekh building (next to the State Department Store)', about: 'Mongolia’s first MMA and BJJ academy.' },
+    { id: 'thunder', n: 'Thunder BJJ Academy', city: 'Ulaanbaatar' },
+    { id: 'ralphgracie', n: 'Ralph Gracie Mongolia', city: 'Ulaanbaatar' },
+    { id: 'unique', n: 'Unique Jiu Jitsu Academy', city: 'Ulaanbaatar' },
+    { id: 'artesuave', n: 'Arte Suave BJJ Academy Mongolia', city: 'Ulaanbaatar' },
+    { id: 'monde', n: 'Monde Academy (Jiu Jitsu & Judo)', city: 'Ulaanbaatar' },
+    { id: 'khanuul', n: 'Khan-Uul Jiu Jitsu Academy', city: 'Ulaanbaatar', addr: 'Khan-Uul district' },
+    { id: 'magic13', n: 'Magic 13', city: 'Ulaanbaatar' },
+    { id: 'bbjj', n: 'BB Jiu Jitsu Academy', city: 'Ulaanbaatar' },
+    { id: 'jjmethods', n: 'Jiu Jitsu Methods Mongolia', city: 'Ulaanbaatar' },
+    { id: 'bayalag', n: 'Bayalag Club', city: 'Ulaanbaatar' },
+    { id: 'oneteam', n: 'One Team Judo & Jiu Jitsu Club', city: 'Ulaanbaatar', addr: 'Bayangol district, 16th khoroo, Gandan Absolute Center, 4th floor' },
+    { id: 'telmen', n: 'Telmen Devjee (MMA & BJJ)', city: 'Ulaanbaatar', addr: 'Sukhbaatar district, 1st khoroo, Union Building, C block, 14th floor' },
+    { id: 'mjudo', n: 'Mongolian Judo Academy (Jiu Jitsu)', city: 'Ulaanbaatar', addr: 'Sportiin Tuv' },
+  ];
+
+  return { version: 5, clubs: CLUBS, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
 })();

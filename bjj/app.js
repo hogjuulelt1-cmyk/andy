@@ -312,6 +312,7 @@ VIEWS.tech = function () {
   if (UI.setupEd) return vSetupEdit();
   if (!["pos", "setups", "learn", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
   h += seg([["pos", "Roll"], ["setups", "Setups"], ["learn", "Learn"], ["plans", "Plans"], ["rolls", "History"]], UI.tech.view, "techview");
+  if (["setups", "learn", "plans", "rolls"].includes(UI.tech.view) && !unlocked()) { if (clubNeeds() && !CLUB.busy) clubLoad(); return h + lockCard({ setups: "Setups", learn: "Learn", plans: "Game plans", rolls: "Roll history" }[UI.tech.view]); }
   if (UI.tech.view === "setups") return h + vSetups();
   if (UI.tech.view === "learn") return h + vLearn();
   if (UI.tech.view === "plans") return h + vPlans();
@@ -1221,13 +1222,27 @@ async function clist(prefix) { if (mode === "cloud") return SB.list(prefix); con
 function myUid() { return mode === "cloud" ? SB.uid() : "local"; }
 function myName() { return S.settings.name || (SB.session && (SB.session.name || SB.session.email)) || "Me"; }
 function isAdmin() { return !!(CLUB.profile && (CLUB.profile.admins || []).includes(myUid())); }
+function isSuper() { const em = mode === "cloud" ? (SB.session && SB.session.email || "").toLowerCase() : "local"; const list = (CFG.admins || []).concat((CLUB.app && CLUB.app.admins) || []).map((x) => String(x).toLowerCase()); return mode === "local" || list.includes(em); }
+function genCode(n) { const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = ""; for (let i = 0; i < n; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
+function proUntil() { const p = CLUB.pro && CLUB.pro.u && CLUB.pro.u[myUid()]; return p ? p.until : ""; }
+function memberPaid() { return CLUB.id && paidThisMonth(myUid()); }
+function unlocked() { return isSuper() || isAdmin() || (proUntil() && proUntil() >= thisMonth()) || memberPaid(); }
+function lockCard(what) {
+  return '<div class="card lock"><h3>' + esc(what) + ' is part of the full app</h3><p class="small">Everything on the mat stays free: the roll graph, your technique library and the training log. Setups, routes, Learn, game plans and roll history open when your club membership for this month is confirmed by your coach, or with an upgrade.</p>' +
+    '<div class="actions">' + (CLUB.id ? '<button class="btn" data-act="tab" data-v="club">Pay my club</button>' : '<button class="btn" data-act="tab" data-v="club">Join my club</button>') + '<button class="btn ghost" data-act="upgrade">Upgrade</button></div>' + (proUntil() ? '<p class="muted small">Upgraded until ' + esc(proUntil()) + ".</p>" : "") + "</div>";
+}
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const KIND = { gi: "Gi", nogi: "No-gi", open: "Open mat", kids: "Kids", comp: "Comp class", sc: "S&C" };
 function thisMonth() { return todayIso().slice(0, 7); }
 async function clubLoad() {
   const id = S.settings.clubId; CLUB.busy = true; CLUB.err = "";
   try {
-    if (!id) { CLUB.id = null; CLUB.profile = null; CLUB.members = null; CLUB.pay = {}; CLUB.index = (await cget("clubs/index")) || { list: [] }; }
+    CLUB.app = (await cget("app/config")) || { admins: [], pay: {}, pro: {} }; CLUB.pro = (await cget("app/pro")) || { u: {} };
+    let idx = await cget("clubs/index");
+    if (!idx || !idx.seeded) { idx = idx || { list: [] }; for (const c of SEED.clubs || []) { if (idx.list.some((x) => x.id === c.id)) continue; const prof = Object.assign({ admins: [], schedule: [], status: "approved", seed: true, open: true, code: genCode(6), coachCode: genCode(8), fee: { month: 0, drop: 0 }, created: todayIso() }, c); if (!(await cget("club/" + c.id + "/profile"))) await cset("club/" + c.id + "/profile", prof); idx.list.push({ id: c.id, n: c.n, city: c.city, status: "approved", open: true }); } idx.seeded = true; await cset("clubs/index", idx); }
+    CLUB.index = idx;
+    if (isSuper()) { CLUB.upgrades = (await cget("app/upgrades")) || { list: [] }; CLUB.pending = []; for (const row of idx.list.filter((x) => x.status === "pending")) { const p = await cget("club/" + row.id + "/profile"); if (p) CLUB.pending.push(p); } }
+    if (!id) { CLUB.id = null; CLUB.profile = null; CLUB.members = null; CLUB.pay = {}; }
     else {
       CLUB.profile = await cget("club/" + id + "/profile");
       if (!CLUB.profile) { S.settings.clubId = ""; save("settings"); CLUB.id = null; CLUB.index = (await cget("clubs/index")) || { list: [] }; }
@@ -1243,8 +1258,16 @@ async function clubUpdateMe() {
   m.n = myName(); m.email = SB.session ? SB.session.email : ""; m.belt = S.belt.belt; m.stripes = S.belt.stripes;
   await cset("club/" + CLUB.id + "/members", CLUB.members);
 }
-async function clubJoin(id) {
+async function clubJoin(id, code, asCoach) {
+  const p = await cget("club/" + id + "/profile"); if (!p) { toast("Club not found"); return; }
+  if (asCoach) { if ((code || "").trim().toUpperCase() !== p.coachCode) { toast("Wrong coach code"); return; } p.admins = p.admins || []; if (!p.admins.includes(myUid())) p.admins.push(myUid()); p.open = false; await cset("club/" + id + "/profile", p); const idx = (await cget("clubs/index")) || { list: [] }; const r = idx.list.find((x) => x.id === id); if (r) { r.open = false; await cset("clubs/index", idx); } }
+  else if (!p.open && (code || "").trim().toUpperCase() !== p.code) { toast("Wrong club code"); return; }
   S.settings.clubId = id; save("settings"); CLUB.loadedFor = null; await clubLoad(); await clubUpdateMe(); toast("Welcome to " + CLUB.profile.n); render();
+}
+function joinSheet(id, asCoach) {
+  const row = (CLUB.index.list || []).find((x) => x.id === id) || {};
+  const b = '<p class="small">' + (asCoach ? "Enter the coach code for <b>" + esc(row.n) + "</b>. You get it from the app admin; it makes you a coach of this club." : "Ask your coach for the club code of <b>" + esc(row.n) + "</b>.") + "</p>" + field("j-code", asCoach ? "Coach code" : "Club code", inp("j-code", "", "text", 'autofocus autocapitalize="characters" autocomplete="off" placeholder="' + (asCoach ? "8 characters" : "6 characters") + '"'));
+  openSheet(asCoach ? "I am the coach" : "Join " + (row.n || "club"), b, { saveLabel: "Join", onSave() { clubJoin(id, sv("j-code"), asCoach); return true; } });
 }
 async function clubLeave() {
   if (CLUB.id && CLUB.members) { CLUB.members.list = CLUB.members.list.filter((x) => x.uid !== myUid()); await cset("club/" + CLUB.id + "/members", CLUB.members); }
@@ -1252,7 +1275,8 @@ async function clubLeave() {
 }
 function fmtMoney(v) { v = +v || 0; return v.toLocaleString("en-US") + "₮"; }
 function lastPaid(uid) { const p = CLUB.pay[uid]; if (!p || !p.items.length) return null; return p.items.slice().sort((a, b) => (a.per < b.per ? 1 : -1))[0]; }
-function paidThisMonth(uid) { const p = CLUB.pay[uid]; return !!(p && p.items.some((x) => x.per === thisMonth())); }
+function paidThisMonth(uid) { const p = CLUB.pay[uid]; return !!(p && p.items.some((x) => x.per === thisMonth() && x.status !== "pending")); }
+function pendingPay(uid) { const p = CLUB.pay[uid]; return p ? p.items.filter((x) => x.status === "pending") : []; }
 function nextOpenMat(sched) {
   const d = new Date(); const dow = (d.getDay() + 6) % 7; const open = (sched || []).filter((x) => x.kind === "open");
   if (!open.length) return null; let best = null; for (const x of open) { let diff = (x.d - dow + 7) % 7; if (diff === 0 && x.t < d.toTimeString().slice(0, 5)) diff = 7; if (!best || diff < best.diff) best = { diff, x }; }
@@ -1261,19 +1285,22 @@ function nextOpenMat(sched) {
 VIEWS.club = function () {
   if (clubNeeds()) { if (!CLUB.busy) clubLoad(); return '<div class="card"><p class="empty">Loading your club…</p></div>'; }
   if (CLUB.err) return '<div class="card"><p class="empty">' + esc(CLUB.err) + '</p><button class="btn ghost wide" data-act="club-reload">Try again</button></div>';
+  let h = isSuper() ? vAppAdmin() : "";
   if (!CLUB.id) {
-    const list = (CLUB.index && CLUB.index.list) || [];
-    let h = '<div class="card"><h2>Your club</h2><p class="small">Join your academy to see its schedule and open mats, keep your membership payments in one place, and let the coach see who is on the mat.</p>';
-    if (list.length) h += '<div class="list">' + list.map((c) => '<div class="row"><div class="txt"><b>' + esc(c.n) + "</b>" + (c.city ? "<small>" + esc(c.city) + "</small>" : "") + '</div><button class="btn ghost" style="flex:none" data-act="club-join" data-id="' + c.id + '">Join</button></div>').join("") + "</div>";
+    const list = ((CLUB.index && CLUB.index.list) || []).filter((c) => c.status !== "pending" || c.by === myUid());
+    h += '<div class="card"><h2>Your club</h2><p class="small">Join your academy to see its schedule and open mats, keep your membership payments in one place, and let the coach see who is on the mat.</p>';
+    if (list.length) h += '<div class="list">' + list.map((c) => '<div class="row"><div class="txt"><b>' + esc(c.n) + "</b><small>" + [c.city, c.status === "pending" ? "waiting for approval" : c.open ? "open to join" : "needs the club code"].filter(Boolean).map(esc).join(" · ") + "</small></div>" + (c.status === "pending" ? "" : '<button class="btn ghost" style="flex:none" data-act="club-join" data-id="' + c.id + '" data-open="' + (c.open ? "1" : "") + '">Join</button><button class="x" data-act="club-coach" data-id="' + c.id + '">Coach?</button>') + "</div>").join("") + "</div>";
     else h += '<p class="empty">No club registered yet. Create yours and your training partners can join.</p>';
     h += '<button class="btn wide" data-act="club-new">+ Register a club</button></div>';
     return h;
   }
   const P = CLUB.profile; const adm = isAdmin(); const nom = nextOpenMat(P.schedule);
-  let h = '<div class="card clubhead"><div class="card-head"><h2>' + esc(P.n) + "</h2>" + (adm ? '<button class="btn ghost" data-act="club-edit">Edit</button>' : "") + "</div>" +
+  if (P.status === "pending") h += '<div class="tip"><b>Waiting for approval.</b> The app admin checks every new club once. You can already fill in the schedule and fees.</div>';
+  h += '<div class="card clubhead"><div class="card-head"><h2>' + esc(P.n) + "</h2>" + (adm ? '<button class="btn ghost" data-act="club-edit">Edit</button>' : "") + "</div>" +
     '<p class="muted small">' + [P.city, P.coach ? "Coach " + P.coach : ""].filter(Boolean).map(esc).join(" · ") + "</p>" + (P.about ? '<p class="small">' + esc(P.about) + "</p>" : "") +
     '<div class="facts">' + (P.addr ? '<span>' + esc(P.addr) + "</span>" : "") + (P.phone ? '<a href="tel:' + esc(P.phone) + '">' + esc(P.phone) + "</a>" : "") + (P.ig ? '<a href="https://instagram.com/' + esc(P.ig.replace(/^@/, "")) + '" target="_blank" rel="noopener">@' + esc(P.ig.replace(/^@/, "")) + "</a>" : "") + "</div>" +
-    '<div class="summary"><div class="stat"><b>' + fmtMoney(P.fee && P.fee.month) + '</b><span>per month</span></div><div class="stat"><b>' + fmtMoney(P.fee && P.fee.drop) + '</b><span>drop-in</span></div><div class="stat"><b>' + (nom || "—") + '</b><span>next open mat</span></div></div></div>';
+    '<div class="summary"><div class="stat"><b>' + fmtMoney(P.fee && P.fee.month) + '</b><span>per month</span></div><div class="stat"><b>' + fmtMoney(P.fee && P.fee.drop) + '</b><span>drop-in</span></div><div class="stat"><b>' + (nom || "—") + '</b><span>next open mat</span></div></div>' +
+    (adm ? '<div class="codes"><span>Club code <b>' + esc(P.code || "—") + '</b></span><span>Coach code <b>' + esc(P.coachCode || "—") + "</b></span></div>" : "") + "</div>";
   h += seg([["sched", "Schedule"], ["pay", "Payments"], ["members", "Members"]], UI.clubSeg, "clubseg");
   if (UI.clubSeg === "sched") h += vClubSched(P, adm);
   else if (UI.clubSeg === "pay") h += vClubPay(P, adm);
@@ -1289,16 +1316,46 @@ function vClubSched(P, adm) {
   return h + "</div>";
 }
 function vClubPay(P, adm) {
-  const me = myUid(); const mine = (CLUB.pay[me] && CLUB.pay[me].items || []).slice().sort((a, b) => (a.d < b.d ? 1 : -1)); const ok = paidThisMonth(me);
-  let h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (ok ? "ok" : "warn") + '">' + (ok ? "Paid for " + thisMonth() : "Not paid for " + thisMonth()) + "</span></div>";
-  if (!mine.length) h += '<p class="empty">No payments logged. Add one when you pay the monthly fee.</p>';
-  else h += '<div class="list">' + mine.map((x) => '<button class="row" data-act="club-pay" data-id="' + x.id + '"><div class="txt"><b>' + fmtMoney(x.amt) + " · " + esc(x.per) + "</b><small>" + fmtD(x.d) + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div>";
-  h += '<button class="btn wide" data-act="club-pay">+ Log a payment</button></div>';
+  const me = myUid(); const mine = (CLUB.pay[me] && CLUB.pay[me].items || []).slice().sort((a, b) => (a.d < b.d ? 1 : -1)); const ok = paidThisMonth(me); const pend = pendingPay(me).some((x) => x.per === thisMonth());
+  let h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (ok ? "ok" : pend ? "na" : "warn") + '">' + (ok ? "Paid for " + thisMonth() : pend ? "Waiting for the coach" : "Not paid for " + thisMonth()) + "</span></div>";
+  if (!mine.length) h += '<p class="empty">No payments yet. Pay the monthly fee here and your coach confirms it.</p>';
+  else h += '<div class="list">' + mine.map((x) => '<button class="row" data-act="club-pay" data-id="' + x.id + '"><span class="pill ' + (x.status === "pending" ? "na" : "ok") + '">' + (x.status === "pending" ? "sent" : "confirmed") + '</span><div class="txt"><b>' + fmtMoney(x.amt) + " · " + esc(x.per) + "</b><small>" + fmtD(x.d) + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div>";
+  h += '<button class="btn wide" data-act="club-paynow">' + (ok ? "Pay next month" : "Pay " + fmtMoney(P.fee && P.fee.month) + " for " + thisMonth()) + "</button></div>";
   if (adm) {
     const ms = (CLUB.members.list || []).slice().sort((a, b) => (paidThisMonth(a.uid) === paidThisMonth(b.uid) ? 0 : paidThisMonth(a.uid) ? 1 : -1));
-    h += '<div class="card"><div class="card-head"><h3>Who has paid · ' + thisMonth() + '</h3><span class="muted small">' + ms.filter((m) => paidThisMonth(m.uid)).length + " / " + ms.length + "</span></div><div class=\"list\">" + ms.map((m) => { const lp = lastPaid(m.uid); const ok = paidThisMonth(m.uid); return '<div class="row"><span class="pill ' + (ok ? "ok" : "bad") + '">' + (ok ? "paid" : "due") + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b><small>" + (lp ? "last: " + esc(lp.per) + " · " + fmtMoney(lp.amt) : "never") + '</small></div><button class="btn ghost" style="flex:none" data-act="club-pay" data-uid="' + m.uid + '">Log</button></div>'; }).join("") + "</div></div>";
+    h += '<div class="card"><div class="card-head"><h3>Who has paid · ' + thisMonth() + '</h3><span class="muted small">' + ms.filter((m) => paidThisMonth(m.uid)).length + " / " + ms.length + "</span></div><div class=\"list\">" + ms.map((m) => { const lp = lastPaid(m.uid); const ok = paidThisMonth(m.uid); const pp = pendingPay(m.uid); return '<div class="row"><span class="pill ' + (ok ? "ok" : pp.length ? "warn" : "bad") + '">' + (ok ? "paid" : pp.length ? "check" : "due") + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b><small>" + (pp.length ? "says paid " + esc(pp[0].per) + " · " + fmtMoney(pp[0].amt) + (pp[0].note ? " · " + esc(pp[0].note) : "") : lp ? "last: " + esc(lp.per) + " · " + fmtMoney(lp.amt) : "never") + "</small></div>" + (pp.length ? '<button class="btn" style="flex:none" data-act="club-confirm" data-uid="' + m.uid + '" data-id="' + pp[0].id + '">Confirm</button>' : '<button class="btn ghost" style="flex:none" data-act="club-pay" data-uid="' + m.uid + '">Log</button>') + "</div>"; }).join("") + "</div></div>";
   }
   return h;
+}
+function payNowSheet() {
+  const P = CLUB.profile; const me = myUid(); const per = paidThisMonth(me) ? thisMonth().slice(0, 4) + "-" + pad((+thisMonth().slice(5) % 12) + 1) : thisMonth(); const pay = P.pay || {}; const amt = (P.fee && P.fee.month) || 0;
+  const how = pay.bank || pay.account || pay.qpay ? '<div class="payhow">' + (pay.bank ? "<div><span>Bank</span><b>" + esc(pay.bank) + "</b></div>" : "") + (pay.account ? "<div><span>Account</span><b>" + esc(pay.account) + "</b></div>" : "") + (pay.holder ? "<div><span>Name</span><b>" + esc(pay.holder) + "</b></div>" : "") + (pay.qpay ? '<div><span>QPay</span><b>' + esc(pay.qpay) + "</b></div>" : "") + (pay.note ? '<p class="small muted">' + esc(pay.note) + "</p>" : "") + "</div>" : '<p class="small muted">The coach has not added payment details yet. Pay at the club, then tap “I have paid” so it shows up here.</p>';
+  const b = '<p class="small">Transfer <b>' + fmtMoney(amt) + "</b> for <b>" + esc(per) + "</b>, then confirm below. Your coach checks it and your month is marked as paid.</p>" + how + '<div class="grid2">' + field("p-per", "For month", inp("p-per", per, "month")) + field("p-amt", "Amount (₮)", inp("p-amt", amt, "number", 'inputmode="numeric"')) + "</div>" + field("p-note", "Note", inp("p-note", "", "text", 'placeholder="transfer / cash / QPay"'));
+  openSheet("Pay " + P.n, b, { saveLabel: "I have paid", async onSave() {
+    const doc = CLUB.pay[me] || { items: [] }; doc.items.push({ id: uid(), d: todayIso(), per: sv("p-per") || per, amt: +sv("p-amt") || amt, note: sv("p-note").trim(), by: me, status: "pending" }); CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); toast("Sent to your coach"); render(); return true;
+  } });
+}
+async function confirmPay(uidFor, id) {
+  const doc = CLUB.pay[uidFor]; if (!doc) return; const x = doc.items.find((y) => y.id === id); if (!x) return; x.status = "ok"; x.okBy = myUid(); x.okAt = todayIso(); await cset("club/" + CLUB.id + "/pay/" + uidFor, doc); toast("Confirmed"); render();
+}
+function vAppAdmin() {
+  const A = CLUB.app || {}; const pend = CLUB.pending || []; const ups = ((CLUB.upgrades && CLUB.upgrades.list) || []).filter((u) => u.status === "pending");
+  let h = '<div class="card admin"><div class="card-head"><h3>App admin</h3><button class="btn ghost" data-act="app-settings">Payment settings</button></div>';
+  h += '<p class="muted small">New clubs · ' + pend.length + "</p>" + (pend.length ? '<div class="list">' + pend.map((p) => '<div class="row"><div class="txt"><b>' + esc(p.n) + "</b><small>" + esc([p.city, p.coach].filter(Boolean).join(" · ")) + '</small></div><button class="btn" style="flex:none" data-act="club-approve" data-id="' + p.id + '">Approve</button><button class="x" data-act="club-reject" data-id="' + p.id + '">Reject</button></div>').join("") + "</div>" : '<p class="empty">Nothing waiting.</p>');
+  h += '<p class="muted small">Upgrades · ' + ups.length + "</p>" + (ups.length ? '<div class="list">' + ups.map((u) => '<div class="row"><div class="txt"><b>' + esc(u.n || u.email || u.uid) + "</b><small>" + fmtD(u.d) + (u.note ? " · " + esc(u.note) : "") + '</small></div><button class="btn" style="flex:none" data-act="up-ok" data-id="' + u.id + '" data-m="1">1 mo</button><button class="btn ghost" style="flex:none" data-act="up-ok" data-id="' + u.id + '" data-m="12">1 yr</button><button class="x" data-act="up-no" data-id="' + u.id + '">✕</button></div>').join("") + "</div>" : '<p class="empty">No upgrade requests.</p>');
+  h += '<details class="fold"><summary><span class="muted small">Club codes (hand the coach code to each club)</span></summary><div class="list">' + ((CLUB.index && CLUB.index.list) || []).map((c) => '<div class="row"><div class="txt"><b>' + esc(c.n) + '</b><small>' + (c.status || "approved") + '</small></div><button class="x" data-act="club-codes" data-id="' + c.id + '">Codes</button></div>').join("") + "</div></details></div>";
+  return h;
+}
+function appSettingsSheet() {
+  const A = CLUB.app || {}; const p = A.pay || {};
+  const b = '<p class="small muted">Shown to members who upgrade the app. Club fees use each club’s own details.</p><div class="grid2">' + field("a-price", "Upgrade price / month (₮)", inp("a-price", (A.pro && A.pro.price) || "", "number", 'inputmode="numeric"')) + field("a-bank", "Bank", inp("a-bank", p.bank || "", "text")) + "</div><div class=\"grid2\">" + field("a-acc", "Account", inp("a-acc", p.account || "", "text")) + field("a-holder", "Name", inp("a-holder", p.holder || "", "text")) + "</div>" + field("a-qpay", "QPay (link or text)", inp("a-qpay", p.qpay || "", "text")) + field("a-note", "Note", ta("a-note", p.note || "", "")) + field("a-admins", "Admin emails (one per line)", ta("a-admins", (A.admins || []).join("\n"), ""));
+  openSheet("Payment settings", b, { async onSave() { const rec = { admins: lines(sv("a-admins")), pay: { bank: sv("a-bank").trim(), account: sv("a-acc").trim(), holder: sv("a-holder").trim(), qpay: sv("a-qpay").trim(), note: sv("a-note").trim() }, pro: { price: +sv("a-price") || 0 } }; await cset("app/config", rec); CLUB.app = rec; toast("Saved"); render(); return true; } });
+}
+function upgradeSheet() {
+  const A = CLUB.app || {}; const p = A.pay || {}; const price = (A.pro && A.pro.price) || 0;
+  const how = p.bank || p.account || p.qpay ? '<div class="payhow">' + (p.bank ? "<div><span>Bank</span><b>" + esc(p.bank) + "</b></div>" : "") + (p.account ? "<div><span>Account</span><b>" + esc(p.account) + "</b></div>" : "") + (p.holder ? "<div><span>Name</span><b>" + esc(p.holder) + "</b></div>" : "") + (p.qpay ? "<div><span>QPay</span><b>" + esc(p.qpay) + "</b></div>" : "") + (p.note ? '<p class="small muted">' + esc(p.note) + "</p>" : "") + "</div>" : '<p class="small muted">Payment details are being set up. Send the request anyway and the admin will get back to you.</p>';
+  const b = '<p class="small">The upgrade opens Setups, routes, Learn, game plans and roll history' + (price ? " for <b>" + fmtMoney(price) + "</b> a month" : "") + ". Club members with a confirmed monthly fee get it included.</p>" + how + field("u-note", "Note (your name on the transfer)", inp("u-note", "", "text"));
+  openSheet("Upgrade", b, { saveLabel: "I have paid", async onSave() { if (mode !== "cloud" && !isSuper()) return true; const doc = (await cget("app/upgrades")) || { list: [] }; doc.list.push({ id: uid(), uid: myUid(), n: myName(), email: SB.session ? SB.session.email : "", d: todayIso(), note: sv("u-note").trim(), status: "pending" }); await cset("app/upgrades", doc); CLUB.upgrades = doc; toast("Request sent"); render(); return true; } });
 }
 function vClubMembers(P, adm) {
   const ms = (CLUB.members.list || []).slice().sort((a, b) => BELT_ORDER.indexOf((b.belt || "white").split("-")[0]) - BELT_ORDER.indexOf((a.belt || "white").split("-")[0]));
@@ -1310,13 +1367,14 @@ function clubSheet(edit) {
   const P = edit ? CLUB.profile : {}; const fee = P.fee || {};
   const b = field("c-n", "Club name", inp("c-n", P.n || "", "text", 'autofocus placeholder="e.g. Ulaanbaatar BJJ"')) + '<div class="grid2">' + field("c-city", "City", inp("c-city", P.city || "", "text")) + field("c-coach", "Head coach", inp("c-coach", P.coach || "", "text")) + "</div>" +
     field("c-addr", "Address", inp("c-addr", P.addr || "", "text")) + '<div class="grid2">' + field("c-phone", "Phone", inp("c-phone", P.phone || "", "tel")) + field("c-ig", "Instagram", inp("c-ig", P.ig || "", "text", 'placeholder="@club"')) + "</div>" +
-    '<div class="grid2">' + field("c-fm", "Monthly fee (₮)", inp("c-fm", fee.month || "", "number", 'inputmode="numeric"')) + field("c-fd", "Drop-in fee (₮)", inp("c-fd", fee.drop || "", "number", 'inputmode="numeric"')) + "</div>" + field("c-about", "About", ta("c-about", P.about || "", "Style, who trains here, what to bring…"));
+    '<div class="grid2">' + field("c-fm", "Monthly fee (₮)", inp("c-fm", fee.month || "", "number", 'inputmode="numeric"')) + field("c-fd", "Drop-in fee (₮)", inp("c-fd", fee.drop || "", "number", 'inputmode="numeric"')) + "</div>" + field("c-about", "About", ta("c-about", P.about || "", "Style, who trains here, what to bring…")) +
+    '<p class="lbl" style="margin-top:4px">How members pay you</p><div class="grid2">' + field("c-bank", "Bank", inp("c-bank", (P.pay || {}).bank || "", "text")) + field("c-acc", "Account", inp("c-acc", (P.pay || {}).account || "", "text")) + "</div><div class=\"grid2\">" + field("c-holder", "Name on account", inp("c-holder", (P.pay || {}).holder || "", "text")) + field("c-qpay", "QPay", inp("c-qpay", (P.pay || {}).qpay || "", "text")) + "</div>" + field("c-pnote", "Payment note", inp("c-pnote", (P.pay || {}).note || "", "text", 'placeholder="Write your name in the transfer"'));
   openSheet(edit ? "Edit club" : "Register a club", b, { saveLabel: edit ? "Save" : "Create club", async onSave() {
     const n = sv("c-n").trim(); if (!n) { $("c-n").focus(); return false; }
-    const rec = Object.assign(edit ? CLUB.profile : { id: uid(), admins: [myUid()], schedule: [], created: todayIso() }, { n, city: sv("c-city").trim(), coach: sv("c-coach").trim(), addr: sv("c-addr").trim(), phone: sv("c-phone").trim(), ig: sv("c-ig").trim(), about: sv("c-about").trim(), fee: { month: +sv("c-fm") || 0, drop: +sv("c-fd") || 0 } });
+    const rec = Object.assign(edit ? CLUB.profile : { id: uid(), admins: [myUid()], schedule: [], created: todayIso(), status: isSuper() ? "approved" : "pending", by: myUid(), code: genCode(6), coachCode: genCode(8), open: false }, { n, city: sv("c-city").trim(), coach: sv("c-coach").trim(), addr: sv("c-addr").trim(), phone: sv("c-phone").trim(), ig: sv("c-ig").trim(), about: sv("c-about").trim(), fee: { month: +sv("c-fm") || 0, drop: +sv("c-fd") || 0 }, pay: { bank: sv("c-bank").trim(), account: sv("c-acc").trim(), holder: sv("c-holder").trim(), qpay: sv("c-qpay").trim(), note: sv("c-pnote").trim() } });
     try {
       await cset("club/" + rec.id + "/profile", rec);
-      const idx = (await cget("clubs/index")) || { list: [] }; const i = idx.list.findIndex((x) => x.id === rec.id); const row = { id: rec.id, n: rec.n, city: rec.city }; if (i >= 0) idx.list[i] = row; else idx.list.push(row); await cset("clubs/index", idx);
+      const idx = (await cget("clubs/index")) || { list: [] }; const i = idx.list.findIndex((x) => x.id === rec.id); const row = { id: rec.id, n: rec.n, city: rec.city, status: rec.status || "approved", by: rec.by, open: !!rec.open }; if (i >= 0) idx.list[i] = row; else idx.list.push(row); await cset("clubs/index", idx);
       if (!edit) { S.settings.clubId = rec.id; save("settings"); CLUB.loadedFor = null; await clubLoad(); await clubUpdateMe(); } else CLUB.profile = rec;
       toast(edit ? "Saved" : "Club created"); render();
     } catch (e) { toast("Could not save the club"); }
@@ -1360,7 +1418,15 @@ document.addEventListener("click", (e) => {
     case "club-reload": CLUB.loadedFor = null; render(); break;
     case "club-new": clubSheet(false); break;
     case "club-edit": clubSheet(true); break;
-    case "club-join": clubJoin(ds.id); break;
+    case "club-join": if (ds.open) clubJoin(ds.id, "", false); else joinSheet(ds.id, false); break;
+    case "club-coach": joinSheet(ds.id, true); break;
+    case "club-paynow": payNowSheet(); break;
+    case "club-confirm": if (isAdmin()) confirmPay(ds.uid, ds.id); break;
+    case "upgrade": if (clubNeeds()) { clubLoad().then(upgradeSheet); } else upgradeSheet(); break;
+    case "app-settings": if (isSuper()) appSettingsSheet(); break;
+    case "club-approve": case "club-reject": if (isSuper()) { (async () => { const p = await cget("club/" + ds.id + "/profile"); const idx = (await cget("clubs/index")) || { list: [] }; if (act === "club-approve") { if (p) { p.status = "approved"; await cset("club/" + ds.id + "/profile", p); } const r = idx.list.find((x) => x.id === ds.id); if (r) r.status = "approved"; } else { idx.list = idx.list.filter((x) => x.id !== ds.id); if (p) { p.status = "rejected"; await cset("club/" + ds.id + "/profile", p); } } await cset("clubs/index", idx); CLUB.loadedFor = null; toast(act === "club-approve" ? "Approved" : "Rejected"); render(); })(); } break;
+    case "up-ok": case "up-no": if (isSuper()) { (async () => { const doc = (await cget("app/upgrades")) || { list: [] }; const u = doc.list.find((x) => x.id === ds.id); if (!u) return; if (act === "up-ok") { const pro = (await cget("app/pro")) || { u: {} }; const cur = pro.u[u.uid] && pro.u[u.uid].until >= thisMonth() ? pro.u[u.uid].until : thisMonth(); const y = +cur.slice(0, 4), m = +cur.slice(5) + (+ds.m || 1); const until = (y + Math.floor((m - 1) / 12)) + "-" + pad(((m - 1) % 12) + 1); pro.u[u.uid] = { until, n: u.n }; await cset("app/pro", pro); CLUB.pro = pro; u.status = "ok"; u.until = until; } else u.status = "no"; await cset("app/upgrades", doc); CLUB.upgrades = doc; toast(act === "up-ok" ? "Upgraded" : "Rejected"); render(); })(); } break;
+    case "club-codes": if (isSuper()) { (async () => { const p = await cget("club/" + ds.id + "/profile"); if (!p) return; if (!p.code) { p.code = genCode(6); p.coachCode = genCode(8); await cset("club/" + ds.id + "/profile", p); } openSheet(p.n, '<div class="codes big"><span>Club code <b>' + esc(p.code) + '</b></span><span>Coach code <b>' + esc(p.coachCode) + '</b></span></div><p class="small muted">Give the coach code to the head coach only. Members join with the club code' + (p.open ? ", or without one until a coach claims the club" : "") + ".</p>", {}); })(); } break;
     case "club-sess": if (isAdmin()) sessSheet(ds.i != null && ds.i !== "" ? +ds.i : null); break;
     case "club-pay": paySheet(ds.id || null, ds.uid || null); break;
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
