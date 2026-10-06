@@ -14,15 +14,17 @@
 
 ## M2 — Join + deposit (in progress)
 
-- Kakao/Naver login, profile.
-- Join a departure → Toss sandbox payment for deposit → webhook → seat held.
-- `buildInstallmentSchedule` + tests. ✅ (src/lib/installments.ts; join page at /departures/[id]/join shows the schedule)
+- Kakao/Naver login, profile (name as in passport, gender, age range, intro).
+- Join a departure → Toss Payments checkout for the deposit → server confirm + webhook → seat held.
+- Remainder due date (≥7 days before departure) shown on the booking; paid via a second Toss checkout (card 무이자 할부 available there). ✅ date logic in `src/lib/installments.ts`; join page at /departures/[id]/join.
+- Reminder emails before the remainder due date.
 
-## M3 — Installments + group
+## M3 — Matching + group (core product)
 
-- Scheduled installment charges (billing key) or card 무이자 할부 option.
-- Group page with members, chat, checklist, countdown.
-- Reminder notifications (email; KakaoTalk Alimtalk later).
+- Group page per departure: members (first name + intro), seat fill, confirmed/open status, countdown.
+- Group chat (Supabase Realtime or polling), checklist (passport, eSIM, insurance).
+- Matching helpers: filter departures by date range, gender mix, age range; "open a new departure" request when none fits.
+- Auto-confirm at cutoff (minToConfirm reached) and cancel/refund path when not.
 
 ## M4 — Admin
 

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("open departure → join page shows deposit and a 0% schedule", async ({ page }) => {
+test("open departure → join page shows deposit and the remainder due date", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
 
@@ -9,8 +9,9 @@ test("open departure → join page shows deposit and a 0% schedule", async ({ pa
   await expect(page).toHaveURL(/\/departures\/gobi-2027-05-29\/join$/);
   await expect(page.getByRole("heading", { level: 1, name: "참여하기" })).toBeVisible();
   await expect(page.getByText("550,000원").first()).toBeVisible(); // deposit
-  await expect(page.getByRole("heading", { name: "분할 결제 일정" })).toBeVisible();
-  await expect(page.getByText("1회차")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "잔금 결제" })).toBeVisible();
+  await expect(page.getByText("잔금 결제 기한")).toBeVisible();
+  await expect(page.getByText("토스페이먼츠로 결제합니다", { exact: false })).toBeVisible();
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

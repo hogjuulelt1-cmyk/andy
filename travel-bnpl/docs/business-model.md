@@ -1,10 +1,11 @@
 # Business model
 
-## Decisions made by Anthony (2026-09-30)
+## Decisions made by Anthony (2026-09-30, updated 2026-10-06)
 
 - **Not layaway.** Trip is locked by the upfront payment, not after full payment.
 - **Upfront payment covers the flight cost.**
-- **Remainder in 0% installments.** No interest, no fees.
+- **Remainder paid through Toss Payments** before the due date; 무이자 할부 at Toss checkout if the user wants installments. No interest or fees from us; we do not charge cards ourselves.
+- **Our product is matching + itineraries.** Payment is Toss's job.
 - **We sell our own tour packages** and profit from the package margin.
 - **Target: young Koreans travelling to Mongolia** (inbound).
 

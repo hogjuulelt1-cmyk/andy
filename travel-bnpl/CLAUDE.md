@@ -11,17 +11,19 @@ Core loop:
 
 1. User browses a **standard package** (Gobi 7d, Terelj+Hustai 4d, Khuvsgul 6d) and a departure date.
 2. User **joins or opens a group** ("동행" companion matching) so a 6-seat vehicle fills up.
-3. User pays an **upfront payment (deposit) that covers the flight cost** to lock their seat.
-4. The **remainder is paid in 0% installments** (no interest, no fees), mostly finished **before the trip starts**.
+3. User pays an **upfront payment (deposit) that covers the flight cost** to lock their seat. Paid through **Toss Payments**.
+4. The **remainder is paid through Toss Payments before the remainder due date** (≥7 days before departure). The user can pick card **무이자 할부** at Toss checkout; the card issuer carries the installments. We never run our own installment plan.
 5. We profit from **package margin (15–25%)**, not interest. This is not layaway: the trip is confirmed after the deposit, not after full payment.
+
+**Decision (2026-10-06):** the app is a **companion-matching + package platform**. All money moves through Toss Payments; our product work goes into matching, group pages and itineraries, not payment mechanics.
 
 Full detail: `docs/product-spec.md`, `docs/business-model.md`, `docs/packages.md`, `docs/risks-and-open-questions.md`.
 
 ## Non-negotiable product rules
 
 - **Never charge interest or late-payment interest.** 0% installments only. Anything that looks like lending needs legal review first (see risks doc).
-- **Do not build our own credit/lending ledger in v1.** Installments go through a Korean PG (Toss Payments / KG Inicis) card installment (무이자 할부) or a scheduled-charge (billing key) flow, so card issuers carry the credit risk.
-- Installment schedule must end **before or during the trip**, never mostly after it.
+- **Do not build our own credit/lending ledger or installment charging.** Every payment (deposit and remainder) is a Toss Payments checkout; 무이자 할부 is chosen by the user at Toss and carried by the card issuer. We store only: what is due, when, and what Toss confirmed.
+- The remainder due date is **≥7 days before departure** (`src/lib/installments.ts` computes dates; it is not a charging engine).
 - All prices are stored in **KRW (integer won)**. Supplier costs in MNT are stored separately with the FX rate used. Never mix currencies in one field.
 - User-facing UI language: **Korean** first (ko-KR). Admin/ops UI: English or Mongolian is fine. Keep all strings in i18n files, never hard-coded.
 - Prices in docs are **estimates**; seed data is placeholder, not a quote.

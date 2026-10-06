@@ -3,15 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { formatDay, formatRange } from "@/lib/dates";
-import { t } from "@/lib/format";
 import { getMessages, isLocale, localePath } from "@/lib/i18n";
-import { buildInstallmentSchedule } from "@/lib/installments";
+import { remainderDueDate } from "@/lib/installments";
 import { formatKrw } from "@/lib/money";
 import { getDeparture, getPackage, isJoinable } from "@/server/catalog";
 
 type Props = Readonly<{ params: Promise<{ locale: string; id: string }> }>;
 
-// The schedule depends on today's date, so this page is rendered per request.
+// The due date depends on today's date, so this page is rendered per request.
 export const dynamic = "force-dynamic";
 
 function todayInSeoul(): string {
@@ -35,13 +34,9 @@ export default async function JoinPage({ params }: Props) {
   const m = getMessages(locale);
   const joinable = isJoinable(dep);
 
-  const plan = buildInstallmentSchedule({
-    totalKrw: dep.priceKrw,
-    depositKrw: dep.depositKrw,
-    bookingDate: todayInSeoul(),
-    departureDate: dep.startDate,
-  });
-  const payTodayKrw = plan.depositKrw + (plan.payInFull ? plan.remainderKrw : 0);
+  const remainderKrw = dep.priceKrw - dep.depositKrw;
+  const { dueDate, payWithDeposit } = remainderDueDate(todayInSeoul(), dep.startDate);
+  const payTodayKrw = dep.depositKrw + (payWithDeposit ? remainderKrw : 0);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-8 px-4 py-10">
@@ -82,11 +77,11 @@ export default async function JoinPage({ params }: Props) {
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-zinc-500 dark:text-zinc-400">{m.join.deposit}</dt>
-            <dd className="tabular-nums">{formatKrw(plan.depositKrw)}</dd>
+            <dd className="tabular-nums">{formatKrw(dep.depositKrw)}</dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-zinc-500 dark:text-zinc-400">{m.join.remainder}</dt>
-            <dd className="tabular-nums">{formatKrw(plan.remainderKrw)}</dd>
+            <dd className="tabular-nums">{formatKrw(remainderKrw)}</dd>
           </div>
           <div className="mt-1 flex justify-between gap-3 border-t border-zinc-200 pt-2 dark:border-zinc-700">
             <dt className="font-semibold">{m.join.today}</dt>
@@ -96,36 +91,26 @@ export default async function JoinPage({ params }: Props) {
         <p className="text-xs text-zinc-500 dark:text-zinc-400">{m.join.seatHold}</p>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-xl font-bold">{m.join.schedule}</h2>
-        {plan.payInFull ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-300">{m.join.payInFull}</p>
-        ) : plan.installments.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-300">{m.join.noRemainder}</p>
-        ) : (
-          <ol className="flex flex-col">
-            {plan.installments.map((i) => (
-              <li
-                key={i.seq}
-                className="flex items-center justify-between gap-3 border-b border-zinc-200 py-3 last:border-b-0 dark:border-zinc-800"
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-semibold">
-                    {t(m.join.installment, { n: i.seq })}
-                  </span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {t(m.join.due, { date: formatDay(i.dueDate, locale) })}
-                  </span>
-                </div>
-                <span className="font-semibold tabular-nums">{formatKrw(i.amountKrw)}</span>
-              </li>
-            ))}
-          </ol>
-        )}
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {m.join.scheduleHint} · {m.join.bookingDate}
-        </p>
-      </section>
+      {remainderKrw > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold">{m.join.schedule}</h2>
+          {payWithDeposit ? (
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">{m.join.payInFull}</p>
+          ) : (
+            <dl className="flex items-center justify-between gap-3 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <div className="flex flex-col">
+                <dt className="text-sm font-semibold">{m.join.remainderDue}</dt>
+                <dd className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {formatDay(dueDate, locale)}
+                </dd>
+              </div>
+              <dd className="font-semibold tabular-nums">{formatKrw(remainderKrw)}</dd>
+            </dl>
+          )}
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">{m.join.remainderHow}</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{m.join.scheduleHint}</p>
+        </section>
+      )}
 
       <div className="flex flex-col gap-2">
         <button

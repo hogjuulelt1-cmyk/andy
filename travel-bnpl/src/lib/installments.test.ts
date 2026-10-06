@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { addMonthsClamped, buildInstallmentSchedule, daysBetween } from "./installments";
+import {
+  addMonthsClamped,
+  buildInstallmentSchedule,
+  daysBetween,
+  remainderDueDate,
+} from "./installments";
 
 const sum = (xs: { amountKrw: number }[]) => xs.reduce((a, b) => a + b.amountKrw, 0);
 
@@ -117,5 +122,23 @@ describe("buildInstallmentSchedule", () => {
         departureDate: "2027-06-01",
       }),
     ).toThrow(TypeError);
+  });
+});
+
+describe("remainderDueDate", () => {
+  it("is 7 days before departure by default", () => {
+    expect(remainderDueDate("2027-01-10", "2027-06-19")).toEqual({
+      dueDate: "2027-06-12",
+      payWithDeposit: false,
+    });
+  });
+  it("falls back to the booking day inside the final week", () => {
+    expect(remainderDueDate("2027-06-15", "2027-06-19")).toEqual({
+      dueDate: "2027-06-15",
+      payWithDeposit: true,
+    });
+  });
+  it("rejects a departure before the booking", () => {
+    expect(() => remainderDueDate("2027-07-01", "2027-06-19")).toThrow(RangeError);
   });
 });

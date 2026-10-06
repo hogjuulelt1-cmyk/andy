@@ -10,7 +10,7 @@
 
 1. **Trusted standard packages** run by us (vehicle + driver + Korean-speaking guide + ger camps + meals).
 2. **Companion matching**: join a departure group, see how many seats are filled (e.g. 4/6), chat with the group.
-3. **Pay small now**: deposit covering the flight locks the seat; the rest in 0% installments before departure.
+3. **Pay small now**: deposit covering the flight locks the seat; the rest is paid through Toss before departure (무이자 할부 available at checkout).
 
 Note: Koreans already have interest-free card installments (무이자 할부, Toss, Kakao Pay), so "0% installments" alone is not unique. Companion matching + trust + the deposit lock is the real differentiator.
 
@@ -20,7 +20,7 @@ Note: Koreans already have interest-free card installments (무이자 할부, To
 2. **Pick departure**: calendar of departures; each departure = one group/vehicle of max 6 seats, with fill status.
 3. **Join**: sign in (Kakao/Naver), profile (name as in passport, gender, age range, short intro), agree to terms.
 4. **Pay deposit**: amount = flight cost portion (config per package, ~20–40% of total). Seat is held only after deposit succeeds.
-5. **Installment plan**: remainder split into 2–4 monthly charges, last charge due **≥7 days before departure**. Shown as a clear schedule.
+5. **Remainder**: due **≥7 days before departure**, paid through a second Toss Payments checkout. The user may choose card 무이자 할부 there; we show the due date and send reminders, we do not charge cards ourselves.
 6. **Group page**: members (first name + intro), group chat, checklist (passport, eSIM, insurance), countdown.
 7. **Trip confirmed**: when a departure reaches its minimum (e.g. 4 of 6) by the cutoff date, it is confirmed; otherwise users get options (move date / full refund).
 8. **Add-ons**: Naadam tickets, drone photo shoot, deel costume photos, eSIM, insurance, domestic flight upgrade.

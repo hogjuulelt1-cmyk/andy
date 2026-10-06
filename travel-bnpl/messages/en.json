@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "Mongolia Companions",
-    "tagline": "Pay the flight first, the rest in 0% installments before departure",
+    "tagline": "Pay the flight first, the rest via Toss before departure",
     "description": "Mongolia package trips for Koreans in their 20s and 30s. Join a companion group and lock your seat by paying only the flight portion."
   },
   "home": {
@@ -10,7 +10,7 @@
       "browse": "Pick a package",
       "join": "Join a companion group",
       "deposit": "Pay the flight portion to lock your seat",
-      "installments": "Rest in 0% installments before departure"
+      "installments": "Rest paid via Toss before departure (card installments available)"
     },
     "cta": "Browse packages"
   },
@@ -44,7 +44,7 @@
     "day": "Day {n}",
     "stay": "Stay",
     "price": "Price",
-    "remaining": "Rest in 0% installments before departure",
+    "remaining": "Remainder paid via Toss by 7 days before departure, card installments available",
     "priceNote": "Estimate. The exact price is shown when you pick a departure."
   },
   "departure": {
@@ -70,17 +70,15 @@
     "today": "Pay today",
     "deposit": "Deposit (flight)",
     "remainder": "Remaining",
-    "schedule": "Installment schedule",
-    "scheduleHint": "0% interest. The last charge is due 7 days before departure.",
+    "schedule": "Remainder",
+    "scheduleHint": "We never charge your card ourselves. Every payment goes through Toss Payments.",
     "payInFull": "Departure is close, so the remainder is paid together with the deposit.",
-    "noRemainder": "Nothing remaining.",
-    "installment": "Installment {n}",
-    "due": "Due {date}",
     "total": "Total",
     "seatHold": "Your seat is confirmed as soon as the deposit is paid.",
-    "cta": "Pay the deposit",
-    "ctaSoon": "Payments are being connected. Opening soon.",
+    "cta": "Pay the deposit with Toss",
+    "ctaSoon": "Toss Payments is being connected.",
     "notJoinable": "This departure cannot be joined.",
-    "bookingDate": "Based on booking date"
+    "remainderDue": "Remainder due",
+    "remainderHow": "Paid through Toss Payments. You can choose interest-free card installments there."
   }
 }

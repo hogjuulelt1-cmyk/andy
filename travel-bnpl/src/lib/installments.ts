@@ -124,3 +124,21 @@ export function buildInstallmentSchedule(opts: ScheduleOptions): InstallmentPlan
 
   return { depositKrw, remainderKrw, installments, payInFull: false };
 }
+
+/**
+ * Due date for the remainder when it is paid in one Toss checkout:
+ * `minDaysBeforeDeparture` days before departure, or the booking day itself
+ * when the booking is already inside that window (pay with the deposit).
+ */
+export function remainderDueDate(
+  bookingDate: string,
+  departureDate: string,
+  minDaysBeforeDeparture = DEFAULTS.minDaysBeforeDeparture,
+): { dueDate: string; payWithDeposit: boolean } {
+  if (daysBetween(bookingDate, departureDate) < 0) {
+    throw new RangeError("departureDate is before bookingDate");
+  }
+  const due = addDays(departureDate, -minDaysBeforeDeparture);
+  if (daysBetween(bookingDate, due) < 0) return { dueDate: bookingDate, payWithDeposit: true };
+  return { dueDate: due, payWithDeposit: false };
+}
