@@ -430,18 +430,18 @@ function nextOf(n) {
   }
   return out;
 }
-function gNode(n, x, y, r, role, attrs, badge) {
+function gNode(n, x, y, r, role, attrs, badge, sub) {
   const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? (n.t ? typeColor(n.t) : "var(--accent)") : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : n.k === "grp" && !n.t ? TICON.sit : TICON[n.t] || TICON.trans;
-  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const ls = role === "ring2" ? [n.n.length > 14 ? n.n.slice(0, 13).trim() + "…" : n.n] : wrapText(n.n, role === "cur" ? 20 : 15);
+  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const r2 = role.indexOf("ring2") === 0, ans = role.indexOf("ans") > 0; const ls = r2 && !ans ? [n.n.length > 14 ? n.n.slice(0, 13).trim() + "…" : n.n] : wrapText(n.n, role === "cur" ? 20 : ans ? 13 : 15);
   return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
     '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
     '<svg class="ic" x="' + (-ir / 2) + '" y="' + (-ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>" +
-    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (role === "ring2" ? 9 : fs) + 'px">' + esc(l) + "</text>").join("") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + "</g>";
+    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (r2 ? (ans ? 9.5 : 9) : fs) + 'px">' + esc(l) + "</text>").join("") + (sub ? '<text class="lb sub" y="' + (r + 12 + ls.length * (fs + 2)) + '" text-anchor="middle">' + esc(sub.length > 24 ? sub.slice(0, 23).trim() + "…" : sub) + "</text>" : "") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + "</g>";
 }
 function gEdge(ka, a, kb, b, cls, color) { return '<line class="g-edge ' + cls + '" data-a="' + ka + '" data-b="' + kb + '" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>"; }
 function rollGraphSvg() {
   const R = UI.roll; let nodesOut = "", edges = ""; const P = {}; let minX = -40, maxX = 40, minY = -40, maxY = 40;
-  const put = (key, n, x, y, r, role, attrs, badge) => { P[key] = [x, y]; nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || ""), badge); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
+  const put = (key, n, x, y, r, role, attrs, badge, sub) => { P[key] = [x, y]; nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || ""), badge, sub); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
   if (!R) {
     const CR = 150; CATS.forEach(([cat], i) => { const a = (-90 + i * 72) * Math.PI / 180; const cx = Math.cos(a) * CR, cy = Math.sin(a) * CR; const ps = positions().filter((p) => p.cat === cat); const rr = ps.length > 1 ? 30 + ps.length * 7 : 0; ps.forEach((p, j) => { const b = a + (j / ps.length) * 2 * Math.PI; put("s:" + p.id, p, cx + Math.cos(b) * rr, cy + Math.sin(b) * rr, 15, "start"); }); });
     const seen = {}; for (const m of nodes()) if (m.k === "mv" && m.to && P["s:" + m.to]) { const from = posOf(m.id).id; const k = from + ">" + m.to; if (from === m.to || !P["s:" + from] || seen[k]) continue; seen[k] = 1; edges += gEdge("s:" + from, P["s:" + from], "s:" + m.to, P["s:" + m.to], "faint", CAT_COLOR[node(from).cat]); }
@@ -453,29 +453,27 @@ function rollGraphSvg() {
   for (let i = 0; i < Math.min(4, prev.length); i++) { const st = prev[prev.length - 1 - i]; const n = node(st.id); if (!n) break; const key = "t" + i; const x = -(i + 1) * 78, y = i % 2 ? 18 : -18; put(key, n, x, y, 11, "trail", 'data-i="' + (prev.length - 1 - i) + '"'); edges += gEdge(key, [x, y], lastKey, lastKey === "c" ? [0, 0] : P[lastKey], "trail"); lastKey = key; }
   // next steps on the right; many options are bundled by type into hubs
   const all = nextOf(cur); let next = all, hubs = null;
-  const whens = cur.k === "pos" ? [...new Set(all.map((e) => e.n.when || ""))] : [];
-  if (cur.k === "pos" && whens.length > 1 && whens.length <= 8 && all.length > 5) { hubs = {}; for (const e of all) (hubs[e.n.when || ""] = hubs[e.n.when || ""] || []).push(e); next = Object.keys(hubs).sort((a, b) => (a === "" ? -1 : b === "" ? 1 : 0)).map((w) => ({ n: { id: "g:" + (w || "any"), k: "grp", n: w || "Any time", t: "", cat: "", when: w }, how: "group", items: hubs[w] })); }
-  else if (cur.k === "pos" && all.length > 7) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
+  if (cur.k === "pos" && all.length > 6) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
   const n1 = next.length; const r1 = Math.min(170, Math.max(112, 96 + n1 * 9)); const span = n1 > 1 ? Math.min(200, 60 + n1 * 28) : 0;
   next.forEach((e, k) => {
     if (e.how === "group") {
       const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const gk = e.n.t || e.n.id; const key = "h:" + gk; const open = R.grp === gk;
       put(key, e.n, x, y, open ? 19 : 16, "group" + (open ? " open" : ""), 'data-t="' + esc(gk) + '"', e.items.length);
       edges += gEdge("c", [0, 0], key, [x, y], "step" + (open ? "" : " faint"), e.n.t ? typeColor(e.n.t) : "var(--accent)");
-      if (open) { const m = e.items.length; const sector = Math.min(120, 30 + m * 22); e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 96), y2 = Math.sin(a2) * (r1 + 96); const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next" + (it.f === "rare" ? " rare" : ""), 'data-how="' + it.how + '"'); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n));
-          const n2 = nextOf(it.n).filter((z) => z.n.k === "df").slice(0, 2); const sec2 = m > 1 ? Math.min(24, sector / (m - 1) * 0.8) : 30;
+      if (open) { const m = e.items.length; const sector = Math.min(170, 30 + m * 22); const two = m > 6; e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const rr = r1 + 96 + (two && j % 2 ? 78 : 0); const x2 = Math.cos(a2) * rr, y2 = Math.sin(a2) * rr; const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next" + (it.f === "rare" ? " rare" : ""), 'data-how="' + it.how + '"', "", it.n.when); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n));
+          const n2 = two ? [] : nextOf(it.n).filter((z) => z.n.k === "df").slice(0, 2); const sec2 = m > 1 ? Math.min(24, sector / (m - 1) * 0.8) : 30;
           n2.forEach((e2, q) => { const d3 = d2 + (n2.length > 1 ? -sec2 / 2 + sec2 * q : 0); const a3 = d3 * Math.PI / 180; const x3 = Math.cos(a3) * (r1 + 170), y3 = Math.sin(a3) * (r1 + 170); const k3 = "n2:" + it.n.id + ":" + e2.n.id; put(k3, e2.n, x3, y3, 9, "ring2", 'data-p="' + it.n.id + '"'); edges += gEdge(k2, [x2, y2], k3, [x3, y3], "faint df", nodeColor(e2.n)); }); }); }
       return;
     }
     const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "n:" + e.n.id;
     put(key, e.n, x, y, e.f === "rare" ? 14 : 17, "next" + (e.f === "rare" ? " rare" : "") + (e.how === "works" ? " works" : ""), 'data-how="' + e.how + '"');
     edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : nodeColor(e.n));
-    const next2 = nextOf(e.n).slice(0, 3); const sector = n1 > 1 ? Math.min(44, span / (n1 - 1) * 0.9) : 60;
-    next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 92), y2 = Math.sin(a2) * (r1 + 92); const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, 10, "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint" + (e2.n.k === "df" ? " df" : e2.how === "works" ? " works" : ""), e2.n.k === "fin" || e2.how === "works" ? "var(--ok)" : nodeColor(e2.n)); });
-    if (nextOf(e.n).length > 3) { const a3 = (deg + sector / 2 + 10) * Math.PI / 180; nodesOut += '<text class="more" x="' + (Math.cos(a3) * (r1 + 92)).toFixed(1) + '" y="' + (Math.sin(a3) * (r1 + 92) + 4).toFixed(1) + '" text-anchor="middle">+' + (nextOf(e.n).length - 3) + "</text>"; }
+    const isDf = e.n.k === "df"; const next2 = nextOf(e.n).slice(0, isDf ? 4 : 3); const sector = n1 > 1 ? Math.min(isDf ? 56 : 44, span / (n1 - 1) * 0.9) : 60;
+    next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const rr = r1 + (isDf ? 98 : 92); const x2 = Math.cos(a2) * rr, y2 = Math.sin(a2) * rr; const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, isDf ? 12 : 10, isDf ? "ring2 ans" : "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint" + (e2.n.k === "df" ? " df" : e2.how === "works" ? " works" : ""), e2.n.k === "fin" || e2.how === "works" ? "var(--ok)" : nodeColor(e2.n)); });
+    if (nextOf(e.n).length > next2.length) { const a3 = (deg + sector / 2 + 10) * Math.PI / 180; nodesOut += '<text class="more" x="' + (Math.cos(a3) * (r1 + 92)).toFixed(1) + '" y="' + (Math.sin(a3) * (r1 + 92) + 4).toFixed(1) + '" text-anchor="middle">+' + (nextOf(e.n).length - next2.length) + "</text>"; }
   });
   put("c", cur, 0, 0, 26, "cur");
-  if (hubs && !R.grp) nodesOut += '<text class="more" x="0" y="52" text-anchor="middle">tap a type to open it</text>';
+  if (hubs && !R.grp) nodesOut += '<text class="more" x="0" y="52" text-anchor="middle">tap a group to see the moves</text>';
   if (!n1) nodesOut += '<text class="more" x="70" y="4">no next step written · add one or tap “Elsewhere”</text>';
   return canvasHtml("roll", edges + nodesOut, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }, "", true);
 }
@@ -502,7 +500,7 @@ function rollTap(g) {
   if (role === "cur") { quickSheet(id); return; }
   if (role.indexOf("group") === 0) { R.grp = R.grp === g.dataset.t ? null : g.dataset.t; render(); return; }
   if (role.indexOf("next") === 0 && g.dataset.how === "works" && R.cur !== id) { /* an outcome: the move worked and we landed here */ }
-  if (role === "ring2") { rollStepTo(g.dataset.p); if (UI.roll && UI.roll.cur === g.dataset.p) rollStepTo(id); return; }
+  if (role.indexOf("ring2") === 0) { rollStepTo(g.dataset.p); if (UI.roll && UI.roll.cur === g.dataset.p) rollStepTo(id); return; }
   rollStepTo(id);
 }
 function rollStepTo(id) {
