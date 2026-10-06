@@ -4,20 +4,100 @@
     {
       "slug": "gobi-7d",
       "title": { "ko": "고비 사막 7일", "en": "Gobi 7 days", "mn": "Govi 7 honog" },
+      "summary": {
+        "ko": "차강 소브라가, 욜린암, 홍고린 엘스 모래언덕, 바양작. 고비의 별 아래서 6박.",
+        "en": "Tsagaan Suvarga, Yolyn Am, the Khongoryn Els dunes and Bayanzag. Six nights under Gobi stars."
+      },
       "days": 7,
       "nights": 6,
       "season": "May-Sep",
+      "seasonLabel": { "ko": "5월–9월", "en": "May–Sep" },
       "priceRangeKrw": [1200000, 1800000],
       "flightPortionKrw": [500000, 900000],
-      "highlights": ["Tsagaan Suvarga", "Yolyn Am", "Khongoryn Els", "Bayanzag", "stargazing"],
+      "highlights": {
+        "ko": [
+          "차강 소브라가",
+          "욜린암 협곡",
+          "홍고린 엘스 낙타 체험",
+          "바양작 (불타는 절벽)",
+          "별 관측"
+        ],
+        "en": [
+          "Tsagaan Suvarga",
+          "Yolyn Am",
+          "Khongoryn Els camel ride",
+          "Bayanzag (Flaming Cliffs)",
+          "Stargazing"
+        ]
+      },
+      "included": {
+        "ko": [
+          "인천–울란바토르 왕복 항공권",
+          "6인승 차량 + 기사",
+          "한국어 가이드",
+          "게르 캠프 6박",
+          "전 일정 식사",
+          "낙타 체험, 입장료"
+        ],
+        "en": [
+          "ICN–ULN return flight",
+          "6-seat vehicle + driver",
+          "Korean-speaking guide",
+          "6 nights in ger camps",
+          "All meals",
+          "Camel ride, entrance fees"
+        ]
+      },
       "itinerary": [
-        { "day": 1, "title": "Arrive Ulaanbaatar", "stay": "UB hotel" },
-        { "day": 2, "title": "Tsagaan Suvarga", "stay": "Ger camp" },
-        { "day": 3, "title": "Yolyn Am", "stay": "Ger camp" },
-        { "day": 4, "title": "Khongoryn Els (camel ride)", "stay": "Nomad family ger" },
-        { "day": 5, "title": "Bayanzag + stargazing", "stay": "Ger camp" },
-        { "day": 6, "title": "Ongi monastery / Baga Gazriin Chuluu", "stay": "Ger camp" },
-        { "day": 7, "title": "Fly home", "stay": null }
+        {
+          "day": 1,
+          "title": "Arrive Ulaanbaatar",
+          "titleKo": "울란바토르 도착, 수흐바타르 광장, 몽골식 저녁",
+          "stay": "UB hotel",
+          "stayKo": "울란바토르 호텔"
+        },
+        {
+          "day": 2,
+          "title": "Tsagaan Suvarga",
+          "titleKo": "차강 소브라가, 일몰",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 3,
+          "title": "Yolyn Am",
+          "titleKo": "욜린암 얼음 협곡 트레킹",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 4,
+          "title": "Khongoryn Els (camel ride)",
+          "titleKo": "홍고린 엘스 모래언덕, 낙타 체험, 일몰",
+          "stay": "Nomad family ger",
+          "stayKo": "유목민 가족 게르"
+        },
+        {
+          "day": 5,
+          "title": "Bayanzag + stargazing",
+          "titleKo": "바양작 불타는 절벽, 별 관측",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 6,
+          "title": "Ongi monastery / Baga Gazriin Chuluu",
+          "titleKo": "옹기 사원 또는 바가 가즈린 촐로, 울란바토르 방면",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 7,
+          "title": "Fly home",
+          "titleKo": "울란바토르 → 인천",
+          "stay": null,
+          "stayKo": null
+        }
       ]
     },
     {
@@ -27,42 +107,141 @@
         "en": "Terelj + Hustai 4 days",
         "mn": "Terelj + Hustai 4 honog"
       },
+      "summary": {
+        "ko": "직장인을 위한 짧은 일정. 거북바위, 승마, 칭기즈칸 동상, 야생마 후스타이.",
+        "en": "A short trip for workers. Turtle Rock, horse riding, the Chinggis Khaan statue and wild horses at Hustai."
+      },
       "days": 4,
       "nights": 3,
       "season": "all-year",
+      "seasonLabel": { "ko": "연중", "en": "All year" },
       "priceRangeKrw": [800000, 1200000],
-      "highlights": ["Turtle Rock", "horse riding", "Chinggis Khaan statue", "Przewalski horses"],
+      "flightPortionKrw": [400000, 700000],
+      "highlights": {
+        "ko": ["거북바위", "승마", "칭기즈칸 기마상", "후스타이 야생마"],
+        "en": ["Turtle Rock", "Horse riding", "Chinggis Khaan statue", "Przewalski horses"]
+      },
+      "included": {
+        "ko": [
+          "인천–울란바토르 왕복 항공권",
+          "차량 + 기사",
+          "한국어 가이드",
+          "게르 캠프 2박 + 호텔 1박",
+          "전 일정 식사",
+          "승마, 입장료"
+        ],
+        "en": [
+          "ICN–ULN return flight",
+          "Vehicle + driver",
+          "Korean-speaking guide",
+          "2 nights ger camp + 1 night hotel",
+          "All meals",
+          "Horse riding, entrance fees"
+        ]
+      },
       "itinerary": [
-        { "day": 1, "title": "Terelj, Turtle Rock, horse riding", "stay": "Ger camp" },
+        {
+          "day": 1,
+          "title": "Terelj, Turtle Rock, horse riding",
+          "titleKo": "도착 후 테를지로 이동, 거북바위, 승마",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
         {
           "day": 2,
           "title": "Aryapala temple, Chinggis Khaan statue, stargazing",
-          "stay": "Ger camp"
+          "titleKo": "아리야발 사원, 칭기즈칸 기마상, 별 관측",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
         },
-        { "day": 3, "title": "Hustai National Park, Gandan, Zaisan", "stay": "UB hotel" },
-        { "day": 4, "title": "Cashmere shopping, fly home", "stay": null }
+        {
+          "day": 3,
+          "title": "Hustai National Park, Gandan, Zaisan",
+          "titleKo": "후스타이 국립공원, 간단 사원, 자이승 전망대",
+          "stay": "UB hotel",
+          "stayKo": "울란바토르 호텔"
+        },
+        {
+          "day": 4,
+          "title": "Cashmere shopping, fly home",
+          "titleKo": "캐시미어 쇼핑, 인천행",
+          "stay": null,
+          "stayKo": null
+        }
       ]
     },
     {
       "slug": "khuvsgul-6d",
       "title": { "ko": "흡스굴 호수 6일", "en": "Khuvsgul 6 days", "mn": "Hovsgol 6 honog" },
+      "summary": {
+        "ko": "몽골의 푸른 진주. 호숫가 승마와 카약, 순록 유목민 차탕족(선택).",
+        "en": "Mongolia's blue pearl. Horse riding and kayaking by the lake, optional visit to Tsaatan reindeer herders."
+      },
       "days": 6,
       "nights": 5,
       "season": "Jun-Aug",
+      "seasonLabel": { "ko": "6월–8월", "en": "Jun–Aug" },
       "priceRangeKrw": [1400000, 2000000],
-      "highlights": [
-        "Lake Khuvsgul",
-        "kayak",
-        "horse riding",
-        "Tsaatan reindeer herders (optional)"
-      ],
+      "flightPortionKrw": [600000, 950000],
+      "highlights": {
+        "ko": ["흡스굴 호수", "카약", "승마", "차탕족 순록 유목민 (선택)"],
+        "en": ["Lake Khuvsgul", "Kayak", "Horse riding", "Tsaatan reindeer herders (optional)"]
+      },
+      "included": {
+        "ko": [
+          "인천–울란바토르 왕복 항공권",
+          "울란바토르–무릉 국내선",
+          "차량 + 기사",
+          "한국어 가이드",
+          "게르 캠프 3박 + 호텔 2박",
+          "전 일정 식사"
+        ],
+        "en": [
+          "ICN–ULN return flight",
+          "UB–Murun domestic flight",
+          "Vehicle + driver",
+          "Korean-speaking guide",
+          "3 nights ger camp + 2 nights hotel",
+          "All meals"
+        ]
+      },
       "itinerary": [
-        { "day": 1, "title": "Arrive Ulaanbaatar", "stay": "UB hotel" },
-        { "day": 2, "title": "Fly to Murun, drive to Khatgal", "stay": "Ger camp" },
-        { "day": 3, "title": "Lake Khuvsgul activities", "stay": "Ger camp" },
-        { "day": 4, "title": "Lake Khuvsgul activities", "stay": "Ger camp" },
-        { "day": 5, "title": "Murun to UB", "stay": "UB hotel" },
-        { "day": 6, "title": "Fly home", "stay": null }
+        {
+          "day": 1,
+          "title": "Arrive Ulaanbaatar",
+          "titleKo": "울란바토르 도착",
+          "stay": "UB hotel",
+          "stayKo": "울란바토르 호텔"
+        },
+        {
+          "day": 2,
+          "title": "Fly to Murun, drive to Khatgal",
+          "titleKo": "무릉행 국내선, 하트갈로 이동",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 3,
+          "title": "Lake Khuvsgul activities",
+          "titleKo": "흡스굴 호수: 승마, 카약",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 4,
+          "title": "Lake Khuvsgul activities",
+          "titleKo": "흡스굴 호수: 차탕족 방문(선택), 자유 시간",
+          "stay": "Ger camp",
+          "stayKo": "게르 캠프"
+        },
+        {
+          "day": 5,
+          "title": "Murun to UB",
+          "titleKo": "무릉 → 울란바토르",
+          "stay": "UB hotel",
+          "stayKo": "울란바토르 호텔"
+        },
+        { "day": 6, "title": "Fly home", "titleKo": "인천행", "stay": null, "stayKo": null }
       ]
     }
   ],

@@ -1,0 +1,126 @@
+{
+  "_note": "Placeholder departures for 2027 season. Dates are Asia/Seoul calendar days; prices are estimates, 'booked' is example data.",
+  "departures": [
+    {
+      "id": "gobi-2027-05-29",
+      "packageSlug": "gobi-7d",
+      "startDate": "2027-05-29",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1350000,
+      "depositKrw": 550000,
+      "booked": 2,
+      "status": "open"
+    },
+    {
+      "id": "gobi-2027-06-19",
+      "packageSlug": "gobi-7d",
+      "startDate": "2027-06-19",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1550000,
+      "depositKrw": 700000,
+      "booked": 4,
+      "status": "confirmed"
+    },
+    {
+      "id": "gobi-2027-07-10",
+      "packageSlug": "gobi-7d",
+      "startDate": "2027-07-10",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1800000,
+      "depositKrw": 900000,
+      "booked": 6,
+      "status": "full"
+    },
+    {
+      "id": "gobi-2027-08-07",
+      "packageSlug": "gobi-7d",
+      "startDate": "2027-08-07",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1700000,
+      "depositKrw": 850000,
+      "booked": 1,
+      "status": "open"
+    },
+    {
+      "id": "gobi-2027-09-11",
+      "packageSlug": "gobi-7d",
+      "startDate": "2027-09-11",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1300000,
+      "depositKrw": 550000,
+      "booked": 0,
+      "status": "open"
+    },
+    {
+      "id": "terelj-2027-04-30",
+      "packageSlug": "terelj-hustai-4d",
+      "startDate": "2027-04-30",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 850000,
+      "depositKrw": 400000,
+      "booked": 3,
+      "status": "open"
+    },
+    {
+      "id": "terelj-2027-06-04",
+      "packageSlug": "terelj-hustai-4d",
+      "startDate": "2027-06-04",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1000000,
+      "depositKrw": 550000,
+      "booked": 5,
+      "status": "confirmed"
+    },
+    {
+      "id": "terelj-2027-10-08",
+      "packageSlug": "terelj-hustai-4d",
+      "startDate": "2027-10-08",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 900000,
+      "depositKrw": 450000,
+      "booked": 0,
+      "status": "open"
+    },
+    {
+      "id": "khuvsgul-2027-06-26",
+      "packageSlug": "khuvsgul-6d",
+      "startDate": "2027-06-26",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1600000,
+      "depositKrw": 750000,
+      "booked": 2,
+      "status": "open"
+    },
+    {
+      "id": "khuvsgul-2027-07-24",
+      "packageSlug": "khuvsgul-6d",
+      "startDate": "2027-07-24",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1900000,
+      "depositKrw": 900000,
+      "booked": 4,
+      "status": "confirmed"
+    },
+    {
+      "id": "khuvsgul-2027-08-14",
+      "packageSlug": "khuvsgul-6d",
+      "startDate": "2027-08-14",
+      "capacity": 6,
+      "minToConfirm": 4,
+      "priceKrw": 1750000,
+      "depositKrw": 850000,
+      "booked": 3,
+      "status": "open"
+    }
+  ]
+}

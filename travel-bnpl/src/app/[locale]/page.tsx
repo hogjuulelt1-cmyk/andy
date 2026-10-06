@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getMessages, isLocale, localePath, locales } from "@/lib/i18n";
+import { PackageCard } from "@/components/package-card";
+import { SiteHeader } from "@/components/site-header";
+import { getMessages, isLocale, localePath } from "@/lib/i18n";
+import { listPackages } from "@/server/catalog";
 
 type Props = Readonly<{ params: Promise<{ locale: string }> }>;
 
@@ -8,6 +11,7 @@ export default async function Home({ params }: Props) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
   const m = getMessages(locale);
+  const packages = await listPackages(locale);
 
   const steps = [
     m.home.steps.browse,
@@ -17,31 +21,19 @@ export default async function Home({ params }: Props) {
   ];
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-10 px-4 py-16">
-      <header className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{m.app.name}</p>
-          <nav aria-label={m.nav.language} className="flex gap-1 text-sm">
-            {locales.map((l) => (
-              <Link
-                key={l}
-                href={localePath(l)}
-                hrefLang={l}
-                aria-current={l === locale ? "page" : undefined}
-                className={
-                  l === locale
-                    ? "rounded-full bg-zinc-900 px-3 py-1 font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900"
-                    : "rounded-full px-3 py-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-                }
-              >
-                {m.nav.locales[l]}
-              </Link>
-            ))}
-          </nav>
-        </div>
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-10 px-4 py-10">
+      <SiteHeader locale={locale} />
+
+      <section className="flex flex-col gap-3">
         <h1 className="text-3xl font-bold leading-tight text-balance">{m.home.title}</h1>
         <p className="text-base text-zinc-600 dark:text-zinc-300">{m.app.tagline}</p>
-      </header>
+        <Link
+          href={localePath(locale, "/packages")}
+          className="mt-2 w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900"
+        >
+          {m.home.cta}
+        </Link>
+      </section>
 
       <ol className="flex flex-col gap-3">
         {steps.map((step, i) => (
@@ -57,7 +49,14 @@ export default async function Home({ params }: Props) {
         ))}
       </ol>
 
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">{m.home.comingSoon}</p>
+      <section className="flex flex-col gap-4">
+        <h2 className="text-xl font-bold">{m.packages.heading}</h2>
+        <div className="flex flex-col gap-3">
+          {packages.map((p) => (
+            <PackageCard key={p.slug} pkg={p} locale={locale} />
+          ))}
+        </div>
+      </section>
     </main>
   );
 }

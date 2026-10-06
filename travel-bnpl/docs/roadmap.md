@@ -1,13 +1,13 @@
 # Roadmap
 
-## M0 — Scaffold
+## M0 — Scaffold ✅ (done)
 
 - `pnpm create next-app` (TS, Tailwind, App Router, ESLint), add Prettier, Vitest, Playwright, Prisma.
 - Add scripts: `dev, build, lint, typecheck, test, test:e2e, db:seed`.
 - `.env.example`, Prisma schema from `docs/tech-stack.md`, seed from `seed/packages.json`.
 - CI: GitHub Actions running lint, typecheck, test.
 
-## M1 — Browse
+## M1 — Browse ✅ (done; data from seed/*.json until DATABASE_URL exists, see src/server/catalog.ts)
 
 - Package list + detail page (Korean), itinerary per day, price range.
 - Departures calendar with seat fill (e.g. 4/6).

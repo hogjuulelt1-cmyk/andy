@@ -12,13 +12,55 @@
       "deposit": "Pay the flight portion to lock your seat",
       "installments": "Rest in 0% installments before departure"
     },
-    "comingSoon": "Opening soon."
+    "cta": "Browse packages"
   },
   "nav": {
     "language": "Language",
     "locales": {
       "ko": "한국어",
       "en": "English"
-    }
+    },
+    "home": "Home",
+    "packages": "Packages"
+  },
+  "packages": {
+    "heading": "Packages",
+    "lead": "Per person, 6 people sharing a vehicle. Estimated incl. flight; each departure has its own fixed price.",
+    "perPerson": "per person",
+    "fromTo": "{from} – {to}",
+    "daysNights": "{days} days {nights} nights",
+    "season": "Season",
+    "deposit": "Deposit to lock your seat",
+    "depositHint": "The flight portion. Your seat is confirmed as soon as it's paid.",
+    "viewDepartures": "See departures",
+    "viewDetail": "Details"
+  },
+  "detail": {
+    "itinerary": "Itinerary",
+    "included": "What's included",
+    "highlights": "Highlights",
+    "departures": "Departures",
+    "noDepartures": "No departures scheduled yet. Coming soon.",
+    "day": "Day {n}",
+    "stay": "Stay",
+    "price": "Price",
+    "remaining": "Rest in 0% installments before departure",
+    "priceNote": "Estimate. The exact price is shown when you pick a departure."
+  },
+  "departure": {
+    "seats": "{booked}/{capacity} seats",
+    "seatsLeft": "{n} left",
+    "minToConfirm": "Confirmed at {n} travellers",
+    "status": {
+      "open": "Open",
+      "confirmed": "Confirmed",
+      "full": "Full",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "join": "Join",
+    "joinSoon": "Joining opens soon",
+    "depositLabel": "Deposit",
+    "totalLabel": "Total"
   }
 }

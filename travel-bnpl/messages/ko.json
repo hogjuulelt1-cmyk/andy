@@ -12,13 +12,55 @@
       "deposit": "항공권 금액 결제로 좌석 확정",
       "installments": "나머지는 출발 전까지 0% 분할"
     },
-    "comingSoon": "곧 오픈합니다."
+    "cta": "패키지 둘러보기"
   },
   "nav": {
     "language": "언어",
     "locales": {
       "ko": "한국어",
       "en": "English"
-    }
+    },
+    "home": "홈",
+    "packages": "패키지"
+  },
+  "packages": {
+    "heading": "패키지",
+    "lead": "6인 차량 기준 1인 요금. 항공권 포함 예상 금액이며 출발일마다 확정 요금이 다릅니다.",
+    "perPerson": "1인",
+    "fromTo": "{from} – {to}",
+    "daysNights": "{days}일 {nights}박",
+    "season": "시즌",
+    "deposit": "좌석 확정 예약금",
+    "depositHint": "항공권 금액. 결제 즉시 좌석이 확정됩니다.",
+    "viewDepartures": "출발일 보기",
+    "viewDetail": "자세히 보기"
+  },
+  "detail": {
+    "itinerary": "일정",
+    "included": "포함 사항",
+    "highlights": "하이라이트",
+    "departures": "출발일",
+    "noDepartures": "예정된 출발일이 없습니다. 곧 추가됩니다.",
+    "day": "{n}일차",
+    "stay": "숙박",
+    "price": "요금",
+    "remaining": "나머지는 출발 전까지 0% 분할",
+    "priceNote": "예상 금액입니다. 실제 요금은 출발일 선택 시 표시됩니다."
+  },
+  "departure": {
+    "seats": "{booked}/{capacity}명",
+    "seatsLeft": "{n}자리 남음",
+    "minToConfirm": "{n}명 모이면 출발 확정",
+    "status": {
+      "open": "모집 중",
+      "confirmed": "출발 확정",
+      "full": "마감",
+      "cancelled": "취소",
+      "completed": "종료"
+    },
+    "join": "참여하기",
+    "joinSoon": "참여 기능 준비 중",
+    "depositLabel": "예약금",
+    "totalLabel": "총 요금"
   }
 }
