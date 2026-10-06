@@ -4,6 +4,9 @@ Static PWA (no build step): `index.html` holds all CSS/JS, `config.js` the Supab
 URL + anon key, `supabase/schema.sql` the database. Deployed by Vercel on every push
 to `main`. UI text is Mongolian; talk to the user in Mongolian.
 
+`bjj/` is a separate sub-app (`index.html`, `app.js`, `seed.js`) with an English UI. It
+shares the diary's Supabase session and `docs` table under `bjj/*` paths.
+
 `tools/build.py` regenerates `index.html` from an old artifact file that is no longer
 in the repo — edit `index.html` directly.
 

@@ -1,595 +1,596 @@
-// Анхны сан. Хэрэглэгч бүх зүйлийг засаж, устгаж, нэмж болно.
-// Бүтэц: байрлал (pos) → хийх зүйл (mv) → эсрэг талын хамгаалалт (df) → дараагийн алхам (mv) → ...
-// t: sub=сабмишн, sweep=свип, pass=давалт, td=унагаалт, esc=мултрах, trans=шилжилт, grip=барьц, ctl=хяналт
+// Starter library. Everything can be edited, deleted or extended by the user.
+// Structure: position (pos) → my option (mv) → opponent's defense (df) → my follow-up (mv) → ...
+// t: sub=submission, sweep, pass, td=takedown, esc=escape, trans=transition, grip, ctl=control
+// en: secondary (Mongolian) name, used for search.
 window.BJJ_SEED = (function () {
   const POS = [
-    // ───────── Зогсоо ─────────
-    { id: 'st', n: 'Зогсоо: барьцын тэмцэл', en: 'Standing · grip fighting', cat: 'stand',
-      x: 'Эхлээд барьц, дараа нь унагаалт. Барьцгүйгээр мэх хийхгүй. Толгой нь доош, өөрийн нуруу шулуун.',
+    // ───────── Standing ─────────
+    { id: 'st', n: 'Standing: grip fighting', en: 'Зогсоо: барьцын тэмцэл', cat: 'stand',
+      x: 'Grips first, then the takedown. No technique without a grip. Their head down, your back straight.',
       c: [
-        { n: 'Зах + ханцуй барьц', en: 'Collar & sleeve', t: 'grip',
-          s: ['Давуу гараараа нөгөөгийн захнаас, нөгөө гараараа ханцуйны үзүүрээс барь', 'Тохойгоо доош чангалж, нөгөөг өөр лүүгээ татаад толгойг нь доош дар', 'Хөлөө богино алхмаар хөдөлгөж өнцөг гарга, шууд урдаас нь зогсохгүй'],
+        { n: 'Collar & sleeve grip', en: 'Зах + ханцуй барьц', t: 'grip',
+          s: ['Dominant hand on their collar, other hand on the end of the sleeve', 'Elbows tight, pull them in and push their head down', 'Short steps to create an angle, never stand square in front'],
           c: [
-            { n: 'Барьцыг тасална', en: 'Grip break', x: 'Ханцуйгаа эргүүлж, огцом татаж барьцыг тасална.',
+            { n: 'They break the grip', en: 'Барьцыг тасална', x: 'They rotate the sleeve and snap it away.',
               c: [
-                { n: 'Дахин барих: ханцуйгаас зах руу', en: 'Re-grip', t: 'grip', s: ['Тасалсан гарыг нь дагаж ханцуйнаас нь дахин барь', 'Нөгөө гараар зах руу шилж', 'Барьц бүрэн болмогц унагаалт руу'] },
-                { n: 'Арм драг → ар руу', en: 'Arm drag to back', t: 'trans', to: 'bk_t', s: ['Тасалсан гарынх нь бугуйг хөндлөн гараараа барь', 'Нөгөө гараараа тохойн ар талаас нь татаж хажуугаар нь өнгөр', 'Бэлхүүснээс нь тэврээд ар руу нь гар'] },
+                { n: 'Re-grip: sleeve to collar', en: 'Дахин барих', t: 'grip', s: ['Follow the hand and re-grip the sleeve', 'Switch the other hand to the collar', 'As soon as the grip is set, go to a takedown'] },
+                { n: 'Arm drag to the back', en: 'Арм драг → ар руу', t: 'trans', to: 'bk_t', s: ['Cross-grip the wrist of the freed arm', 'Pull behind the elbow with the other hand and step past', 'Hug the waist and take the back'] },
               ] },
-            { n: 'Өөрөө захнаас чинь барина', en: 'They take your collar',
+            { n: 'They grab your collar', en: 'Өөрөө захнаас чинь барина',
               c: [
-                { n: 'Барьцыг нь тасалж, ханцуйг нь авах', en: 'Cross grip break', t: 'grip', s: ['Хоёр гараараа бугуйнаас нь барь', 'Доошоо огцом татаж барьцыг тасал', 'Тэр гарын ханцуйг хойш нь татаж өнцөг гарга'] },
-                { n: 'Сеой-наге (барьцаар нь)', en: 'Seoi nage off their grip', t: 'td', to: 'sc_t', s: ['Барьсан гарынх нь ханцуйнаас дээрээс барь', 'Эргэж ташаагаа дор нь оруул, өвдгөө нугал', 'Урагш тонгойж, гараа татан шид'] },
+                { n: 'Break the grip, take the sleeve', en: 'Барьцыг нь тасалж ханцуй авах', t: 'grip', s: ['Both hands on their wrist', 'Snap down hard to break the grip', 'Pull that sleeve back and create an angle'] },
+                { n: 'Seoi nage off their grip', en: 'Сеой-наге (барьцаар нь)', t: 'td', to: 'sc_t', s: ['Grip the sleeve of the arm that holds you, above the elbow', 'Turn in, hips under them, knees bent', 'Bend forward, pull the arm and throw'] },
               ] },
-            { n: 'Хүчтэй түлхэж, холдоно', en: 'Stiff arms / pushes away',
+            { n: 'They stiff-arm and push away', en: 'Хүчтэй түлхэж холдоно',
               c: [
-                { n: 'Снап даун → урд тэврэлт', en: 'Snap down to front headlock', t: 'td', to: 'tt_t', s: ['Түлхэхэд нь хүчийг нь дагаж, толгойг нь хоёр гараар доош тат', 'Хойш алхаж, эрүү, гарыг нь түгж', 'Хажуугаар нь тойрч мөлхөөн дээр нь гар'] },
-                { n: 'Татахад нь дагаж хоёр хөл', en: 'Double leg on their pull', t: 'td', to: 'sc_t', s: ['Татахад нь эсэргүүцэлгүй урагш ор', 'Түвшин буулгаж хоёр хөлнөөс нь тэвэр', 'Хажуу тийш өнцгөөр алхаж унага'] },
+                { n: 'Snap down to front headlock', en: 'Снап даун → урд тэврэлт', t: 'td', to: 'tt_t', s: ['Go with the push and snap the head down with both hands', 'Step back, lock chin and arm', 'Circle to the side and get on top of the turtle'] },
+                { n: 'Double leg on their pull', en: 'Татахад нь хоёр хөл', t: 'td', to: 'sc_t', s: ['When they pull, step in without resisting', 'Level change, wrap both legs', 'Step to the side at an angle and finish'] },
               ] },
           ] },
-        { n: 'Хоёр гараар нэг гар (рашн тай)', en: '2-on-1 / Russian tie', t: 'grip',
-          s: ['Нэг гарыг нь бугуй, тохойноос нь хоёр гараараа барь', 'Гарыг нь цээж рүүгээ наа, хөлөө гадна тал руу нь тавь', 'Нөгөөг хажуу тийш эргүүлж байгаад довтол'],
+        { n: '2-on-1 (Russian tie)', en: 'Хоёр гараар нэг гар', t: 'grip',
+          s: ['Both hands on one arm: wrist and elbow', 'Pin the arm to your chest, step to the outside', 'Turn them sideways, then attack'],
           c: [
-            { n: 'Гараа сугалж авна', en: 'Pulls the arm out', c: [
-              { n: 'Ганц хөл', en: 'Single leg', t: 'td', to: 'sc_t', s: ['Гараа сугалахад нь түвшин буулга', 'Ойр хөлийг нь хоёр гараар тэвэр', 'Хөлийг нь өргөж хажуу тийш алхан унага'] },
+            { n: 'They pull the arm out', en: 'Гараа сугалж авна', c: [
+              { n: 'Single leg', en: 'Ганц хөл', t: 'td', to: 'sc_t', s: ['Level change as they pull', 'Wrap the near leg with both hands', 'Lift the leg and step sideways to finish'] },
             ] },
-            { n: 'Чамайг тэвэрч ойртоно', en: 'Clinches in', c: [
-              { n: 'Осото-гари', en: 'O-soto-gari', t: 'td', to: 'sc_t', s: ['Нөгөөгийн жинг ар хөл рүү нь шилжүүл', 'Гадна хөлөөрөө ар хөлийг нь хусаж шүүр', 'Дээд биеээр дарж унага'] },
+            { n: 'They clinch in', en: 'Чамайг тэвэрч ойртоно', c: [
+              { n: 'O-soto-gari', en: 'Осото-гари', t: 'td', to: 'sc_t', s: ['Shift their weight to the back leg', 'Reap the back leg with your outside leg', 'Drive with the upper body'] },
             ] },
           ] },
-        { n: 'Сеой-наге', en: 'Seoi nage (shoulder throw)', t: 'td', to: 'sc_t',
-          s: ['Зах + ханцуй барьцтай байхдаа нөгөөг урагш тат', 'Эргэж, ташаагаа дор нь оруулж өвдгөө нугал', 'Урагш тонгойж ханцуйг татан мөрөн дээгүүрээ шид'],
+        { n: 'Seoi nage (shoulder throw)', en: 'Сеой-наге', t: 'td', to: 'sc_t',
+          s: ['From collar & sleeve, pull them forward', 'Turn in, hips under, knees bent', 'Bend forward, pull the sleeve and throw over the shoulder'],
           c: [
-            { n: 'Ташаагаа буулгаж, хойш татна', en: 'Drops hips / bases back', c: [
-              { n: 'Шууд ганц хөл рүү', en: 'Drop to single leg', t: 'td', to: 'sc_t', s: ['Шид бүтэхгүй бол өвдгөө буулга', 'Урд хөлийг нь тэвэр', 'Хажуу тийш алхаж унага'] },
+            { n: 'They drop hips and base back', en: 'Ташаагаа буулгаж хойш татна', c: [
+              { n: 'Drop to a single leg', en: 'Шууд ганц хөл рүү', t: 'td', to: 'sc_t', s: ['If the throw stalls, drop to the knee', 'Wrap the front leg', 'Step sideways and finish'] },
             ] },
-            { n: 'Ар руу чинь гарна', en: 'Steps around to your back', c: [
-              { n: 'Эргэж суугаад гард татах', en: 'Turn in, pull guard', t: 'trans', to: 'cg_b', s: ['Шууд эргэж өөдөөс нь хар', 'Ханцуй барьцаа алдалгүй суу', 'Хөлөө түгжиж хаалттай гард'] },
+            { n: 'They step around to your back', en: 'Ар руу чинь гарна', c: [
+              { n: 'Turn in and pull guard', en: 'Эргэж суугаад гард татах', t: 'trans', to: 'cg_b', s: ['Turn to face them immediately', 'Keep the sleeve grip and sit', 'Close the guard'] },
             ] },
           ] },
-        { n: 'Ганц хөл', en: 'Single leg', t: 'td', to: 'sc_t',
-          s: ['Түвшин буулгаж урд хөлийг нь хоёр гараар тэвэр', 'Толгойгоо дотор талд нь, цээж рүү нь наа', 'Хөлийг нь өргөөд хажуу тийш алхан унага'],
+        { n: 'Single leg', en: 'Ганц хөл', t: 'td', to: 'sc_t',
+          s: ['Level change, wrap the front leg with both hands', 'Head inside, pressed to their chest', 'Lift the leg and step sideways to finish'],
           c: [
-            { n: 'Спрол', en: 'Sprawl', c: [
-              { n: 'Тойрч ар руу', en: 'Turn the corner', t: 'trans', to: 'bk_t', s: ['Хөлийг нь алдалгүй, хажуу тийш нь алх', 'Толгойгоо гадна тал руу гаргаж бэлхүүснээс нь тэвэр', 'Ар руу нь гар'] },
+            { n: 'Sprawl', en: 'Спрол', c: [
+              { n: 'Turn the corner', en: 'Тойрч ар руу', t: 'trans', to: 'bk_t', s: ['Keep the leg, step to the side', 'Head to the outside, hug the waist', 'Take the back'] },
             ] },
-            { n: 'Виззер', en: 'Whizzer', c: [
-              { n: 'Хөл сольж хоёр хөл', en: 'Switch to double leg', t: 'td', to: 'sc_t', s: ['Виззер хийсэн талаас нь түвшин буулга', 'Нөгөө хөлийг нь тэвэр', 'Өнцгөөр алхаж унага'] },
+            { n: 'Whizzer', en: 'Виззер', c: [
+              { n: 'Switch to double leg', en: 'Хөл сольж хоёр хөл', t: 'td', to: 'sc_t', s: ['Level change under the whizzer side', 'Wrap the other leg', 'Step at an angle and finish'] },
             ] },
-            { n: 'Гилотин хайна', en: 'Goes for guillotine', c: [
-              { n: 'Толгойгоо гаргаж, ширээ рүү дарах', en: 'Pressure through, free the head', t: 'esc', s: ['Хүзүүг нь өргөлгүй, хөлийг нь өргөж чангалсаар бай', 'Нөгөөг ширээ рүү унагааж боолтын талын мөрөөр дар', 'Толгойгоо суга'] },
+            { n: 'They go for a guillotine', en: 'Гилотин хайна', c: [
+              { n: 'Pressure through, free the head', en: 'Толгойгоо гаргаж дарах', t: 'esc', s: ['Do not lift their neck, keep driving the leg up', 'Put them on the mat, shoulder pressure on the choking side', 'Pull the head out'] },
             ] },
           ] },
-        { n: 'Хоёр хөл', en: 'Double leg', t: 'td', to: 'sc_t',
-          s: ['Түвшин буулгаж, өвдгөө нөгөөгийн хөлний хооронд', 'Хоёр хөлнөөс нь тэврээд толгойгоо хажуу талд нь наа', 'Хажуу тийш өнцгөөр алхаж, хөлийг нь өргөн унага'],
+        { n: 'Double leg', en: 'Хоёр хөл', t: 'td', to: 'sc_t',
+          s: ['Level change, knee between their feet', 'Wrap both legs, head on the side', 'Step sideways at an angle, lift and finish'],
           c: [
-            { n: 'Спрол', en: 'Sprawl', c: [
-              { n: 'Ганц хөл рүү шилжих', en: 'Switch to single', t: 'td', to: 'sc_t', s: ['Нэг хөлийг нь тэврээд ганц хөл рүү', 'Босож хөлийг нь өргө'] },
+            { n: 'Sprawl', en: 'Спрол', c: [
+              { n: 'Switch to single', en: 'Ганц хөл рүү шилжих', t: 'td', to: 'sc_t', s: ['Keep one leg and go to a single', 'Stand up and lift the leg'] },
             ] },
-            { n: 'Гилотин', en: 'Guillotine', c: [
-              { n: 'Фон Флю даралт', en: 'Von Flue pressure', t: 'esc', to: 'sc_t', s: ['Боолтын талд хөлөө тавьж ширээ рүү унага', 'Мөрөө хүзүү рүү нь дарж толгойгоо суга', 'Хажуугийн хяналтад ор'] },
+            { n: 'Guillotine', en: 'Гилотин', c: [
+              { n: 'Von Flue pressure', en: 'Фон Флю даралт', t: 'esc', to: 'sc_t', s: ['Step to the choking side and put them down', 'Drive your shoulder into the neck, pull the head out', 'Settle into side control'] },
             ] },
           ] },
-        { n: 'Осото-гари', en: 'O-soto-gari', t: 'td', to: 'sc_t',
-          s: ['Зах + ханцуй барьц, нөгөөг хойш нь түлхэж жинг ар хөл рүү шилжүүл', 'Гадна хөлөө ар хөлнөөс нь гаргаж хусаж шүүр', 'Цээжээрээ дарж унага'],
+        { n: 'O-soto-gari', en: 'Осото-гари', t: 'td', to: 'sc_t',
+          s: ['Collar & sleeve, push them back so weight goes to the rear leg', 'Reap the rear leg from the outside', 'Drive with the chest'],
           c: [
-            { n: 'Жингээ урагш шилжүүлнэ', en: 'Weight forward / hops', c: [
-              { n: 'Ко-учи-гари руу солих', en: 'Switch to ko-uchi-gari', t: 'td', to: 'sc_t', s: ['Урагш жин шилжүүлэхэд нь дотор хөлийг нь хус', 'Хойш нь түлх'] },
+            { n: 'They shift weight forward / hop', en: 'Жингээ урагш шилжүүлнэ', c: [
+              { n: 'Switch to ko-uchi-gari', en: 'Ко-учи-гари руу', t: 'td', to: 'sc_t', s: ['As the weight comes forward, reap the inside leg', 'Push them back'] },
             ] },
           ] },
-        { n: 'Гард татах', en: 'Guard pull', t: 'trans', to: 'cg_b',
-          s: ['Зах + ханцуй барьцаа бат ав', 'Нэг хөлөө ташаан дээр нь тавиад суу', 'Хөлөө шууд түгжээд захаар нь татаж босгохгүй бай'],
+        { n: 'Guard pull', en: 'Гард татах', t: 'trans', to: 'cg_b',
+          s: ['Set a solid collar & sleeve grip', 'Foot on the hip, sit down', 'Close the guard and pull the collar so they cannot posture'],
           c: [
-            { n: 'Суухад л шууд давахыг оролдоно', en: 'Passes immediately', c: [
-              { n: 'Де ла Рива руу', en: 'Go to de la Riva', t: 'trans', to: 'dlr_b', s: ['Ташаан дээрх хөлөө салгалгүй', 'Нөгөө хөлөөрөө гадна хөлийг нь ороо', 'Ханцуй + өсгийнөөс барь'] },
-            ] },
-          ] },
-      ] },
-
-    // ───────── Гард, доороос ─────────
-    { id: 'cg_b', n: 'Хаалттай гард', en: 'Closed guard · bottom', cat: 'guard',
-      x: 'Хоёр хөлөө ар нуруун дээр нь түгжсэн. Нөгөөг нугалж, босгохгүй байх нь гол. Довтолгоо хоорондоо холбоотой: хип бамп → кимура → гилотин.',
-      c: [
-        { n: 'Хип бамп свип', en: 'Hip bump sweep', t: 'sweep', to: 'mt_t',
-          s: ['Гард нээж тохой дээрээ суу', 'Нэг гараа ширээнд тулж, нөгөө гараараа мөрийг нь дав', 'Ташаагаа огцом өргөж хажуу тийш унага'],
-          c: [
-            { n: 'Гараа ширээнд тулна', en: 'Posts hand', c: [
-              { n: 'Кимура', en: 'Kimura', t: 'sub', s: ['Тулсан гарын бугуйг нь барь', 'Нөгөө гараа дээгүүр нь оруулж өөрийн бугуйгаа барь (хүрээ)', 'Хойш хэвтэж, хөлөө түгжээд гарыг нь нуруу руу нь эргүүл'] },
-              { n: 'Гилотин', en: 'Guillotine', t: 'sub', s: ['Толгой нь доош унахад хүзүүг нь тэвэр', 'Хоёр гараа хол', 'Хөлөө түгжээд хойш хэвт, гараа өргө'] },
-            ] },
-            { n: 'Босож, жингээ хойш', en: 'Postures up', c: [
-              { n: 'Ханцуйг нь татаж босголтыг эвд', en: 'Break posture', t: 'ctl', s: ['Ханцуй/захнаас барьж өөр лүүгээ тат', 'Өвдгөө цээж рүү нь', 'Дахин довтол'] },
-            ] },
-          ] },
-        { n: 'Ножны свип', en: 'Scissor sweep', t: 'sweep', to: 'mt_t',
-          s: ['Зах + ханцуй барь, хажуу руу ширээ хийж өвдгөө цээжин дээр нь', 'Доод хөлөө ширээнд наан, тэр хөлийг нь хус', 'Хайчилж, гарыг нь татан урвуу'],
-          c: [
-            { n: 'Хөлөө өргөж суурь авна', en: 'Steps leg up / bases', c: [
-              { n: 'Түлхэх свип (пуш свип)', en: 'Push sweep', t: 'sweep', to: 'mt_t', s: ['Өргөсөн хөлийг нь доод хөлөөрөө түлх', 'Нөгөө тал руу унага'] },
-            ] },
-            { n: 'Хөлийг чинь дарж давна', en: 'Tries to pass', c: [
-              { n: 'Хаалттай гардаа сэргээх', en: 'Recover closed guard', t: 'ctl', s: ['Өвдгөө дотогш тат', 'Хөлөө дахин түгж'] },
-            ] },
-          ] },
-        { n: 'Армбар', en: 'Armbar', t: 'sub',
-          s: ['Нэг гарыг нь хоёр гараараа цээжиндээ тат', 'Ташаагаа өргөж өнцөг гарга, нэг хөлөө мөрөн дээр нь', 'Хөлөө чангалж, ташаагаа өргө, эрхий нь дээш'],
-          c: [
-            { n: 'Тохойгоо татаж, гараа цээж рүүгээ', en: 'Pulls elbow / hitchhiker', c: [
-              { n: 'Трайангл', en: 'Triangle', t: 'sub', s: ['Гараа гаргах үед нь хөлөө хүзүүгээр нь дав', 'Өнцгөө засч, хөлөө түгж', 'Толгойг нь татаж бооно'] },
-              { n: 'Омоплата', en: 'Omoplata', t: 'sub', s: ['Татсан гарыг нь өөрийн хөлний доогуур', 'Эргэж суугаад мөрийг нь түгж', 'Бэлхүүснээс нь тэвэрч дар'] },
-            ] },
-            { n: 'Босож чамайг өргөнө (стак)', en: 'Stands / stacks', c: [
-              { n: 'Ташаагаа эргүүлж өнцөг өргө', en: 'Angle up harder', t: 'ctl', s: ['Толгойг нь хөлөөрөө доош дар', 'Ташаагаа хажуу тийш нь эргүүл', 'Гарыг нь алдахгүй'] },
-            ] },
-          ] },
-        { n: 'Трайангл', en: 'Triangle', t: 'sub',
-          s: ['Нэг гарыг нь дотогш, нөгөөг нь гадагш гарга', 'Хөлөө хүзүү, гарын дээгүүр нь дав, өнцөг гарга', 'Хөлөө түгжээд толгойг нь доош татаж бооно'],
-          c: [
-            { n: 'Босож, стак хийнэ', en: 'Postures / stacks', c: [
-              { n: 'Трайанглаас армбар', en: 'Armbar from triangle', t: 'sub', s: ['Дотор гарыг нь хоёр гараар тат', 'Ташаагаа өргө'] },
-            ] },
-            { n: 'Гараа дотогш оруулна', en: 'Hand inside', c: [
-              { n: 'Омоплата руу шилжих', en: 'To omoplata', t: 'sub', s: ['Хөлөө салгалгүй эргэж суу', 'Мөрийг нь түгж'] },
-            ] },
-          ] },
-        { n: 'Кимура', en: 'Kimura', t: 'sub',
-          s: ['Гард нээж суугаад бугуйнаас нь барь', 'Хүрээ (figure four) хийгээд хойш хэвт', 'Хөлөө дахин түгжиж гарыг нь нуруу руу нь эргүүл'],
-          c: [
-            { n: 'Гараа цээж рүүгээ татаж бүсээ барина', en: 'Grabs own belt', c: [
-              { n: 'Хип бамп свип', en: 'Hip bump sweep', t: 'sweep', to: 'mt_t', s: ['Барьцаа алдалгүй ташаагаа өргө', 'Кимурын талд нь унага', 'Дээрээс кимураг дуусга'] },
-            ] },
-          ] },
-        { n: 'Кросс чок', en: 'Cross collar choke', t: 'sub',
-          s: ['Нэг гараа захны гүн рүү нь оруул (далдуу дээш)', 'Нөгөө гараа нөгөө захнаас нь, эсвэл дээгүүр нь', 'Тохойгоо хавчуулж, өөр лүүгээ татаж бооно'],
-          c: [
-            { n: 'Босож барьцыг тасална', en: 'Postures, strips grip', c: [
-              { n: 'Үлдсэн барьцаар армбар', en: 'Armbar off the collar', t: 'sub', s: ['Босохоор тулсан гарыг нь цээжиндээ тат', 'Ташаагаа өргөж армбар'] },
-            ] },
-          ] },
-        { n: 'Омоплата', en: 'Omoplata', t: 'sub',
-          s: ['Ханцуйг нь барьж, хөлөө тэр гарын дээгүүр нь гарга', 'Эргэж суугаад мөрийг нь хөлөөрөө түгж', 'Бэлхүүснээс нь тэвэрч урагш дар'],
-          c: [
-            { n: 'Урагш эргэж мултарна', en: 'Rolls forward', c: [
-              { n: 'Дагаж эргээд дээр нь гарах', en: 'Follow the roll', t: 'trans', to: 'sc_t', s: ['Бэлхүүснээс нь алдалгүй дага', 'Дээр нь суу'] },
-            ] },
-            { n: 'Босож чамайг өргөнө', en: 'Stands up', c: [
-              { n: 'Омоплата свип', en: 'Omoplata sweep', t: 'sweep', to: 'sc_t', s: ['Бэлхүүснээс нь тэвэр', 'Хажуу тийш унага'] },
+            { n: 'They pass immediately', en: 'Суухад л шууд давна', c: [
+              { n: 'Go to de la Riva', en: 'Де ла Рива руу', t: 'trans', to: 'dlr_b', s: ['Keep the foot on the hip', 'Hook the outside of the lead leg with the other foot', 'Grip sleeve and heel'] },
             ] },
           ] },
       ] },
 
-    { id: 'hg_b', n: 'Хагас гард', en: 'Half guard · bottom', cat: 'guard',
-      x: 'Нэг хөлийг нь хоёр хөлөөрөө түгжсэн. Хавтгай хэвтэхгүй, хажуу тийш хар. Доорх хуки авсан бол бүх зүйл нээгдэнэ.',
+    // ───────── Guard, bottom ─────────
+    { id: 'cg_b', n: 'Closed guard', en: 'Хаалттай гард', cat: 'guard',
+      x: 'Legs locked behind their back. Break their posture, never let them stand tall. Attacks chain: hip bump → kimura → guillotine.',
       c: [
-        { n: 'Доорх хуки', en: 'Underhook', t: 'grip',
-          s: ['Хажуу тийшээ эргэж, ойр гараа суганд нь оруул', 'Толгойгоо цээж рүү нь, нуруугаа бөхийлгө', 'Босгохгүй, ар руу нь эсвэл свип рүү'],
+        { n: 'Hip bump sweep', en: 'Хип бамп свип', t: 'sweep', to: 'mt_t',
+          s: ['Open the guard, sit up on one elbow', 'Post the hand, reach over the shoulder with the other arm', 'Pop the hips up and roll them over'],
           c: [
-            { n: 'Виззер', en: 'Whizzer', c: [
-              { n: 'Ар руу гүйх', en: 'Dog fight to back', t: 'trans', to: 'bk_t', s: ['Өвдгөө доош, босож тулгуур ав', 'Виззерийг нь хажуу тийш дарж ар руу нь алх'] },
-              { n: 'Олд скүүл свип', en: 'Old school sweep', t: 'sweep', to: 'sc_t', s: ['Хуки авсан талын хөлийг нь хоёр гараар тэвэр', 'Ширээ хийж урагш унага'] },
+            { n: 'They post the hand', en: 'Гараа ширээнд тулна', c: [
+              { n: 'Kimura', en: 'Кимура', t: 'sub', s: ['Grab the wrist of the posted arm', 'Reach over and grab your own wrist (figure four)', 'Fall back, close the guard, rotate the arm behind the back'] },
+              { n: 'Guillotine', en: 'Гилотин', t: 'sub', s: ['When the head drops, wrap the neck', 'Lock the hands', 'Close the guard, lean back and lift'] },
             ] },
-            { n: 'Кросс фейс дарна', en: 'Cross face', c: [
-              { n: 'Нип шилд рүү буцах', en: 'Back to knee shield', t: 'ctl', s: ['Фрэйм тавьж, ташаагаа хойш', 'Өвдгөө цээжин дээр нь оруул'] },
-            ] },
-          ] },
-        { n: 'Нип шилд', en: 'Knee shield', t: 'ctl',
-          s: ['Дээд хөлийн өвдгөө цээжин дээр нь хөндлөн тавь', 'Гараараа хүзүү, бугуйнаас нь фрэйм', 'Зай гаргаж свип эсвэл гард сэргээ'],
-          c: [
-            { n: 'Өвдгийг чинь дарж давна (нип кат)', en: 'Knee cut', c: [
-              { n: 'Баттерфлай хуки → свип', en: 'Butterfly hook sweep', t: 'sweep', to: 'sc_t', s: ['Доод хөлөө дотор талаас нь хуки болго', 'Өргөж хажуу тийш унага'] },
-              { n: 'Доорх хуки авч ар руу', en: 'Underhook to back', t: 'trans', to: 'bk_t', s: ['Өвдөг буухад нь суганд нь ор', 'Ар руу нь алх'] },
+            { n: 'They posture up', en: 'Босож жингээ хойш', c: [
+              { n: 'Break the posture', en: 'Босголтыг эвдэх', t: 'ctl', s: ['Grip sleeve or collar and pull them in', 'Knees to their chest', 'Attack again'] },
             ] },
           ] },
-        { n: 'Дип хаф', en: 'Deep half', t: 'trans',
-          s: ['Хөлний нь доогуур орж гуяыг нь тэвэр', 'Толгойгоо хөлний хоорондоо', 'Хөлийг нь өргөж урвуу'],
+        { n: 'Scissor sweep', en: 'Ножны свип', t: 'sweep', to: 'mt_t',
+          s: ['Collar & sleeve, shrimp out, knee across the chest', 'Bottom leg flat on the mat against their knee', 'Scissor the legs and pull the sleeve'],
           c: [
-            { n: 'Хөлөө сугалж авна', en: 'Frees the leg', c: [
-              { n: 'Хагас гард сэргээж доорх хуки', en: 'Recover half, underhook', t: 'ctl', s: ['Хөлөө дахин ороо', 'Хажуу тийш эргэж хуки'] },
+            { n: 'They step the leg up and base', en: 'Хөлөө өргөж суурь авна', c: [
+              { n: 'Push sweep', en: 'Түлхэх свип', t: 'sweep', to: 'mt_t', s: ['Push the raised leg with the bottom foot', 'Sweep to the other side'] },
+            ] },
+            { n: 'They try to pass', en: 'Давахыг оролдоно', c: [
+              { n: 'Recover closed guard', en: 'Хаалттай гард сэргээх', t: 'ctl', s: ['Pull the knee back in', 'Lock the legs again'] },
             ] },
           ] },
-        { n: 'Кимура (доороос)', en: 'Kimura from bottom', t: 'sub',
-          s: ['Фрэйм тавьсан гарынх нь бугуйг барь', 'Хүрээ хий', 'Эргэж мөрийг нь чангал'],
+        { n: 'Armbar', en: 'Армбар', t: 'sub',
+          s: ['Pull one arm across your chest with both hands', 'Hips up, angle out, one foot on the far shoulder', 'Squeeze the knees, lift the hips, thumb up'],
           c: [
-            { n: 'Гараа татна', en: 'Pulls arm back', c: [
-              { n: 'Кимурагаар ар руу', en: 'Kimura to back', t: 'trans', to: 'bk_t', s: ['Хүрээгээ алдалгүй эргэ', 'Ар руу нь гар'] },
+            { n: 'They pull the elbow (hitchhiker)', en: 'Тохойгоо татна', c: [
+              { n: 'Triangle', en: 'Трайангл', t: 'sub', s: ['As the arm comes out, throw the leg over the neck', 'Fix the angle and lock the legs', 'Pull the head down and squeeze'] },
+              { n: 'Omoplata', en: 'Омоплата', t: 'sub', s: ['Bring the pulled arm under your leg', 'Sit up and trap the shoulder', 'Hug the waist and drive forward'] },
+            ] },
+            { n: 'They stand and stack', en: 'Босож стак хийнэ', c: [
+              { n: 'Angle up harder', en: 'Өнцгөө засах', t: 'ctl', s: ['Push the head down with the leg', 'Turn the hips to the side', 'Never lose the arm'] },
+            ] },
+          ] },
+        { n: 'Triangle', en: 'Трайангл', t: 'sub',
+          s: ['One arm in, one arm out', 'Leg over the neck and arm, create the angle', 'Lock the legs, pull the head down and squeeze'],
+          c: [
+            { n: 'They posture / stack', en: 'Босож стак хийнэ', c: [
+              { n: 'Armbar from triangle', en: 'Трайанглаас армбар', t: 'sub', s: ['Pull the inside arm with both hands', 'Lift the hips'] },
+            ] },
+            { n: 'They put a hand inside', en: 'Гараа дотогш оруулна', c: [
+              { n: 'To omoplata', en: 'Омоплата руу', t: 'sub', s: ['Keep the legs and sit up', 'Trap the shoulder'] },
+            ] },
+          ] },
+        { n: 'Kimura', en: 'Кимура', t: 'sub',
+          s: ['Open the guard, sit up, grab the wrist', 'Figure four and fall back', 'Close the guard again, rotate the arm behind the back'],
+          c: [
+            { n: 'They pull the arm in and grab their belt', en: 'Гараа татаж бүсээ барина', c: [
+              { n: 'Hip bump sweep', en: 'Хип бамп свип', t: 'sweep', to: 'mt_t', s: ['Keep the grip and lift the hips', 'Sweep towards the kimura side', 'Finish the kimura from the top'] },
+            ] },
+          ] },
+        { n: 'Cross collar choke', en: 'Кросс чок', t: 'sub',
+          s: ['First hand deep in the collar, palm up', 'Second hand on the other collar, or over the top', 'Elbows together, pull them in and squeeze'],
+          c: [
+            { n: 'They posture and strip the grip', en: 'Босож барьцыг тасална', c: [
+              { n: 'Armbar off the collar', en: 'Үлдсэн барьцаар армбар', t: 'sub', s: ['Pull the posting arm across your chest', 'Hips up, armbar'] },
+            ] },
+          ] },
+        { n: 'Omoplata', en: 'Омоплата', t: 'sub',
+          s: ['Grip the sleeve, swing the leg over that arm', 'Sit up and trap the shoulder with the leg', 'Hug the waist and drive forward'],
+          c: [
+            { n: 'They roll forward', en: 'Урагш эргэнэ', c: [
+              { n: 'Follow the roll', en: 'Дагаж эргэх', t: 'trans', to: 'sc_t', s: ['Keep the waist, follow them', 'Settle on top'] },
+            ] },
+            { n: 'They stand up', en: 'Босож чамайг өргөнө', c: [
+              { n: 'Omoplata sweep', en: 'Омоплата свип', t: 'sweep', to: 'sc_t', s: ['Hug the waist', 'Sweep to the side'] },
             ] },
           ] },
       ] },
 
-    { id: 'dlr_b', n: 'Де ла Рива', en: 'De la Riva · bottom', cat: 'guard',
-      x: 'Гадна хөлөөрөө нөгөөгийн урд хөлийг ороож (хуки), ханцуй + өсгийнөөс нь барьц. Нөгөөгийн тэнцвэрийг байнга хөдөлгө.',
+    { id: 'hg_b', n: 'Half guard', en: 'Хагас гард', cat: 'guard',
+      x: 'One of their legs trapped between yours. Never lie flat, stay on your side. Once you have the underhook everything opens up.',
       c: [
-        { n: 'Барьц ба хуки', en: 'Grips & hook', t: 'grip',
-          s: ['Гадна хөлөө урд хөлийг нь ороож хуки хий', 'Тэр хөлийн өсгий + нөгөө талын ханцуйг барь', 'Нөгөө хөлөө ташаа/өвдөг дээр нь тулж зай хадгал'],
+        { n: 'Underhook', en: 'Доорх хуки', t: 'grip',
+          s: ['Turn to your side, near arm under their armpit', 'Head on their chest, round the back', 'Do not let them posture: go to the back or sweep'],
           c: [
-            { n: 'Хуки хөлийг чинь салгана', en: 'Clears the hook', c: [
-              { n: 'Х-гард руу', en: 'To X-guard', t: 'trans', to: 'xg_b', s: ['Хөлний нь доогуур ор', 'Хоёр хөлөө гуян дээр нь', 'Ар хөлийг нь тэвэр'] },
-              { n: 'Спайдер гард руу', en: 'To spider guard', t: 'trans', to: 'sp_b', s: ['Хоёр ханцуйг нь барь', 'Хөлөө тохойн дээр нь'] },
+            { n: 'Whizzer', en: 'Виззер', c: [
+              { n: 'Dog fight to the back', en: 'Ар руу гүйх', t: 'trans', to: 'bk_t', s: ['Knee down, come up on your base', 'Push the whizzer sideways and walk to the back'] },
+              { n: 'Old school sweep', en: 'Олд скүүл свип', t: 'sweep', to: 'sc_t', s: ['Wrap the far leg with both hands', 'Shrimp and drive forward'] },
+            ] },
+            { n: 'Cross face', en: 'Кросс фейс', c: [
+              { n: 'Back to knee shield', en: 'Нип шилд рүү буцах', t: 'ctl', s: ['Frame, hips back', 'Knee across their chest'] },
             ] },
           ] },
-        { n: 'Ар руу (беримболо)', en: 'Berimbolo to back', t: 'trans', to: 'bk_t',
-          s: ['Бүс/бэлхүүснээс нь барь', 'Хуки хөлийн тал руу доошоо эргэ (инверт)', 'Хоёр хуки оруулж ар руу нь гар'],
+        { n: 'Knee shield', en: 'Нип шилд', t: 'ctl',
+          s: ['Top knee across their chest', 'Frames on the neck and wrist', 'Make space for a sweep or guard recovery'],
           c: [
-            { n: 'Суугаад хойш хэвтэнэ', en: 'Sits down to block', c: [
-              { n: 'Ганц хөл Х рүү', en: 'To single leg X', t: 'trans', to: 'slx_b', s: ['Хуки хөлийг нь хоёр хөлөөрөө ороо', 'Босож хойш нь унага'] },
-            ] },
-            { n: 'Хөлөө сугалж босно', en: 'Steps out', c: [
-              { n: 'Трайпод свип', en: 'Tripod sweep', t: 'sweep', to: 'sc_t', s: ['Өсгийнөөс нь барь', 'Нөгөө хөлөө ташаан дээр нь тулж түлх'] },
+            { n: 'Knee cut', en: 'Нип кат', c: [
+              { n: 'Butterfly hook sweep', en: 'Баттерфлай хуки свип', t: 'sweep', to: 'sc_t', s: ['Bottom leg becomes a butterfly hook', 'Lift and sweep to the side'] },
+              { n: 'Underhook to the back', en: 'Доорх хуки → ар', t: 'trans', to: 'bk_t', s: ['As the knee drops, get under the armpit', 'Walk to the back'] },
             ] },
           ] },
-        { n: 'Трайпод свип', en: 'Tripod sweep', t: 'sweep', to: 'sc_t',
-          s: ['Хуки хөлийн өсгийнөөс барь', 'Нөгөө хөлөө ташаан дээр нь тулж түлх', 'Ханцуйг татаж хойш нь унага, шууд бос'],
+        { n: 'Deep half', en: 'Дип хаф', t: 'trans',
+          s: ['Go under the leg and hug the thigh', 'Head between their legs', 'Lift the leg and roll'],
           c: [
-            { n: 'Хөлөө хойш авна', en: 'Steps back', c: [
-              { n: 'Сикл свип', en: 'Sickle sweep', t: 'sweep', to: 'sc_t', s: ['Нөгөө хөлийг нь хусаж', 'Эсрэг чиглэлд унага'] },
+            { n: 'They free the leg', en: 'Хөлөө сугалж авна', c: [
+              { n: 'Recover half, underhook', en: 'Хагас гард сэргээх', t: 'ctl', s: ['Wrap the leg again', 'Turn to the side and underhook'] },
             ] },
           ] },
-        { n: 'Ганц хөл Х рүү', en: 'To single leg X', t: 'trans', to: 'slx_b',
-          s: ['Хуки хөлийг нь өсгийнөөс татаж доогуур нь ор', 'Хөлийг нь хоёр хөлөөрөө ороож гадна тал руу эргүүл'] },
-      ] },
-
-    { id: 'sp_b', n: 'Спайдер гард', en: 'Spider guard · bottom', cat: 'guard',
-      x: 'Хоёр ханцуйнаас барьж, хөлөө тохойн дээр нь. Нэг гарыг нь татаж, нөгөөг нь түлхэж тэнцвэр алдуул.',
-      c: [
-        { n: 'Спайдер свип', en: 'Spider sweep', t: 'sweep', to: 'mt_t',
-          s: ['Нэг ханцуйг татаж, нөгөө хөлөөрөө түлх', 'Доод хөлөө хусаж', 'Эргэж дээр нь гар'],
+        { n: 'Kimura from bottom', en: 'Кимура (доороос)', t: 'sub',
+          s: ['Grab the wrist of the framing arm', 'Figure four', 'Turn and crank the shoulder'],
           c: [
-            { n: 'Ханцуйг чинь тасална', en: 'Strips the sleeve', c: [
-              { n: 'Де ла Рива руу', en: 'To de la Riva', t: 'trans', to: 'dlr_b', s: ['Хөлөө буулгаж гадна хөлийг нь ороо'] },
-            ] },
-            { n: 'Хөлийг чинь хажуу руу шидэж давна', en: 'Toreando', c: [
-              { n: 'Лассо авах', en: 'Lasso', t: 'grip', s: ['Нэг хөлөө гарын нь доогуур ороо', 'Ханцуйг нь чангал'] },
-            ] },
-          ] },
-        { n: 'Трайангл', en: 'Triangle', t: 'sub',
-          s: ['Нэг гарыг нь доош татаж, нөгөө хөлөө хүзүү рүү', 'Хөлөө түгж, өнцөг гарга'] },
-        { n: 'Омоплата', en: 'Omoplata', t: 'sub',
-          s: ['Ханцуйг татаж хөлөө гарын дээгүүр нь', 'Эргэж суугаад мөрийг нь түгж'] },
-      ] },
-
-    { id: 'bf_b', n: 'Баттерфлай гард', en: 'Butterfly guard · bottom', cat: 'guard',
-      x: 'Сууж, хоёр хөлөө гуяны нь дотор талд хуки. Доорх хуки + толгой өндөр.',
-      c: [
-        { n: 'Баттерфлай свип', en: 'Butterfly sweep', t: 'sweep', to: 'mt_t',
-          s: ['Доорх хуки авч, нөгөө гараар ханцуй/тохойг нь барь', 'Хажуу тийш унаж хуки хөлөө өргө', 'Дээр нь эргэ'],
-          c: [
-            { n: 'Гараа ширээнд тулна', en: 'Posts hand', c: [
-              { n: 'Эсрэг тал руу свип', en: 'Sweep the other way', t: 'sweep', to: 'mt_t', s: ['Нөгөө хукигаа өргө', 'Тулсан гарын эсрэг тал руу'] },
-              { n: 'Арм драг → ар руу', en: 'Arm drag to back', t: 'trans', to: 'bk_t', s: ['Тулсан гарыг нь татаж хажуугаар нь өнгөр', 'Хуки оруул'] },
-            ] },
-            { n: 'Чамайг дарж хэвтүүлнэ', en: 'Flattens you', c: [
-              { n: 'Хагас гард, нип шилд', en: 'To half guard', t: 'ctl', to: 'hg_b', s: ['Нэг хөлийг нь ороо', 'Нип шилд тавьж зай гарга'] },
-            ] },
-          ] },
-        { n: 'Арм драг', en: 'Arm drag', t: 'trans', to: 'bk_t',
-          s: ['Бугуйнаас нь хөндлөн барь', 'Тохойн ар талаас нь татаж хажуугаар нь өнгөр', 'Бэлхүүснээс нь тэврээд ар руу'] },
-        { n: 'Гилотин', en: 'Guillotine', t: 'sub',
-          s: ['Толгой нь доош унахад хүзүүг нь тэвэр', 'Хойш хэвтэж хөлөө түгж'] },
-        { n: 'Х-гард руу (босоход нь)', en: 'To X-guard', t: 'trans', to: 'xg_b',
-          s: ['Босоход нь хөлний нь доогуур ор', 'Гуян дээр нь хоёр хөл'] },
-      ] },
-
-    { id: 'xg_b', n: 'Х гард', en: 'X-guard · bottom', cat: 'guard',
-      x: 'Нөгөөгийн нэг хөлний доор, хоёр хөлөө Х хэлбэрээр гуян дээр нь, нөгөө хөлийг нь мөрөн дээрээ.',
-      c: [
-        { n: 'Технический бослого свип', en: 'Technical stand-up sweep', t: 'sweep', to: 'sc_t',
-          s: ['Хөлийг нь сунгаж тэнцвэр алдуул', 'Мөрөн дээрх хөлийг нь барьсаар бос', 'Хойш нь унага'],
-          c: [
-            { n: 'Хөлөө сугалж авна', en: 'Frees the leg', c: [
-              { n: 'Ганц хөл Х рүү', en: 'To single leg X', t: 'trans', to: 'slx_b', s: ['Үлдсэн хөлийг нь ороо'] },
+            { n: 'They pull the arm back', en: 'Гараа татна', c: [
+              { n: 'Kimura to the back', en: 'Кимурагаар ар руу', t: 'trans', to: 'bk_t', s: ['Keep the figure four and turn', 'Take the back'] },
             ] },
           ] },
       ] },
 
-    { id: 'slx_b', n: 'Ганц хөл Х', en: 'Single leg X · bottom', cat: 'guard',
-      x: 'Нэг хөлийг нь хоёр хөлөөрөө ороож, өсгийг нь суганд. Нөгөө хөлийг нь ташаанаас нь түлх.',
+    { id: 'dlr_b', n: 'De la Riva', en: 'Де ла Рива', cat: 'guard',
+      x: 'Outside foot hooks their lead leg, grips on sleeve and heel. Keep their balance moving.',
       c: [
-        { n: 'Хойш унагаах свип', en: 'Sweep backwards', t: 'sweep', to: 'sc_t',
-          s: ['Хөлийг нь гадагш эргүүлж, нөгөө хөлийг нь түлх', 'Хойш нь унагаад шууд бос'],
+        { n: 'Grips & hook', en: 'Барьц ба хуки', t: 'grip',
+          s: ['Outside foot hooks around their lead leg', 'Grip that heel and the opposite sleeve', 'Other foot on the hip or knee to keep distance'],
           c: [
-            { n: 'Тонгойж чамайг дарна', en: 'Leans forward to pressure', c: [
-              { n: 'Х-гард руу', en: 'To X-guard', t: 'trans', to: 'xg_b', s: ['Нөгөө хөлийг нь мөрөн дээрээ'] },
+            { n: 'They clear the hook', en: 'Хуки хөлийг салгана', c: [
+              { n: 'To X-guard', en: 'Х-гард руу', t: 'trans', to: 'xg_b', s: ['Go under the leg', 'Both feet on their thighs', 'Hug the far leg'] },
+              { n: 'To spider guard', en: 'Спайдер гард руу', t: 'trans', to: 'sp_b', s: ['Grip both sleeves', 'Feet on the biceps'] },
             ] },
           ] },
-        { n: 'Шулуун шагайн түгжээ', en: 'Straight ankle lock', t: 'sub', x: 'Насны ангилал, бүсээс хамаарч тэмцээнд хориотой байж болно. Дасгалжуулагчаасаа асуу.',
-          s: ['Өсгийг нь суганд чангал', 'Ташаагаа урагш, нуруугаа тэнийлг'] },
+        { n: 'Berimbolo to the back', en: 'Беримболо', t: 'trans', to: 'bk_t',
+          s: ['Grip the belt or the waist', 'Invert towards the hook side', 'Insert both hooks and take the back'],
+          c: [
+            { n: 'They sit down to block', en: 'Суугаад хойш хэвтэнэ', c: [
+              { n: 'To single leg X', en: 'Ганц хөл Х рүү', t: 'trans', to: 'slx_b', s: ['Wrap the hook leg with both legs', 'Stand them up and sweep backwards'] },
+            ] },
+            { n: 'They step out', en: 'Хөлөө сугалж босно', c: [
+              { n: 'Tripod sweep', en: 'Трайпод свип', t: 'sweep', to: 'sc_t', s: ['Grip the heel', 'Other foot on the hip and push'] },
+            ] },
+          ] },
+        { n: 'Tripod sweep', en: 'Трайпод свип', t: 'sweep', to: 'sc_t',
+          s: ['Grip the heel of the hooked leg', 'Other foot on the hip, push', 'Pull the sleeve, drop them back, stand up right away'],
+          c: [
+            { n: 'They step back', en: 'Хөлөө хойш авна', c: [
+              { n: 'Sickle sweep', en: 'Сикл свип', t: 'sweep', to: 'sc_t', s: ['Hook the other leg', 'Sweep in the opposite direction'] },
+            ] },
+          ] },
+        { n: 'To single leg X', en: 'Ганц хөл Х рүү', t: 'trans', to: 'slx_b',
+          s: ['Pull the heel and go under the hooked leg', 'Wrap the leg with both legs and turn it outwards'] },
       ] },
 
-    // ───────── Гард давах, дээрээс ─────────
-    { id: 'cg_t', n: 'Хаалттай гардад', en: 'Inside closed guard · top', cat: 'pass',
-      x: 'Нуруу шулуун, толгой дээш. Эхлээд босголт, дараа нь гард нээх. Гараа хоёуланг нь гардад оруулахгүй.',
+    { id: 'sp_b', n: 'Spider guard', en: 'Спайдер гард', cat: 'guard',
+      x: 'Both sleeves, feet on the biceps. Pull one arm, push the other, break their balance.',
       c: [
-        { n: 'Босож гард нээх', en: 'Standing guard break', t: 'pass', to: 'og_t',
-          s: ['Захнаас нь ширээнд наан барь, нөгөө гараар ханцуй', 'Нэг хөлөө өргөж бос, дараа нь нөгөөг', 'Хөлийг нь өвдгөөрөө доош дарж нээ'],
+        { n: 'Spider sweep', en: 'Спайдер свип', t: 'sweep', to: 'mt_t',
+          s: ['Pull one sleeve, push with the other foot', 'Hook the bottom leg', 'Roll on top'],
           c: [
-            { n: 'Босоход татаж хүндрүүлнэ', en: 'Pulls you down', c: [
-              { n: 'Завсрын байрлал хадгалах', en: 'Keep posture', t: 'ctl', s: ['Ташаагаа урагш, толгой дээш', 'Захнаас барьж дахин бос'] },
+            { n: 'They strip the sleeve', en: 'Ханцуйг тасална', c: [
+              { n: 'To de la Riva', en: 'Де ла Рива руу', t: 'trans', to: 'dlr_b', s: ['Drop the foot and hook the outside leg'] },
+            ] },
+            { n: 'Toreando pass', en: 'Торэандо', c: [
+              { n: 'Lasso', en: 'Лассо', t: 'grip', s: ['Wrap one foot under their arm', 'Tighten the sleeve'] },
             ] },
           ] },
-        { n: 'Өвдгөөр гард нээх', en: 'Knee-in guard break', t: 'pass', to: 'hg_t',
-          s: ['Нэг өвдгөө сүүл яс руу нь, нөгөө хөлөө хажуу тийш', 'Тохойгоо гуян дээр нь дарж хойш суу', 'Нээгдмэгц өвдгөө дунд нь оруул'] },
+        { n: 'Triangle', en: 'Трайангл', t: 'sub',
+          s: ['Pull one arm down, other foot to the neck', 'Lock the legs, angle out'] },
+        { n: 'Omoplata', en: 'Омоплата', t: 'sub',
+          s: ['Pull the sleeve, leg over the arm', 'Sit up and trap the shoulder'] },
       ] },
 
-    { id: 'og_t', n: 'Нээлттэй гардын давалт', en: 'Open guard passing · top', cat: 'pass',
-      x: 'Хөлийг нь хяна, ташаагаа хөлнөөс нь хол байлга. Давахдаа толгой, ташаагаа хоёуланг нь давуул.',
+    { id: 'bf_b', n: 'Butterfly guard', en: 'Баттерфлай гард', cat: 'guard',
+      x: 'Seated, both feet hooked inside their thighs. Underhook and head high.',
       c: [
-        { n: 'Торэандо', en: 'Toreando pass', t: 'pass', to: 'sc_t',
-          s: ['Хоёр өвдөг/өмдний ханцуйнаас нь барь', 'Хөлийг нь хажуу тийш шидэж нөгөө тал руу гүй', 'Цээжийг нь дарж хажуугийн хяналт'],
+        { n: 'Butterfly sweep', en: 'Баттерфлай свип', t: 'sweep', to: 'mt_t',
+          s: ['Underhook, other hand on the sleeve or elbow', 'Fall to the side and lift the hook', 'Roll on top'],
           c: [
-            { n: 'Хөлөө эргүүлж дагана', en: 'Follows with legs', c: [
-              { n: 'Чиглэл солих', en: 'Change direction', t: 'pass', to: 'sc_t', s: ['Хөлийг нь эсрэг тал руу шид', 'Дахин гүй'] },
-              { n: 'Нип-он-бэлли руу', en: 'To knee on belly', t: 'trans', to: 'kob_t', s: ['Өвдгөө гэдсэн дээр нь', 'Зах + бүснээс барь'] },
+            { n: 'They post the hand', en: 'Гараа тулна', c: [
+              { n: 'Sweep the other way', en: 'Эсрэг тал руу свип', t: 'sweep', to: 'mt_t', s: ['Lift the other hook', 'Sweep away from the posted hand'] },
+              { n: 'Arm drag to the back', en: 'Арм драг → ар', t: 'trans', to: 'bk_t', s: ['Drag the posted arm across and step past', 'Insert the hooks'] },
+            ] },
+            { n: 'They flatten you', en: 'Чамайг дарж хэвтүүлнэ', c: [
+              { n: 'To half guard', en: 'Хагас гард руу', t: 'ctl', to: 'hg_b', s: ['Wrap one leg', 'Knee shield to make space'] },
             ] },
           ] },
-        { n: 'Нип кат', en: 'Knee cut pass', t: 'pass', to: 'sc_t',
-          s: ['Нэг хөлийг нь өвдгөөрөө дарж, доорх хукигаа ав', 'Нөгөө гараар кросс фейс/ханцуй', 'Өвдгөө ширээ рүү гулгуулж дав'],
-          c: [
-            { n: 'Доорх хуки авч босно', en: 'Underhook, comes up', c: [
-              { n: 'Виззер + кросс фейс', en: 'Whizzer & cross face', t: 'ctl', s: ['Хуки авсан гарыг нь виззерээр барь', 'Толгойг нь кросс фейсээр эсрэг тал руу'] },
-            ] },
-            { n: 'Нип шилд тавина', en: 'Knee shield', c: [
-              { n: 'Өвдгийг нь доош дарж давах', en: 'Smash the shield', t: 'pass', to: 'sc_t', s: ['Өвдгийг нь ширээ рүү дар', 'Хөлөө бэлхүүснээс нь давуул'] },
-            ] },
-          ] },
-        { n: 'Лег драг', en: 'Leg drag', t: 'pass', to: 'sc_t',
-          s: ['Нэг хөлийг нь ташаагаар чинь тат, нөгөө тал руу', 'Өвдгөө гуян дээр нь', 'Мөрнөөс нь барьж хажуугийн хяналт'] },
-        { n: 'Стак пасс (хоёр гар доогуур)', en: 'Double under / stack', t: 'pass', to: 'sc_t',
-          s: ['Хоёр гараа гуяны нь доогуур, бүснээс нь барь', 'Хөлийг нь мөрөн дээрээ өргөж дар', 'Хажуу тийш алхаж толгойгоо дав'] },
+        { n: 'Arm drag', en: 'Арм драг', t: 'trans', to: 'bk_t',
+          s: ['Cross-grip the wrist', 'Pull behind the elbow and move past', 'Hug the waist and take the back'] },
+        { n: 'Guillotine', en: 'Гилотин', t: 'sub',
+          s: ['When the head drops, wrap the neck', 'Fall back and close the guard'] },
+        { n: 'To X-guard (when they stand)', en: 'Х-гард руу', t: 'trans', to: 'xg_b',
+          s: ['As they stand, go under the leg', 'Both feet on the thighs'] },
       ] },
 
-    { id: 'hg_t', n: 'Хагас гардад', en: 'Half guard · top', cat: 'pass',
-      x: 'Кросс фейс + доорх хуки. Хөлөө сугалахаас өмнө дээд биеийг нь хяна.',
+    { id: 'xg_b', n: 'X-guard', en: 'Х гард', cat: 'guard',
+      x: 'Under one of their legs, feet crossed on the thigh, other leg on your shoulder.',
       c: [
-        { n: 'Нип кат (хагас гардаас)', en: 'Knee cut from half', t: 'pass', to: 'sc_t',
-          s: ['Кросс фейс хийж хавтгай хэвтүүл', 'Баригдсан хөлний өвдгөө ширээ рүү гулгуул', 'Нөгөө хөлөө суга'] },
-        { n: 'Бэк степ', en: 'Back step', t: 'pass', to: 'sc_t',
-          s: ['Баригдсан хөлөө эсрэг чиглэлд эргүүлж алх', 'Ташаагаа цээжин дээр нь', 'Хөлөө суга'] },
-        { n: 'Кимура (дээрээс)', en: 'Kimura from top', t: 'sub',
-          s: ['Хуки авахаар сунгасан гарыг нь барь', 'Хүрээ хий, цээжээр дар'] },
-      ] },
-
-    // ───────── Давамгай байрлал, дээрээс ─────────
-    { id: 'sc_t', n: 'Хажуугийн хяналт', en: 'Side control · top', cat: 'top',
-      x: 'Хажуу талд нь, цээжээр дарж, ташааг нь хяна. Эхлээд хяналт, дараа нь маунт эсвэл сабмишн.',
-      c: [
-        { n: 'Маунт руу', en: 'To mount', t: 'trans', to: 'mt_t',
-          s: ['Ойр гараараа ташааг нь хаа', 'Өвдгөө гэдсэн дээгүүр нь гулгуул', 'Хөлөө давуулж суу'],
+        { n: 'Technical stand-up sweep', en: 'Технический бослого свип', t: 'sweep', to: 'sc_t',
+          s: ['Extend the leg to break balance', 'Keep the leg on your shoulder and stand', 'Drop them backwards'],
           c: [
-            { n: 'Өвдгөө дунд нь оруулна', en: 'Blocks with knee', c: [
-              { n: 'Нип-он-бэлли руу', en: 'To knee on belly', t: 'trans', to: 'kob_t', s: ['Босож өвдгөө гэдсэн дээр нь', 'Зах + бүс'] },
-            ] },
-          ] },
-        { n: 'Американа', en: 'Americana', t: 'sub',
-          s: ['Ойр гарынх нь бугуйг ширээнд наа', 'Нөгөө гараа доогуур нь оруулж бугуйгаа барь', 'Тохойг нь ширээ дагуулан дээш'],
-          c: [
-            { n: 'Гараа доош татна', en: 'Pulls arm down', c: [
-              { n: 'Кимура руу', en: 'To kimura', t: 'sub', s: ['Барьцаа алдалгүй гарыг нь дагаж', 'Хүрээг эргүүл'] },
-            ] },
-          ] },
-        { n: 'Нип-он-бэлли', en: 'Knee on belly', t: 'trans', to: 'kob_t',
-          s: ['Зах + бүснээс барь', 'Өвдгөө гэдсэн дээр нь, нөгөө хөл сунгасан'] },
-        { n: 'Ар руу (эргэхэд нь)', en: 'Back take when they turn', t: 'trans', to: 'bk_t',
-          s: ['Чамаас зугтаж эргэхэд нь хуки оруул', 'Сийт бэлт барь'] },
-        { n: 'Норт-саут руу', en: 'To north-south', t: 'trans',
-          s: ['Толгойн нь тийш эргэ', 'Цээжээр дарж, гараа хяна'] },
-      ] },
-
-    { id: 'kob_t', n: 'Нип-он-бэлли', en: 'Knee on belly · top', cat: 'top',
-      x: 'Жингээ өвдгөн дээр. Нөгөө тал гараа өргөхөд армбар.',
-      c: [
-        { n: 'Армбар (гараа түлхэхэд)', en: 'Armbar off the push', t: 'sub',
-          s: ['Өвдгийг чинь түлхсэн гарыг нь тэвэр', 'Толгойг нь тойрч алх', 'Суугаад хөлөө давуул'] },
-        { n: 'Бэйсбол чок', en: 'Baseball bat choke', t: 'sub',
-          s: ['Нэг гар захны гүнд далдуу дээш, нөгөө гар далдуу доош', 'Толгойг нь тойрч эргэ'] },
-        { n: 'Маунт руу', en: 'To mount', t: 'trans', to: 'mt_t',
-          s: ['Хөлөө давуулж суу'] },
-      ] },
-
-    { id: 'mt_t', n: 'Маунт', en: 'Mount · top', cat: 'top',
-      x: 'Өвдөг суганд нь, ташаа нам. Гараа тулахгүй, суурь өргөн. Хүзүүг нь довтлоход гараа өргөнө, тэгэхэд армбар.',
-      c: [
-        { n: 'Кросс чок', en: 'Cross collar choke', t: 'sub',
-          s: ['Нэг гараа захны гүнд (далдуу дээш)', 'Нөгөө гараа нөгөө зах руу', 'Толгойгоо ширээнд наан тохойгоо хавчуул'],
-          c: [
-            { n: 'Гараа хүзүү рүүгээ, хамгаална', en: 'Defends neck', c: [
-              { n: 'S-маунт армбар', en: 'S-mount armbar', t: 'sub', s: ['Өндөр маунт руу шилж', 'Нэг хөлөө толгойн нь дор S хэлбэрээр', 'Гарыг нь тэврээд хойш'] },
-            ] },
-          ] },
-        { n: 'Армбар', en: 'Armbar', t: 'sub',
-          s: ['Хамгаалсан гарыг нь цээжиндээ тэвэр', 'Хөлөө толгойн нь дээгүүр давуул', 'Хойш суугаад ташаагаа өргө'],
-          c: [
-            { n: 'Тохойгоо татна (хитчхайкер)', en: 'Hitchhiker escape', c: [
-              { n: 'Нөгөө гар руу шилжих', en: 'Switch arms', t: 'sub', s: ['Эргэхэд нь нөгөө гарыг нь ав', 'Дахин хөлөө давуул'] },
-            ] },
-          ] },
-        { n: 'Арм трайангл', en: 'Arm triangle', t: 'sub',
-          s: ['Гарыг нь хүзүү рүү нь дарж толгойгоо наа', 'Хажуу тийш бууж хөлөө сунга', 'Гараа түгжиж, нуруугаа бөхийлгө'],
-          c: [
-            { n: 'Гараа гаргана', en: 'Frees the arm', c: [
-              { n: 'Маунтад буцаж кросс чок', en: 'Back to mount, collar choke', t: 'sub', to: 'mt_t', s: ['Маунтад буц', 'Зах руу шууд'] },
-            ] },
-          ] },
-        { n: 'Ар руу (эргэхэд нь)', en: 'Back take when they turn', t: 'trans', to: 'bk_t',
-          s: ['Эргэхэд нь хуки оруул', 'Хойш унаж сийт бэлт'] },
-        { n: 'Эзекиел чок', en: 'Ezekiel choke', t: 'sub',
-          s: ['Нэг гараа толгойн нь доогуур, нөгөө ханцуйдаа оруул', 'Нөгөө гараа хүзүүгээр нь давуулж боо'] },
-      ] },
-
-    { id: 'bk_t', n: 'Ар (хуки)', en: 'Back control · top', cat: 'top',
-      x: 'Хоёр хуки + сийт бэлт. Боолтын гараа доор, цээжээ нуруунд нь наа. Яараад хукигаа алдахгүй.',
-      c: [
-        { n: 'Ар талаас боох (RNC)', en: 'Rear naked choke', t: 'sub',
-          s: ['Нэг гараа эрүүн доогуур нь', 'Нөгөө гарынхаа тохойд наан толгойн ар руу', 'Цээжээ тэлж чангал'],
-          c: [
-            { n: 'Эрүүгээ доош, гараа хамгаална', en: 'Hand fights', c: [
-              { n: 'Гарыг нь түгжих (трап)', en: 'Trap the arm', t: 'ctl', s: ['Нэг гарыг нь хөлөөрөө түгж', 'Үлдсэн гартай нь тэмц'] },
-              { n: 'Боу энд арроу', en: 'Bow and arrow choke', t: 'sub', s: ['Захнаас нь гүнд барь', 'Өмднөөс/хөлнөөс нь барьж эргэ', 'Хөлөө сунгаж чангал'] },
-            ] },
-            { n: 'Хукигаа салгаж эргэнэ', en: 'Escapes to the side', c: [
-              { n: 'Маунт руу шилжих', en: 'Transition to mount', t: 'trans', to: 'mt_t', s: ['Хукигаа алдахад нь дээр нь гар', 'Сийт бэлт алдалгүй'] },
-            ] },
-          ] },
-        { n: 'Боу энд арроу', en: 'Bow and arrow', t: 'sub',
-          s: ['Захнаас нь гүнд барь (боолтын гар)', 'Нөгөө гараар өмднөөс нь, хөлөө нуруун дээр нь', 'Хөлөө сунгаж, захыг татаж боо'] },
-        { n: 'Армбар (арнаас)', en: 'Armbar from back', t: 'sub',
-          s: ['Хамгаалсан гарыг нь тэвэр', 'Хөлөө толгойн нь дээгүүр', 'Ташаагаа өргө'] },
-      ] },
-
-    { id: 'tt_t', n: 'Мөлхөөн дээр', en: 'Turtle · top', cat: 'top',
-      x: 'Цээжээ нуруунд нь, нэг хөл ойр. Хуки оруулж ар авах эсвэл клок чок.',
-      c: [
-        { n: 'Ар руу хуки оруулах', en: 'Take the back', t: 'trans', to: 'bk_t',
-          s: ['Ойр хөлөө хуки болгож оруул', 'Сийт бэлт барь', 'Хажуу руу эргүүлж хоёр дахь хуки'],
-          c: [
-            { n: 'Хөлөө хааж хуки өгөхгүй', en: 'Blocks hooks', c: [
-              { n: 'Клок чок', en: 'Clock choke', t: 'sub', s: ['Захнаас нь гүнд барь', 'Толгойгоо ширээнд наан тойрч алх'] },
-            ] },
-            { n: 'Эргэж гард руу сууна', en: 'Sits to guard', c: [
-              { n: 'Дагаж дарах', en: 'Follow and pass', t: 'pass', to: 'sc_t', s: ['Эргэхэд нь зайг нь өгөхгүй', 'Цээжээр дарж хажуугийн хяналт'] },
-            ] },
-          ] },
-        { n: 'Анаконда / Дарс', en: 'Anaconda / D’Arce', t: 'sub', x: 'Ихэвчлэн no-gi.',
-          s: ['Гар, толгойн нь доогуур орж тэвэр', 'Хүрээ хийж эргэ', 'Чангал'] },
-      ] },
-
-    // ───────── Мултрах, доороос ─────────
-    { id: 'sc_b', n: 'Хажуугийн хяналтын доор', en: 'Under side control', cat: 'escape',
-      x: 'Сандрахгүй. Фрэйм, гүүр, ширээ. Хавтгай хэвтэхгүй, тохойгоо биедээ ойр.',
-      c: [
-        { n: 'Фрэйм + ширээ → гард', en: 'Frame & shrimp to guard', t: 'esc', to: 'cg_b',
-          s: ['Нэг гараа хүзүүнд нь, нөгөөг ташаанд нь фрэйм', 'Гүүр хийж зай гарга', 'Ширээ хийж өвдгөө оруул'],
-          c: [
-            { n: 'Ташаагаа дарж, кросс фейс', en: 'Cross face, kills hip', c: [
-              { n: 'Гүүр, дахин ширээ', en: 'Bridge then shrimp', t: 'esc', to: 'hg_b', s: ['Гүүр хийж тохойг нь өргө', 'Дахин ширээ, хөлөө ороо'] },
-            ] },
-            { n: 'Маунт руу шилжнэ', en: 'Goes to mount', c: [
-              { n: 'Өвдгөө оруулж хагас гард', en: 'Knee in, half guard', t: 'esc', to: 'hg_b', s: ['Өвдгөө хурдан оруул', 'Хөлийг нь ороо'] },
-            ] },
-          ] },
-        { n: 'Доорх хуки → мөлхөөн', en: 'Underhook to turtle', t: 'esc', to: 'tt_b',
-          s: ['Гүүр хийж ойр гараа суганд нь', 'Эргэж өвдгөн дээрээ бос'] },
-      ] },
-
-    { id: 'mt_b', n: 'Маунтын доор', en: 'Under mount', cat: 'escape',
-      x: 'Тохойгоо биедээ, гараа хүзүүнээсээ хол. Хоёр мултралт: гүүр ба тохой-өвдөг.',
-      c: [
-        { n: 'Гүүр (упа)', en: 'Trap & roll (upa)', t: 'esc', to: 'cg_t',
-          s: ['Нэг гар, нэг хөлийг нь нэг талд нь түгж', 'Гүүр хийж мөрөн дээгүүрээ эргэ', 'Гардад нь орж босголт'],
-          c: [
-            { n: 'Гараа ширээнд тулна', en: 'Posts hand', c: [
-              { n: 'Тулсан гарыг нь барьж дахин гүүр', en: 'Trap the post, bridge again', t: 'esc', to: 'cg_t', s: ['Тулсан гарыг нь тэвэр', 'Нөгөө тал руу гүүр'] },
-              { n: 'Тохой-өвдөг рүү шилжих', en: 'Switch to elbow-knee', t: 'esc', to: 'hg_b', s: ['Ширээ хийж өвдгөө оруул'] },
-            ] },
-          ] },
-        { n: 'Тохой-өвдөг мултралт', en: 'Elbow-knee escape', t: 'esc', to: 'hg_b',
-          s: ['Тохойгоо өвдөгт нь фрэйм', 'Ширээ хийж өвдгөө оруул', 'Хөлийг нь ороож хагас гард'],
-          c: [
-            { n: 'Өндөр маунт, хөлөө суганд чинь', en: 'High mount', c: [
-              { n: 'Гараа хамгаалж, гүүр', en: 'Protect arms, bridge', t: 'esc', s: ['Тохойгоо биедээ', 'Гүүр хийж доош ширээ'] },
+            { n: 'They free the leg', en: 'Хөлөө сугалж авна', c: [
+              { n: 'To single leg X', en: 'Ганц хөл Х рүү', t: 'trans', to: 'slx_b', s: ['Wrap the remaining leg'] },
             ] },
           ] },
       ] },
 
-    { id: 'bk_b', n: 'Ар авахуулсан', en: 'Back taken', cat: 'escape',
-      x: 'Эхлээд хүзүү: эрүү доош, гараа хамгаал. Дараа нь боолтын гарын тал руу буу.',
+    { id: 'slx_b', n: 'Single leg X', en: 'Ганц хөл Х', cat: 'guard',
+      x: 'One leg wrapped with both legs, heel in your armpit. Push the other leg off the hip.',
       c: [
-        { n: 'Хажуу руу бууж мултрах', en: 'Escape to the side', t: 'esc', to: 'hg_t',
-          s: ['Боолтын гарын тохойг нь доош дар', 'Тэр тал руу ширээ хийж нуруугаа ширээнд', 'Хукиг нь салгаж дээр нь эргэ'],
+        { n: 'Sweep backwards', en: 'Хойш унагаах свип', t: 'sweep', to: 'sc_t',
+          s: ['Turn the leg outwards, push the other leg', 'Drop them back and stand up right away'],
           c: [
-            { n: 'Чамайг дагаж маунт руу', en: 'Follows to mount', c: [
-              { n: 'Өвдгөө оруулж хагас гард', en: 'Knee in, half guard', t: 'esc', to: 'hg_b', s: ['Өвдгөө хурдан оруул'] },
+            { n: 'They lean forward to pressure', en: 'Тонгойж дарна', c: [
+              { n: 'To X-guard', en: 'Х-гард руу', t: 'trans', to: 'xg_b', s: ['Other leg onto your shoulder'] },
             ] },
           ] },
-        { n: 'Гар тэмцэл', en: 'Hand fighting', t: 'ctl',
-          s: ['Эрүүгээ доош', 'Боолтын гарын бугуйг нь хоёр гараар барь', 'Нөгөө хуки талаас нь хөл сөхөж суу'] },
+        { n: 'Straight ankle lock', en: 'Шулуун шагайн түгжээ', t: 'sub', x: 'May be illegal in competition depending on age and belt. Ask your coach.',
+          s: ['Heel tight in the armpit', 'Hips forward, straighten the back'] },
       ] },
 
-    { id: 'tt_b', n: 'Мөлхөөнд', en: 'Turtle · bottom', cat: 'escape',
-      x: 'Тохой, өвдгөө ойр. Хуки оруулахгүй, хүзүүг нь хамгаал. Удаан байхгүй, шууд гард.',
+    // ───────── Passing, top ─────────
+    { id: 'cg_t', n: 'Inside closed guard', en: 'Хаалттай гардад', cat: 'pass',
+      x: 'Back straight, head up. Posture first, then open the guard. Never put both hands in the guard.',
       c: [
-        { n: 'Гранби эргэлт → гард', en: 'Granby roll to guard', t: 'esc', to: 'bf_b',
-          s: ['Мөрөн дээгүүрээ эргэ', 'Хөлөө дунд нь оруулж суу'] },
-        { n: 'Эргэж сууж гард сэргээх', en: 'Sit through to guard', t: 'esc', to: 'hg_b',
-          s: ['Ойр хөлөө татаж хажуу руу суу', 'Хөлийг нь ороо'],
+        { n: 'Standing guard break', en: 'Босож гард нээх', t: 'pass', to: 'og_t',
+          s: ['Pin the collar to the mat, other hand on the sleeve', 'Stand one leg at a time', 'Push the knee down to open the legs'],
           c: [
-            { n: 'Хуки оруулна', en: 'Gets a hook', c: [
-              { n: 'Хөлийг нь дарж хуки салгах', en: 'Clear the hook', t: 'esc', s: ['Хуки хөлийг нь гараараа доош', 'Тэр тал руу ширээ'] },
+            { n: 'They pull you down as you stand', en: 'Босоход татаж хүндрүүлнэ', c: [
+              { n: 'Keep posture', en: 'Босголтоо хадгалах', t: 'ctl', s: ['Hips forward, head up', 'Hold the collar and stand again'] },
             ] },
           ] },
-        { n: 'Ганц хөл рүү довтлох', en: 'Attack a single leg', t: 'td', to: 'sc_t',
-          s: ['Ойр хөлийг нь тэвэр', 'Босож хөлийг нь өргөн унага'] },
+        { n: 'Knee-in guard break', en: 'Өвдгөөр гард нээх', t: 'pass', to: 'hg_t',
+          s: ['One knee to the tailbone, other leg out', 'Elbow on the thigh, sit back', 'When it opens, knee through the middle'] },
+      ] },
+
+    { id: 'og_t', n: 'Open guard passing', en: 'Нээлттэй гардын давалт', cat: 'pass',
+      x: 'Control the legs, keep your hips away from their feet. Pass with head and hips together.',
+      c: [
+        { n: 'Toreando pass', en: 'Торэандо', t: 'pass', to: 'sc_t',
+          s: ['Grip both knees or pant legs', 'Throw the legs to one side and run to the other', 'Chest down into side control'],
+          c: [
+            { n: 'They follow with the legs', en: 'Хөлөө эргүүлж дагана', c: [
+              { n: 'Change direction', en: 'Чиглэл солих', t: 'pass', to: 'sc_t', s: ['Throw the legs the other way', 'Run again'] },
+              { n: 'To knee on belly', en: 'Нип-он-бэлли руу', t: 'trans', to: 'kob_t', s: ['Knee on the belly', 'Collar and belt grips'] },
+            ] },
+          ] },
+        { n: 'Knee cut pass', en: 'Нип кат', t: 'pass', to: 'sc_t',
+          s: ['Pin one leg with the knee, take the underhook', 'Other hand cross face or sleeve', 'Slide the knee to the mat and pass'],
+          c: [
+            { n: 'They underhook and come up', en: 'Доорх хуки авч босно', c: [
+              { n: 'Whizzer & cross face', en: 'Виззер + кросс фейс', t: 'ctl', s: ['Whizzer the underhooking arm', 'Cross face the head to the other side'] },
+            ] },
+            { n: 'Knee shield', en: 'Нип шилд', c: [
+              { n: 'Smash the shield', en: 'Өвдгийг нь дарж давах', t: 'pass', to: 'sc_t', s: ['Push the knee to the mat', 'Step over the hips'] },
+            ] },
+          ] },
+        { n: 'Leg drag', en: 'Лег драг', t: 'pass', to: 'sc_t',
+          s: ['Drag one leg across your hip', 'Knee on the thigh', 'Grip the shoulder and settle in side control'] },
+        { n: 'Double under / stack', en: 'Стак пасс', t: 'pass', to: 'sc_t',
+          s: ['Both arms under the thighs, grip the belt', 'Lift the legs onto your shoulders and stack', 'Walk to the side and pass the head'] },
+      ] },
+
+    { id: 'hg_t', n: 'Half guard top', en: 'Хагас гардад', cat: 'pass',
+      x: 'Cross face plus underhook. Control the upper body before freeing the leg.',
+      c: [
+        { n: 'Knee cut from half', en: 'Нип кат (хагас гардаас)', t: 'pass', to: 'sc_t',
+          s: ['Cross face, flatten them', 'Slide the trapped knee to the mat', 'Free the foot'] },
+        { n: 'Back step', en: 'Бэк степ', t: 'pass', to: 'sc_t',
+          s: ['Step the trapped leg in the opposite direction', 'Hips on their chest', 'Free the leg'] },
+        { n: 'Kimura from top', en: 'Кимура (дээрээс)', t: 'sub',
+          s: ['Grab the arm they reach with for the underhook', 'Figure four, chest pressure'] },
+      ] },
+
+    // ───────── Dominant, top ─────────
+    { id: 'sc_t', n: 'Side control', en: 'Хажуугийн хяналт', cat: 'top',
+      x: 'Chest pressure, control the hips. Control first, then mount or submit.',
+      c: [
+        { n: 'To mount', en: 'Маунт руу', t: 'trans', to: 'mt_t',
+          s: ['Near hand blocks the hip', 'Slide the knee across the belly', 'Step over and sit'],
+          c: [
+            { n: 'They block with the knee', en: 'Өвдгөө дунд нь оруулна', c: [
+              { n: 'To knee on belly', en: 'Нип-он-бэлли руу', t: 'trans', to: 'kob_t', s: ['Come up, knee on the belly', 'Collar and belt'] },
+            ] },
+          ] },
+        { n: 'Americana', en: 'Американа', t: 'sub',
+          s: ['Pin the near wrist to the mat', 'Other hand under, grab your own wrist', 'Slide the elbow along the mat'],
+          c: [
+            { n: 'They pull the arm down', en: 'Гараа доош татна', c: [
+              { n: 'To kimura', en: 'Кимура руу', t: 'sub', s: ['Keep the grip, follow the arm', 'Rotate the figure four'] },
+            ] },
+          ] },
+        { n: 'Knee on belly', en: 'Нип-он-бэлли', t: 'trans', to: 'kob_t',
+          s: ['Collar and belt grips', 'Knee on the belly, other leg extended'] },
+        { n: 'Back take when they turn', en: 'Ар руу (эргэхэд нь)', t: 'trans', to: 'bk_t',
+          s: ['When they turn away, insert the hook', 'Seat belt grip'] },
+        { n: 'To north-south', en: 'Норт-саут руу', t: 'trans',
+          s: ['Rotate towards the head', 'Chest pressure, control the arms'] },
+      ] },
+
+    { id: 'kob_t', n: 'Knee on belly', en: 'Нип-он-бэлли', cat: 'top',
+      x: 'Weight on the knee. When they push, armbar.',
+      c: [
+        { n: 'Armbar off the push', en: 'Армбар (гараа түлхэхэд)', t: 'sub',
+          s: ['Hug the arm that pushes your knee', 'Step around the head', 'Sit down and swing the leg over'] },
+        { n: 'Baseball bat choke', en: 'Бэйсбол чок', t: 'sub',
+          s: ['One hand deep in the collar palm up, other palm down', 'Spin around the head'] },
+        { n: 'To mount', en: 'Маунт руу', t: 'trans', to: 'mt_t',
+          s: ['Step over and sit'] },
+      ] },
+
+    { id: 'mt_t', n: 'Mount', en: 'Маунт', cat: 'top',
+      x: 'Knees in the armpits, hips low. Wide base, no posting. Attack the neck, when they lift the arms, armbar.',
+      c: [
+        { n: 'Cross collar choke', en: 'Кросс чок', t: 'sub',
+          s: ['First hand deep in the collar, palm up', 'Second hand to the other collar', 'Head to the mat, elbows together'],
+          c: [
+            { n: 'They defend the neck', en: 'Гараа хүзүү рүүгээ', c: [
+              { n: 'S-mount armbar', en: 'S-маунт армбар', t: 'sub', s: ['Move to high mount', 'One leg under the head in an S', 'Hug the arm and fall back'] },
+            ] },
+          ] },
+        { n: 'Armbar', en: 'Армбар', t: 'sub',
+          s: ['Hug the defending arm to your chest', 'Swing the leg over the head', 'Sit back and lift the hips'],
+          c: [
+            { n: 'Hitchhiker escape', en: 'Тохойгоо татна', c: [
+              { n: 'Switch arms', en: 'Нөгөө гар руу шилжих', t: 'sub', s: ['As they turn, take the other arm', 'Swing the leg over again'] },
+            ] },
+          ] },
+        { n: 'Arm triangle', en: 'Арм трайангл', t: 'sub',
+          s: ['Push the arm across the neck, head tight', 'Dismount to the side, legs extended', 'Lock the arms, round the back'],
+          c: [
+            { n: 'They free the arm', en: 'Гараа гаргана', c: [
+              { n: 'Back to mount, collar choke', en: 'Маунтад буцаж кросс чок', t: 'sub', to: 'mt_t', s: ['Return to mount', 'Straight to the collar'] },
+            ] },
+          ] },
+        { n: 'Back take when they turn', en: 'Ар руу (эргэхэд нь)', t: 'trans', to: 'bk_t',
+          s: ['When they turn, insert the hook', 'Fall back with the seat belt'] },
+        { n: 'Ezekiel choke', en: 'Эзекиел чок', t: 'sub',
+          s: ['One arm under the head, hand inside your own sleeve', 'Other hand across the neck and squeeze'] },
+      ] },
+
+    { id: 'bk_t', n: 'Back control', en: 'Ар (хуки)', cat: 'top',
+      x: 'Two hooks plus seat belt. Choking arm underneath, chest glued to their back. Do not rush and lose the hooks.',
+      c: [
+        { n: 'Rear naked choke', en: 'Ар талаас боох (RNC)', t: 'sub',
+          s: ['One arm under the chin', 'Hand on the other bicep, hand behind the head', 'Expand the chest and squeeze'],
+          c: [
+            { n: 'They hand fight, chin down', en: 'Эрүүгээ доош, гараа хамгаална', c: [
+              { n: 'Trap the arm', en: 'Гарыг нь түгжих', t: 'ctl', s: ['Trap one arm with your leg', 'Fight the remaining hand'] },
+              { n: 'Bow and arrow choke', en: 'Боу энд арроу', t: 'sub', s: ['Deep collar grip', 'Grab the pants or leg and turn', 'Extend the legs and squeeze'] },
+            ] },
+            { n: 'They clear a hook and escape to the side', en: 'Хукигаа салгаж эргэнэ', c: [
+              { n: 'Transition to mount', en: 'Маунт руу шилжих', t: 'trans', to: 'mt_t', s: ['As the hook goes, get on top', 'Keep the seat belt'] },
+            ] },
+          ] },
+        { n: 'Bow and arrow', en: 'Боу энд арроу', t: 'sub',
+          s: ['Deep collar grip with the choking hand', 'Other hand on the pants, leg over the back', 'Extend the legs, pull the collar'] },
+        { n: 'Armbar from the back', en: 'Армбар (арнаас)', t: 'sub',
+          s: ['Hug the defending arm', 'Leg over the head', 'Lift the hips'] },
+      ] },
+
+    { id: 'tt_t', n: 'Turtle top', en: 'Мөлхөөн дээр', cat: 'top',
+      x: 'Chest on their back, one knee close. Insert hooks for the back or clock choke.',
+      c: [
+        { n: 'Take the back', en: 'Ар руу хуки оруулах', t: 'trans', to: 'bk_t',
+          s: ['Near leg becomes a hook', 'Seat belt grip', 'Roll them to the side and get the second hook'],
+          c: [
+            { n: 'They block the hooks', en: 'Хуки өгөхгүй', c: [
+              { n: 'Clock choke', en: 'Клок чок', t: 'sub', s: ['Deep collar grip', 'Head to the mat and walk around'] },
+            ] },
+            { n: 'They sit to guard', en: 'Эргэж гард руу сууна', c: [
+              { n: 'Follow and pass', en: 'Дагаж дарах', t: 'pass', to: 'sc_t', s: ['Give no space as they turn', 'Chest pressure into side control'] },
+            ] },
+          ] },
+        { n: 'Anaconda / D’Arce', en: 'Анаконда / Дарс', t: 'sub', x: 'Mostly no-gi.',
+          s: ['Thread under the arm and head', 'Figure four and roll', 'Squeeze'] },
+      ] },
+
+    // ───────── Escapes, bottom ─────────
+    { id: 'sc_b', n: 'Under side control', en: 'Хажуугийн хяналтын доор', cat: 'escape',
+      x: 'Do not panic. Frame, bridge, shrimp. Never flat, elbows tight.',
+      c: [
+        { n: 'Frame & shrimp to guard', en: 'Фрэйм + ширээ → гард', t: 'esc', to: 'cg_b',
+          s: ['One frame on the neck, one on the hip', 'Bridge to make space', 'Shrimp and bring the knee in'],
+          c: [
+            { n: 'Cross face, hips blocked', en: 'Кросс фейс, ташаа дарна', c: [
+              { n: 'Bridge then shrimp', en: 'Гүүр, дахин ширээ', t: 'esc', to: 'hg_b', s: ['Bridge to lift the elbow', 'Shrimp again and wrap the leg'] },
+            ] },
+            { n: 'They go to mount', en: 'Маунт руу шилжнэ', c: [
+              { n: 'Knee in, half guard', en: 'Өвдгөө оруулж хагас гард', t: 'esc', to: 'hg_b', s: ['Knee in fast', 'Wrap the leg'] },
+            ] },
+          ] },
+        { n: 'Underhook to turtle', en: 'Доорх хуки → мөлхөөн', t: 'esc', to: 'tt_b',
+          s: ['Bridge, near arm under their armpit', 'Turn and come up to the knees'] },
+      ] },
+
+    { id: 'mt_b', n: 'Under mount', en: 'Маунтын доор', cat: 'escape',
+      x: 'Elbows tight, hands away from the neck. Two escapes: bridge and elbow-knee.',
+      c: [
+        { n: 'Trap & roll (upa)', en: 'Гүүр (упа)', t: 'esc', to: 'cg_t',
+          s: ['Trap one arm and one leg on the same side', 'Bridge over the shoulder', 'Land in their guard with posture'],
+          c: [
+            { n: 'They post the hand', en: 'Гараа тулна', c: [
+              { n: 'Trap the post, bridge again', en: 'Тулсан гарыг барьж дахин гүүр', t: 'esc', to: 'cg_t', s: ['Hug the posted arm', 'Bridge the other way'] },
+              { n: 'Switch to elbow-knee', en: 'Тохой-өвдөг рүү шилжих', t: 'esc', to: 'hg_b', s: ['Shrimp and bring the knee in'] },
+            ] },
+          ] },
+        { n: 'Elbow-knee escape', en: 'Тохой-өвдөг мултралт', t: 'esc', to: 'hg_b',
+          s: ['Elbow frames on the knee', 'Shrimp and bring the knee in', 'Wrap the leg into half guard'],
+          c: [
+            { n: 'High mount', en: 'Өндөр маунт', c: [
+              { n: 'Protect arms, bridge', en: 'Гараа хамгаалж гүүр', t: 'esc', s: ['Elbows tight', 'Bridge and shrimp down'] },
+            ] },
+          ] },
+      ] },
+
+    { id: 'bk_b', n: 'Back taken', en: 'Ар авахуулсан', cat: 'escape',
+      x: 'Neck first: chin down, protect the hands. Then escape towards the choking arm side.',
+      c: [
+        { n: 'Escape to the side', en: 'Хажуу руу бууж мултрах', t: 'esc', to: 'hg_t',
+          s: ['Push the elbow of the choking arm down', 'Shrimp to that side, back on the mat', 'Clear the hook and come on top'],
+          c: [
+            { n: 'They follow to mount', en: 'Дагаж маунт руу', c: [
+              { n: 'Knee in, half guard', en: 'Өвдгөө оруулж хагас гард', t: 'esc', to: 'hg_b', s: ['Knee in fast'] },
+            ] },
+          ] },
+        { n: 'Hand fighting', en: 'Гар тэмцэл', t: 'ctl',
+          s: ['Chin down', 'Two hands on the wrist of the choking arm', 'Sit towards the open hook side'] },
+      ] },
+
+    { id: 'tt_b', n: 'Turtle bottom', en: 'Мөлхөөнд', cat: 'escape',
+      x: 'Elbows and knees tight. No hooks, protect the neck. Do not stay, go back to guard.',
+      c: [
+        { n: 'Granby roll to guard', en: 'Гранби эргэлт → гард', t: 'esc', to: 'bf_b',
+          s: ['Roll over the shoulder', 'Get the legs in and sit up'] },
+        { n: 'Sit through to guard', en: 'Эргэж сууж гард сэргээх', t: 'esc', to: 'hg_b',
+          s: ['Pull the near leg and sit to the side', 'Wrap the leg'],
+          c: [
+            { n: 'They get a hook', en: 'Хуки оруулна', c: [
+              { n: 'Clear the hook', en: 'Хуки салгах', t: 'esc', s: ['Push the hooking leg down with the hand', 'Shrimp to that side'] },
+            ] },
+          ] },
+        { n: 'Attack a single leg', en: 'Ганц хөл рүү довтлох', t: 'td', to: 'sc_t',
+          s: ['Wrap the near leg', 'Stand up and lift the leg'] },
       ] },
   ];
 
   const PLANS = [
-    { n: 'Том, хүчтэй хүнтэй', x: 'Доороо хавтгай хэвтэхгүй. Хагас гард, нип шилд, фрэйм, байнга өнцөг солих. Хүчээр биш, хөдөлгөөнөөр. Дээр гарвал хурдан хажуугийн хяналт биш, нип-он-бэлли, хөдөлгөөнтэй дээд байрлал.', tags: ['hg_b', 'dlr_b', 'kob_t'] },
-    { n: 'Өндөр, урт хөлтэй хүнтэй', x: 'Гардыг нь хол зайнаас давахгүй, ойртож дарж дав (нип кат, стак). Доороо трайангл руу нь орохгүй, тохойгоо биедээ. Унагаалт дээр түвшин доош, ганц хөл.', tags: ['og_t', 'st'] },
-    { n: 'Хурдан, хөнгөн хүнтэй', x: 'Яарахгүй. Барьцаа эхэлж ав, хяналтаа бүрэн болгож байж довтол. Дээрээс даралт, ташаагаа хөлнөөс нь хол. Хуки өгөхгүй.', tags: ['sc_t', 'mt_t'] },
-    { n: 'Бөхийн суурьтай хүнтэй', x: 'Зогсоо тэмцэл удаан хийхгүй, барьц авмагц гард тат эсвэл де ла Рива. Доороос свип гэхээсээ илүү ар руу (беримболо, арм драг).', tags: ['st', 'dlr_b', 'bf_b'] },
-    { n: 'Шинэ, хүчээр барилддаг хүнтэй', x: 'Аюулгүй байрлал: хаалттай гард, хажуугийн хяналт. Хүзүү, хурууг хамгаал. Техникээ туршиж, дуусгалт нь тайван.', tags: ['cg_b', 'sc_t'] },
+    { n: 'Against a big, strong opponent', x: 'Never flat on the bottom. Half guard, knee shield, frames, keep changing angles. Movement over strength. On top, do not settle into side control: knee on belly and a mobile top game.', tags: ['hg_b', 'dlr_b', 'kob_t'] },
+    { n: 'Against a tall, long-legged opponent', x: 'Do not pass from far away, get close and pass with pressure (knee cut, stack). On the bottom stay out of the triangle, elbows in. Takedowns: level change, single leg.', tags: ['og_t', 'st'] },
+    { n: 'Against a fast, light opponent', x: 'No rush. Grips first, full control before any attack. Pressure from the top, hips away from their feet. Give no hooks.', tags: ['sc_t', 'mt_t'] },
+    { n: 'Against a wrestler', x: 'Do not stay in the standing battle, pull guard or go to de la Riva as soon as you have grips. From the bottom prefer back takes (berimbolo, arm drag) over sweeps.', tags: ['st', 'dlr_b', 'bf_b'] },
+    { n: 'Against a new, spazzy opponent', x: 'Safe positions: closed guard, side control. Protect the neck and fingers. Try techniques, finish calmly.', tags: ['cg_b', 'sc_t'] },
   ];
 
-  // Бие: дасгалын багцууд. cat: warm=халаалт, str=сунгалт, sc=хүч, cardio=кардио
+  // Body: routines. cat: warm=warm-up, str=stretching, sc=strength, cardio
   const ROUTINES = [
-    { cat: 'warm', n: 'Стандарт BJJ халаалт', min: 10, items: ['Хөнгөн гүйлт, мөр, ташаа эргүүлэх · 2 мин', 'Урагш/хойш эргэлт · 10 удаа', 'Ширээ (хип эскейп) · 2×20 м', 'Гүүр · 15 удаа', 'Технический бослого · 10 удаа', 'Гранби эргэлт · 10 удаа', 'Спрол · 15 удаа', 'Ташаа солих (хип свич) · 20 удаа'] },
-    { cat: 'warm', n: 'Богино халаалт (5 мин)', min: 5, items: ['Үсрэх олс · 2 мин', 'Ширээ · 20 удаа', 'Гүүр · 10 удаа', 'Спрол · 10 удаа', 'Ташаа, хүзүү эргүүлэх · 1 мин'] },
-    { cat: 'str', n: 'Бэлтгэлийн дараах сунгалт', min: 10, items: ['Тагтаа (pigeon) · тал бүр 45 сек', 'Хөл алцайж урагш бөхийх · 60 сек', 'Муур-үхэр (cat-cow) · 10 удаа', 'Нуруу эргүүлэх (хэвтээ) · тал бүр 45 сек', 'Хүзүү: тал бүр 30 сек', 'Мөр: гараа цээж хөндлөн · тал бүр 30 сек', 'Гуяны урд (couch stretch) · тал бүр 45 сек'] },
-    { cat: 'str', n: 'Ташааны хөдөлгөөн (мобилити)', min: 12, items: ['90/90 ташаа солих · 10 удаа', 'Ташааны тойрог (CARs) · тал бүр 5', 'Мэлхий (frog) · 60 сек', 'Гүн суулт тогтоох · 60 сек', 'Косак суулт · тал бүр 8'] },
-    { cat: 'str', n: 'Хүзүү, мөр, нуруу', min: 8, items: ['Хүзүүний тойрог · 10 удаа', 'Мөрний тойрог (CARs) · тал бүр 5', 'Нурууны эргэлт (thoracic) · тал бүр 8', 'Хананд гар дээш гулгуулах · 10', 'Хүүхдийн поз · 60 сек'] },
-    { cat: 'sc', n: 'Биеийн жингийн хүч (A)', min: 30, items: ['Суниах (pull-up) · 4×5–8', 'Шахалт (push-up) · 4×12', 'Суулт (squat) · 4×15', 'Ар шулуун (glute bridge) · 3×15', 'Планк · 3×45 сек'] },
-    { cat: 'sc', n: 'Биеийн жингийн хүч (B)', min: 30, items: ['Эгнээ татлага (inverted row) · 4×10', 'Алхам суулт (lunge) · 3×10 тал бүр', 'Дип · 3×8', 'Хажуугийн планк · 3×30 сек тал бүр', 'Нордик хамстринг · 3×5'] },
-    { cat: 'sc', n: 'Барьцын хүч', min: 15, items: ['Ги/алчуур суниах · 4×5', 'Алчуурнаас дүүжлэх · 4×30 сек', 'Фермерийн алхаа · 4×30 м', 'Бугуйны нугалаа · 3×15'] },
-    { cat: 'sc', n: 'Их биеийн хүч (кор)', min: 15, items: ['Үхсэн цох (dead bug) · 3×10', 'Hollow body · 3×30 сек', 'Хажуугийн планк · 3×30 сек', 'Хөл өргөх · 3×12', 'Нуруу тэнийлгэх (superman) · 3×12'] },
-    { cat: 'cardio', n: 'Дугуйн интервал (BJJ хэмнэл)', min: 24, items: ['5 мин ажил / 1 мин амралт · 4 дугуй', 'Ажлын хэсэгт: бурпи, ширээ, спрол, үсрэх олс ээлжлэн', 'Доорх таймер ашиглана'] },
-    { cat: 'cardio', n: 'Урт гүйлт', min: 35, items: ['Хөнгөн хэмнэлээр 30–40 мин', 'Ярьж чадах хурдтай', 'Долоо хоногт 1–2'] },
-    { cat: 'cardio', n: 'Интервал 30/30', min: 15, items: ['30 сек хүчтэй / 30 сек хөнгөн · 10–15 удаа', 'Гүйлт, дугуй эсвэл үсрэх олс'] },
+    { cat: 'warm', n: 'Standard BJJ warm-up', min: 10, items: ['Light jog, shoulder and hip circles · 2 min', 'Forward / backward rolls · 10', 'Shrimping (hip escape) · 2×20 m', 'Bridges · 15', 'Technical stand-up · 10', 'Granby rolls · 10', 'Sprawls · 15', 'Hip switches · 20'] },
+    { cat: 'warm', n: 'Quick warm-up (5 min)', min: 5, items: ['Jump rope · 2 min', 'Shrimping · 20', 'Bridges · 10', 'Sprawls · 10', 'Hip and neck circles · 1 min'] },
+    { cat: 'str', n: 'Post-training stretch', min: 10, items: ['Pigeon · 45 s each side', 'Straddle forward fold · 60 s', 'Cat-cow · 10', 'Lying spinal twist · 45 s each side', 'Neck · 30 s each side', 'Cross-body shoulder · 30 s each side', 'Couch stretch · 45 s each side'] },
+    { cat: 'str', n: 'Hip mobility', min: 12, items: ['90/90 switches · 10', 'Hip CARs · 5 each side', 'Frog · 60 s', 'Deep squat hold · 60 s', 'Cossack squat · 8 each side'] },
+    { cat: 'str', n: 'Neck, shoulders, back', min: 8, items: ['Neck circles · 10', 'Shoulder CARs · 5 each side', 'Thoracic rotations · 8 each side', 'Wall slides · 10', 'Child’s pose · 60 s'] },
+    { cat: 'sc', n: 'Bodyweight strength (A)', min: 30, items: ['Pull-ups · 4×5–8', 'Push-ups · 4×12', 'Squats · 4×15', 'Glute bridges · 3×15', 'Plank · 3×45 s'] },
+    { cat: 'sc', n: 'Bodyweight strength (B)', min: 30, items: ['Inverted rows · 4×10', 'Lunges · 3×10 each side', 'Dips · 3×8', 'Side plank · 3×30 s each side', 'Nordic hamstring · 3×5'] },
+    { cat: 'sc', n: 'Grip strength', min: 15, items: ['Gi / towel pull-ups · 4×5', 'Towel hangs · 4×30 s', 'Farmer carry · 4×30 m', 'Wrist curls · 3×15'] },
+    { cat: 'sc', n: 'Core', min: 15, items: ['Dead bugs · 3×10', 'Hollow body hold · 3×30 s', 'Side plank · 3×30 s', 'Leg raises · 3×12', 'Supermans · 3×12'] },
+    { cat: 'cardio', n: 'Round intervals (match pace)', min: 24, items: ['5 min work / 1 min rest · 4 rounds', 'Work: burpees, shrimps, sprawls, jump rope in turns', 'Use the timer below'] },
+    { cat: 'cardio', n: 'Long run', min: 35, items: ['Easy pace, 30–40 min', 'Conversational speed', '1–2 times a week'] },
+    { cat: 'cardio', n: 'Intervals 30/30', min: 15, items: ['30 s hard / 30 s easy · 10–15 times', 'Run, bike or jump rope'] },
   ];
 
-  // Бүсний шат (IBJJF). kids: 4–15 нас, adult: 16+
+  // Belt ladder (IBJJF). kids: 4–15, adult: 16+
   const BELTS = {
     kids: [
-      { id: 'white', n: 'Цагаан', c: '#f4f4f6', age: '4+' },
-      { id: 'grey-white', n: 'Саарал-цагаан', c: '#9a9aa2', age: '4–15' },
-      { id: 'grey', n: 'Саарал', c: '#8c8c94', age: '4–15' },
-      { id: 'grey-black', n: 'Саарал-хар', c: '#6e6e76', age: '4–15' },
-      { id: 'yellow-white', n: 'Шар-цагаан', c: '#f5d547', age: '7–15' },
-      { id: 'yellow', n: 'Шар', c: '#f0c81c', age: '7–15' },
-      { id: 'yellow-black', n: 'Шар-хар', c: '#d9b310', age: '7–15' },
-      { id: 'orange-white', n: 'Улбар шар-цагаан', c: '#ff9f43', age: '10–15' },
-      { id: 'orange', n: 'Улбар шар', c: '#ff8c1a', age: '10–15' },
-      { id: 'orange-black', n: 'Улбар шар-хар', c: '#e67600', age: '10–15' },
-      { id: 'green-white', n: 'Ногоон-цагаан', c: '#4cc26b', age: '13–15' },
-      { id: 'green', n: 'Ногоон', c: '#2fb352', age: '13–15' },
-      { id: 'green-black', n: 'Ногоон-хар', c: '#1f8f3f', age: '13–15' },
+      { id: 'white', n: 'White', c: '#f4f4f6', age: '4+' },
+      { id: 'grey-white', n: 'Grey-white', c: '#9a9aa2', age: '4–15' },
+      { id: 'grey', n: 'Grey', c: '#8c8c94', age: '4–15' },
+      { id: 'grey-black', n: 'Grey-black', c: '#6e6e76', age: '4–15' },
+      { id: 'yellow-white', n: 'Yellow-white', c: '#f5d547', age: '7–15' },
+      { id: 'yellow', n: 'Yellow', c: '#f0c81c', age: '7–15' },
+      { id: 'yellow-black', n: 'Yellow-black', c: '#d9b310', age: '7–15' },
+      { id: 'orange-white', n: 'Orange-white', c: '#ff9f43', age: '10–15' },
+      { id: 'orange', n: 'Orange', c: '#ff8c1a', age: '10–15' },
+      { id: 'orange-black', n: 'Orange-black', c: '#e67600', age: '10–15' },
+      { id: 'green-white', n: 'Green-white', c: '#4cc26b', age: '13–15' },
+      { id: 'green', n: 'Green', c: '#2fb352', age: '13–15' },
+      { id: 'green-black', n: 'Green-black', c: '#1f8f3f', age: '13–15' },
     ],
     adult: [
-      { id: 'white', n: 'Цагаан', c: '#f4f4f6', age: '16+', min: '' },
-      { id: 'blue', n: 'Хөх', c: '#1f5fd6', age: '16+', min: 'Хөх бүсэнд хамгийн багадаа 2 жил' },
-      { id: 'purple', n: 'Ягаан', c: '#7a3fc4', age: '16+', min: 'Ягаан бүсэнд хамгийн багадаа 1.5 жил' },
-      { id: 'brown', n: 'Хүрэн', c: '#7a4a1f', age: '18+', min: 'Хүрэн бүсэнд хамгийн багадаа 1 жил' },
-      { id: 'black', n: 'Хар', c: '#111114', age: '19+', min: '' },
+      { id: 'white', n: 'White', c: '#f4f4f6', age: '16+', min: '' },
+      { id: 'blue', n: 'Blue', c: '#1f5fd6', age: '16+', min: 'Minimum 2 years at blue belt' },
+      { id: 'purple', n: 'Purple', c: '#7a3fc4', age: '16+', min: 'Minimum 1.5 years at purple belt' },
+      { id: 'brown', n: 'Brown', c: '#7a4a1f', age: '18+', min: 'Minimum 1 year at brown belt' },
+      { id: 'black', n: 'Black', c: '#111114', age: '19+', min: '' },
     ],
   };
 
-  // Бүс бүрийн зорилго (жишээ). Хэрэглэгч өөрөө засна.
+  // Example goals per belt. The user edits these.
   const BELT_GOALS = {
-    white: ['Ширээ, гүүр, технический бослогыг нүдээ аниад хийдэг болох', 'Хаалттай гардаас 2 свип, 2 сабмишн', 'Маунт, хажуугийн хяналтаас мултрах', 'Нэг унагаалт, гард татах', 'Байрлалын шатлалыг мэддэг болох: ар > маунт > хажуу > гард'],
-    blue: ['Нээлттэй гард (де ла Рива, спайдер, баттерфлай) бүрээс 1 свип', 'Нэг давалтын систем: торэандо + нип кат', 'Ар авах 2 зам, ар талаас 2 сабмишн', 'Сабмишн бүрийн эсрэг хамгаалалт', 'Тэмцээнд оролцох'],
-    purple: ['Өөрийн тоглолтын төлөвлөгөөтэй байх', 'Дээрээс ба доороос хоёулаа довтлох чадвар', 'Хүүхэд, шинэ хүнд заах'],
-    brown: ['Системээ сайжруулж, сул талаа хаах', 'Удирдан зохион байгуулах, заах'],
-    black: ['Зааж, хөгжүүлж байх'],
+    white: ['Shrimp, bridge and technical stand-up without thinking', '2 sweeps and 2 submissions from closed guard', 'Escape mount and side control', 'One takedown and a guard pull', 'Know the positional hierarchy: back > mount > side > guard'],
+    blue: ['1 sweep from each open guard (de la Riva, spider, butterfly)', 'One passing system: toreando + knee cut', '2 ways to take the back, 2 submissions from the back', 'A defense for every submission', 'Compete'],
+    purple: ['Have your own game plan', 'Attack from both top and bottom', 'Teach kids and beginners'],
+    brown: ['Refine the system, close the gaps', 'Lead and teach'],
+    black: ['Keep teaching and growing'],
   };
 
-  // Жингийн ангилал (IBJJF, ги-тэй жинлэнэ). кг
+  // Weight classes (IBJJF, weighed in the gi). kg
   const WEIGHT_CLASSES = {
-    'adult_m': { n: 'Насанд хүрсэн, эрэгтэй (ги)', c: [['Rooster', 57.5], ['Light Feather', 64], ['Feather', 70], ['Light', 76], ['Middle', 82.3], ['Medium Heavy', 88.3], ['Heavy', 94.3], ['Super Heavy', 100.5], ['Ultra Heavy', null]] },
-    'adult_f': { n: 'Насанд хүрсэн, эмэгтэй (ги)', c: [['Rooster', 48.5], ['Light Feather', 53.5], ['Feather', 58.5], ['Light', 64], ['Middle', 69], ['Medium Heavy', 74], ['Heavy', 79.3], ['Super Heavy', null]] },
-    'juv_m': { n: 'Өсвөр (16–17), эрэгтэй (ги)', c: [['Rooster', 53.5], ['Light Feather', 58.5], ['Feather', 64], ['Light', 69], ['Middle', 74], ['Medium Heavy', 79.3], ['Heavy', 84.3], ['Super Heavy', 89.3], ['Ultra Heavy', null]] },
-    'juv_f': { n: 'Өсвөр (16–17), эмэгтэй (ги)', c: [['Rooster', 44.3], ['Light Feather', 48.3], ['Feather', 52.5], ['Light', 56.5], ['Middle', 60.5], ['Medium Heavy', 65], ['Heavy', 69], ['Super Heavy', null]] },
-    'nogi_m': { n: 'Насанд хүрсэн, эрэгтэй (no-gi)', c: [['Rooster', 55.5], ['Light Feather', 61.5], ['Feather', 67.5], ['Light', 73.5], ['Middle', 79.5], ['Medium Heavy', 85.5], ['Heavy', 91.5], ['Super Heavy', 97.5], ['Ultra Heavy', null]] },
-    'nogi_f': { n: 'Насанд хүрсэн, эмэгтэй (no-gi)', c: [['Rooster', 46.5], ['Light Feather', 51.5], ['Feather', 56.5], ['Light', 61.5], ['Middle', 66.5], ['Medium Heavy', 71.5], ['Heavy', 76.5], ['Super Heavy', null]] },
+    'adult_m': { n: 'Adult, male (gi)', c: [['Rooster', 57.5], ['Light Feather', 64], ['Feather', 70], ['Light', 76], ['Middle', 82.3], ['Medium Heavy', 88.3], ['Heavy', 94.3], ['Super Heavy', 100.5], ['Ultra Heavy', null]] },
+    'adult_f': { n: 'Adult, female (gi)', c: [['Rooster', 48.5], ['Light Feather', 53.5], ['Feather', 58.5], ['Light', 64], ['Middle', 69], ['Medium Heavy', 74], ['Heavy', 79.3], ['Super Heavy', null]] },
+    'juv_m': { n: 'Juvenile (16–17), male (gi)', c: [['Rooster', 53.5], ['Light Feather', 58.5], ['Feather', 64], ['Light', 69], ['Middle', 74], ['Medium Heavy', 79.3], ['Heavy', 84.3], ['Super Heavy', 89.3], ['Ultra Heavy', null]] },
+    'juv_f': { n: 'Juvenile (16–17), female (gi)', c: [['Rooster', 44.3], ['Light Feather', 48.3], ['Feather', 52.5], ['Light', 56.5], ['Middle', 60.5], ['Medium Heavy', 65], ['Heavy', 69], ['Super Heavy', null]] },
+    'nogi_m': { n: 'Adult, male (no-gi)', c: [['Rooster', 55.5], ['Light Feather', 61.5], ['Feather', 67.5], ['Light', 73.5], ['Middle', 79.5], ['Medium Heavy', 85.5], ['Heavy', 91.5], ['Super Heavy', 97.5], ['Ultra Heavy', null]] },
+    'nogi_f': { n: 'Adult, female (no-gi)', c: [['Rooster', 46.5], ['Light Feather', 51.5], ['Feather', 56.5], ['Light', 61.5], ['Middle', 66.5], ['Medium Heavy', 71.5], ['Heavy', 76.5], ['Super Heavy', null]] },
   };
 
-  // Хавтгай жагсаалт болгох: id-г замаар тогтвортой үүсгэнэ
+  // Flatten to a list with stable, path-based ids
   function flatten() {
     const out = [];
     function walk(node, parent, kind, path) {

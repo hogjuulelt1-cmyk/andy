@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="mn">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
@@ -12,8 +12,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Жиу-житсу">
-<title>Жиу-житсу · Chinbilig</title>
+<meta name="apple-mobile-web-app-title" content="Jiu-jitsu">
+<title>Jiu-jitsu · Chinbilig</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -204,6 +204,24 @@ textarea{min-height:64px;resize:vertical}
 .plan b{font-size:1rem}
 .plan .refs{display:flex;flex-wrap:wrap;gap:6px}
 
+/* mindmap */
+.map{overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;margin:0 -16px;padding:4px 8px}
+.map svg{display:block}
+.map text{font-family:var(--body);font-size:12px;font-weight:600;fill:var(--ink);pointer-events:none}
+.map .e{fill:none;stroke:var(--line);stroke-width:2}
+.map text.more{font-weight:700;fill:var(--muted);font-size:11px}
+.map text.two{font-size:10.5px}
+.map g[data-act]{cursor:pointer}
+.map g:focus-visible{outline:none}
+.map g:focus-visible rect.b{stroke:var(--accent);stroke-width:2}
+.map .pos rect.b{fill:var(--ink)} .map .pos text{fill:var(--bg)}
+.map .mv rect.b{fill:var(--accent-soft)}
+.map .df rect.b{fill:var(--df-bg)} .map .df text{fill:var(--df-ink)}
+.map .root rect.b{stroke:var(--accent);stroke-width:2}
+.legend{display:flex;gap:14px;font-size:.78rem;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.card-head .seg{flex:none;min-width:150px}
+
 /* timer */
 .timer{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
 .timer .big{font-family:var(--display);font-size:4.2rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
@@ -274,19 +292,19 @@ textarea{min-height:64px;resize:vertical}
   <header class="top">
     <div class="top-row">
       <div class="who">
-        <h1 id="title">Жиу-житсу</h1>
-        <div class="belt" id="belt" role="img" aria-label="Бүс"></div>
-        <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Ачаалж байна…</span></div>
+        <h1 id="title">Jiu-jitsu</h1>
+        <div class="belt" id="belt" role="img" aria-label="Belt"></div>
+        <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Loading…</span></div>
       </div>
       <div class="hdr-btns">
-        <a class="icon-btn" href="/">Дэвтэр</a>
-        <button class="icon-btn" data-act="settings">Тохиргоо</button>
+        <a class="icon-btn" href="/">Diary</a>
+        <button class="icon-btn" data-act="settings">Settings</button>
       </div>
     </div>
   </header>
   <main id="main"></main>
 </div>
-<nav class="tabs" aria-label="Хэсгүүд"><div class="in" id="tabs"></div></nav>
+<nav class="tabs" aria-label="Sections"><div class="in" id="tabs"></div></nav>
 <div class="backdrop" id="backdrop" data-act="sheet-close"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="in"><div class="handle"></div><div id="sheet-body"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
