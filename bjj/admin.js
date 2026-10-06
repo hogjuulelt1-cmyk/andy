@@ -35,6 +35,18 @@ const SB = {
 
 const D = { clubs: [], members: {}, pay: {}, att: {}, results: {}, events: {}, index: null, app: null, pro: null, upgrades: null };
 const UI = { page: "overview", q: "", club: "", role: "", memF: "all" };
+/* Mongolian by default; translated in the DOM like the app. */
+const I18N = { lang: "mn", obs: null,
+  pack() { return (window.BJJ_LANG || {})[this.lang]; },
+  one(k) { const p = this.pack(); const d = p.dict[k]; if (d != null) return d; for (const r of p.rules) if (r[0].test(k)) { const o = k.replace(r[0], r[1]); if (o !== k) return o; } return null; },
+  tr(t) { if (!this.pack()) return t; const k = t.trim(); if (!k) return t; let o = this.one(k); if (o == null && k.includes(" · ")) { const parts = k.split(" · ").map((x) => { const y = this.one(x); return y == null ? x : y; }); o = parts.join(" · "); if (o === k) o = null; } return o == null ? t : t.replace(k, o); },
+  node(n) { if (n.nodeType === 3) { const v = n.nodeValue; if (n.__i === v) return; const o = this.tr(v); if (o !== v) { n.nodeValue = o; n.__i = o; } else n.__i = v; return; } if (n.nodeType !== 1 || n.tagName === "SCRIPT" || n.tagName === "STYLE") return; const els = [n, ...n.querySelectorAll("[placeholder],[title]")]; for (const e of els) for (const at of ["placeholder", "title"]) { const v = e.getAttribute && e.getAttribute(at); if (v) { const o = this.tr(v); if (o !== v) e.setAttribute(at, o); } } const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT); let t; while ((t = w.nextNode())) this.node(t); },
+  start() { if (this.obs) return; this.node(document.body); document.documentElement.lang = "mn"; this.obs = new MutationObserver((ms) => { for (const m of ms) { if (m.type === "characterData") this.node(m.target); else for (const x of m.addedNodes) this.node(x); } }); this.obs.observe(document.body, { childList: true, subtree: true, characterData: true }); },
+  stop() { if (this.obs) { this.obs.disconnect(); this.obs = null; } document.documentElement.lang = "en"; },
+  set(l) { this.lang = l; try { localStorage.setItem("bjj-lang", l); } catch (e) {} if (l === "mn") this.start(); else this.stop(); },
+};
+try { I18N.lang = localStorage.getItem("bjj-lang") === "en" ? "en" : "mn"; } catch (e) {}
+if (I18N.lang === "mn") I18N.start();
 
 function isSuper() { const em = (SB.session && SB.session.email || "").toLowerCase(); return (CFG.admins || []).concat((D.app && D.app.admins) || []).map((x) => String(x).toLowerCase()).includes(em); }
 function myClubs() { return D.clubs.filter((c) => (c.admins || []).includes(SB.uid())); }
@@ -63,12 +75,12 @@ function render() {
   if (!SB.session) { root.innerHTML = '<form id="login" class="card"><h1>Coach & admin console</h1><p class="muted small">Sign in with your app account. Coaches see their club, app admins see everything.</p><label class="field">Email or username<input id="e" type="text" autocomplete="username" required></label><label class="field">Password<input id="p" type="password" autocomplete="current-password" required></label><button class="btn" type="submit">Sign in</button><p id="err" class="small" style="color:var(--bad)"></p></form>'; $("login").addEventListener("submit", async (e) => { e.preventDefault(); try { await SB.auth({ email: emailOf($("e").value), password: $("p").value }, "password"); boot(); } catch (err) { $("err").textContent = "Wrong email or password."; } }); return; }
   if (!UI.role) { root.innerHTML = '<div id="login" class="card"><h1>No console for this account</h1><p class="small">' + esc(SB.session.email) + ' is not an app admin and is not a coach of any club. Coaches claim their club in the app with the coach code.</p><button class="btn ghost" id="out">Sign out</button></div>'; $("out").onclick = () => { SB.store(null); render(); }; return; }
   const pages = UI.role === "super" ? [["overview", "Overview"], ["clubs", "Clubs"], ["members", "Members"], ["payments", "Payments"], ["results", "Competitions"], ["upgrades", "Upgrades"], ["settings", "Settings"]] : [["overview", "My club"], ["members", "Members"], ["payments", "Payments"], ["results", "Competitions"]];
-  let h = '<div class="app"><aside><h1>' + (UI.role === "super" ? "Admin" : "Coach") + "</h1>" + pages.map((p) => '<button data-page="' + p[0] + '"' + (UI.page === p[0] ? ' aria-current="page"' : "") + ">" + p[1] + "</button>").join("") + '<div class="who">' + esc(SB.session.email) + (UI.role === "coach" ? "<br>" + esc(myClubs().map((c) => c.n).join(", ")) : "") + '<br><button class="btn ghost" id="reload" style="margin-top:8px">Refresh</button> <button class="btn ghost" id="out">Sign out</button></div></aside><main>';
+  let h = '<div class="app"><aside><h1>' + (UI.role === "super" ? "Admin" : "Coach") + "</h1>" + pages.map((p) => '<button data-page="' + p[0] + '"' + (UI.page === p[0] ? ' aria-current="page"' : "") + ">" + p[1] + "</button>").join("") + '<div class="who">' + esc(SB.session.email) + (UI.role === "coach" ? "<br>" + esc(myClubs().map((c) => c.n).join(", ")) : "") + '<br><button class="btn ghost" id="reload" style="margin-top:8px">Refresh</button> <button class="btn ghost" id="out">Sign out</button> <button class="btn ghost" id="lang" style="margin-top:8px">' + (I18N.lang === "mn" ? "English" : "Монгол") + "</button></div></aside><main>";
   h += { overview: vOverview, clubs: vClubs, members: vMembers, payments: vPayments, results: vResults, upgrades: vUpgrades, settings: vSettings }[UI.page]();
   h += "</main></div>";
   root.innerHTML = h;
   root.querySelectorAll("[data-page]").forEach((b) => (b.onclick = () => { UI.page = b.dataset.page; render(); }));
-  $("out").onclick = () => { SB.store(null); render(); }; $("reload").onclick = () => boot();
+  $("out").onclick = () => { SB.store(null); render(); }; $("reload").onclick = () => boot(); $("lang").onclick = () => { I18N.set(I18N.lang === "mn" ? "en" : "mn"); render(); };
   const q = $("q"); if (q) q.oninput = () => { UI.q = q.value; render(); const q2 = $("q"); q2.focus(); q2.setSelectionRange(q2.value.length, q2.value.length); };
   const cs = $("club-sel"); if (cs) cs.onchange = () => { UI.club = cs.value; render(); };
   const sf = $("settings-form"); if (sf) sf.addEventListener("submit", saveSettings);

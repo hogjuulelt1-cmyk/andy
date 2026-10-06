@@ -7,6 +7,21 @@ const LKEY = "bjj-v1";
 const KEYS = ["tree", "plans", "log", "body", "belt", "weight", "comp", "rolls", "settings"];
 const NS = () => "bjj/u/" + SB.uid() + "/";
 const MEMBER_DOMAIN = CFG.memberDomain || "member.bjjclub.mn";
+/* ---------- language: Mongolian by default, English on request. Text is translated in the DOM as it renders. ---------- */
+const I18N = {
+  lang: "mn", obs: null, names: null,
+  pack() { return (window.BJJ_LANG || {})[this.lang] || null; },
+  tr(t) { const p = this.pack(); if (!p) return t; const k = t.trim(); if (!k) return t; const d = p.dict[k]; if (d != null) return t.replace(k, d); if (this.names && this.names.has(k)) return t.replace(k, this.names.get(k)); for (const r of p.rules) { if (r[0].test(k)) { const out = k.replace(r[0], r[1]); if (out !== k) return t.replace(k, this.swapNames(out)); } } if (k.includes(" · ")) { const parts = k.split(" · "); const out = parts.map((p0) => this.one(p0)).join(" · "); if (out !== k) return t.replace(k, out); } if (/[A-Za-z]{3}/.test(k) && this.nameRe) { const out = this.swapNames(k); if (out !== k) return t.replace(k, out); } return t; },
+  one(k) { const p = this.pack(); const d = p.dict[k]; if (d != null) return d; if (this.names && this.names.has(k)) return this.names.get(k); for (const r of p.rules) if (r[0].test(k)) { const out = k.replace(r[0], r[1]); if (out !== k) return this.swapNames(out); } return this.swapNames(k); },
+  swapNames(t) { if (!this.nameRe) return t; return t.replace(this.nameRe, (m) => this.names.get(m) || m); },
+  node(n) { if (n.nodeType === 3) { const v = n.nodeValue; if (n.__i18n === v) return; const o = this.tr(v); if (o !== v) { n.nodeValue = o; n.__i18n = o; } else n.__i18n = v; return; } if (n.nodeType !== 1 || n.tagName === "SCRIPT" || n.tagName === "STYLE") return; for (const a of ["placeholder", "aria-label", "title"]) { const v = n.getAttribute(a); if (v) { const o = this.tr(v); if (o !== v) n.setAttribute(a, o); } } const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT); let t; while ((t = w.nextNode())) this.node(t); n.querySelectorAll("[placeholder],[aria-label],[title]").forEach((e) => { for (const a of ["placeholder", "aria-label", "title"]) { const v = e.getAttribute(a); if (v) { const o = this.tr(v); if (o !== v) e.setAttribute(a, o); } } }); },
+  buildNames() { this.names = new Map(); for (const n of nodes()) if (n.en && n.n) this.names.set(n.n, n.en); const keys = [...this.names.keys()].filter((k) => k.length > 3).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")); this.nameRe = keys.length ? new RegExp("(?<![\\p{L}])(?:" + keys.join("|") + ")(?![\\p{L}])", "gu") : null; },
+  start() { if (this.obs) return; this.buildNames(); this.node(document.body); document.documentElement.lang = "mn"; this.obs = new MutationObserver((muts) => { for (const m of muts) { if (m.type === "characterData") this.node(m.target); else for (const a of m.addedNodes) this.node(a); } }); this.obs.observe(document.body, { childList: true, subtree: true, characterData: true }); },
+  stop() { if (this.obs) { this.obs.disconnect(); this.obs = null; } document.documentElement.lang = "en"; },
+  set(l) { this.lang = l; try { localStorage.setItem("bjj-lang", l); } catch (e) {} if (l === "mn") this.start(); else this.stop(); },
+};
+function dn(n) { return I18N.lang === "mn" ? (n.en || I18N.tr(n.n)) : n.n; }
+function tr(t) { return I18N.lang === "mn" ? I18N.tr(t) : t; }
 function emailOf(login) { login = String(login || "").trim().toLowerCase(); return login.includes("@") ? login : login.replace(/[^a-z0-9._-]/g, "") + "@" + MEMBER_DOMAIN; }
 function loginName(email) { return String(email || "").replace("@" + MEMBER_DOMAIN, ""); }
 const TAB_ALIAS = { log: "train", body: "train", belt: "me", weight: "me", comp: "me" };
@@ -137,7 +152,7 @@ async function startCloud() {
     if (legacy) for (const k of KEYS) await SB.set(NS() + k, clone(S[k]));
     if (!S.settings.seeded) { seedAll(false); for (const k of ["tree", "plans", "body", "belt", "settings"]) await SB.set(NS() + k, clone(S[k])); }
     { const added = mergeSeed(); if (added) { await SB.set(NS() + "tree", clone(S.tree)); await SB.set(NS() + "settings", clone(S.settings)); } }
-    mode = "cloud"; applyTheme(); setSync("ok"); document.body.classList.remove("locked"); render();
+    mode = "cloud"; applyTheme(); if (S.settings.lang && S.settings.lang !== I18N.lang) I18N.set(S.settings.lang); if (I18N.lang === "mn") I18N.buildNames(); setSync("ok"); document.body.classList.remove("locked"); render();
     if (S.settings.lastAdded) { toast(S.settings.lastAdded + " new moves added to the library"); delete S.settings.lastAdded; }
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !Object.keys(dirty).length) refresh(); });
   } catch (e) { if (e.message === "noauth") showLogin(); else { setSync("err", "Could not connect"); console.error(e); } }
@@ -148,7 +163,7 @@ async function refresh() {
 function startLocal() {
   try { const j = JSON.parse(localStorage.getItem(LKEY) || "null"); if (j) S = j; } catch (e) {}
   normalize(); if (!S.settings.seeded) { seedAll(false); localStorage.setItem(LKEY, JSON.stringify(S)); } else if (mergeSeed()) localStorage.setItem(LKEY, JSON.stringify(S));
-  mode = "local"; applyTheme(); setSync("local"); render();
+  mode = "local"; applyTheme(); if (S.settings.lang && S.settings.lang !== I18N.lang) I18N.set(S.settings.lang); if (I18N.lang === "mn") I18N.buildNames(); setSync("local"); render();
 }
 function showLogin(msg, signup) {
   document.body.classList.add("locked"); $("tabs").innerHTML = ""; $("belt").innerHTML = "";
@@ -428,7 +443,7 @@ function iconNode(n, cx, cy, r, opt) {
     '<circle class="b" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>' +
     '<svg class="ic" x="' + (cx - ir / 2) + '" y="' + (cy - ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>";
   if (opt.label !== false) {
-    const fs = opt.fs || 11, ls = wrapText(n.n, opt.max || 16);
+    const fs = opt.fs || 11, ls = wrapText(dn(n), opt.max || 16);
     if (opt.side) h += ls.map((l, i) => '<text class="lb" x="' + (cx + r + 7) + '" y="' + (cy + (ls.length === 1 ? fs * 0.36 : i ? fs + 1 : -2)) + '">' + esc(l) + "</text>").join("");
     else h += ls.map((l, i) => '<text class="lb" x="' + cx + '" y="' + (cy + r + 13 + i * (fs + 2)) + '" text-anchor="middle">' + esc(l) + "</text>").join("");
   }
@@ -460,13 +475,13 @@ function nextOf(n) {
 }
 function gNode(n, x, y, r, role, attrs, badge, sub) {
   const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? (n.t ? typeColor(n.t) : "var(--accent)") : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : n.k === "grp" && !n.t ? TICON.sit : TICON[n.t] || TICON.trans;
-  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const r2 = role.indexOf("ring2") === 0, ans = role.indexOf("ans") > 0; const ls = r2 && !ans ? [n.n.length > 14 ? n.n.slice(0, 13).trim() + "…" : n.n] : wrapText(n.n, role === "cur" ? 20 : ans ? 13 : 15);
+  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const r2 = role.indexOf("ring2") === 0, ans = role.indexOf("ans") > 0; const nm = n.k === "grp" ? tr(n.n) : dn(n); const ls = r2 && !ans ? [nm.length > 14 ? nm.slice(0, 13).trim() + "…" : nm] : wrapText(nm, role === "cur" ? 20 : ans ? 13 : 15);
   const trap = n.bait && role !== "cur" ? '<g class="g-trap"><circle cx="' + (-r * 0.8) + '" cy="' + (-r * 0.8) + '" r="8"/><svg x="' + (-r * 0.8 - 5) + '" y="' + (-r * 0.8 - 5) + '" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + TICON.bait + "</svg></g>" : "";
   const star = role.indexOf("planned") > 0 ? '<text class="star" y="' + (-r - 6) + '" text-anchor="middle">★</text>' : "";
   return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
     '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
     '<svg class="ic" x="' + (-ir / 2) + '" y="' + (-ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>" +
-    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (r2 ? (ans ? 9.5 : 9) : fs) + 'px">' + esc(l) + "</text>").join("") + (sub ? '<text class="lb sub" y="' + (r + 12 + ls.length * (fs + 2)) + '" text-anchor="middle">' + esc(sub.length > 24 ? sub.slice(0, 23).trim() + "…" : sub) + "</text>" : "") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + trap + star + "</g>";
+    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (r2 ? (ans ? 9.5 : 9) : fs) + 'px">' + esc(l) + "</text>").join("") + (sub ? '<text class="lb sub" y="' + (r + 12 + ls.length * (fs + 2)) + '" text-anchor="middle">' + esc((sub = tr(sub)).length > 24 ? sub.slice(0, 23).trim() + "…" : sub) + "</text>" : "") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + trap + star + "</g>";
 }
 function gEdge(ka, a, kb, b, cls, color) { return '<line class="g-edge ' + cls + '" data-a="' + ka + '" data-b="' + kb + '" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>"; }
 function rollGraphSvg() {
@@ -1204,7 +1219,7 @@ function matchSheet(eid, i) {
 
 /* ======================= SETTINGS ======================= */
 function settingsSheet() {
-  const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + '<div class="field"><span class="lbl">Theme</span>' + chips("theme", [["system", "Device"], ["light", "Light"], ["dark", "Dark"]], S.settings.theme || "system") + "</div>" +
+  const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + '<div class="field"><span class="lbl">Language</span>' + chips("lang", [["mn", "Монгол"], ["en", "English"]], I18N.lang) + "</div>" + '<div class="field"><span class="lbl">Theme</span>' + chips("theme", [["system", "Device"], ["light", "Light"], ["dark", "Dark"]], S.settings.theme || "system") + "</div>" +
     '<div class="field"><span class="lbl">Data</span><div class="actions"><button class="btn ghost" data-act="backup">Download backup (JSON)</button><label class="btn ghost" style="display:flex;align-items:center;justify-content:center">Restore from backup<input id="imp-file" type="file" accept="application/json" hidden></label></div></div>' +
     '<div class="field"><span class="lbl">Ruleset</span>' + chips("rules", [["both", "Gi & no-gi"], ["gi", "Gi only"], ["nogi", "No-gi only"]], S.settings.rules || "both") + '</div><div class="field"><span class="lbl">Belt filter</span>' + chips("beltf", [["0", "Show all"], ["1", "Only up to my belt"]], S.settings.beltFilter ? "1" : "0") + "</div>" +
     '<div class="field"><span class="lbl">Technique library</span><button class="btn ghost' + (UI.confirm === "reset" ? " danger" : "") + '" data-act="reset-seed">' + (UI.confirm === "reset" ? "Really reset? Everything you added will be lost" : "Reload the starter library") + "</button></div>" +
@@ -1240,13 +1255,13 @@ function vDrills() {
   const logs = S.body.items.filter((x) => x.cat === "drill"); const wkN = logs.filter((x) => x.d >= wk).length, moN = logs.filter((x) => x.d.startsWith(mo)).length;
   const list = allDrills().filter((d) => f === "all" || d.kind === f);
   let h = '<div class="card"><div class="summary"><div class="stat"><b>' + wkN + '</b><span>drills this week</span></div><div class="stat"><b>' + moN + '</b><span>this month</span></div><div class="stat"><b>' + allDrills().length + '</b><span>in the library</span></div></div>';
-  const sg = suggestDrills(); h += '<p class="muted small">Today · ' + esc(sg.why) + '</p><div class="chips">' + sg.list.map((d) => '<button class="chip" data-act="drill-open" data-id="' + d.id + '">' + esc(d.n) + "</button>").join("") + "</div></div>";
+  const sg = suggestDrills(); h += '<p class="muted small">Today · ' + esc(sg.why) + '</p><div class="chips">' + sg.list.map((d) => '<button class="chip" data-act="drill-open" data-id="' + d.id + '">' + esc(dn(d)) + "</button>").join("") + "</div></div>";
   h += '<div class="chips">' + DKIND.map((k) => '<button type="button" class="chip' + (f === k[0] ? " on" : "") + '" data-act="drillf" data-v="' + k[0] + '">' + k[1] + "</button>").join("") + "</div>";
   const order = ["solo", "partner", "sub", "td", "esc", "flow"];
   for (const k of order) { const ds = list.filter((d) => d.kind === k); if (!ds.length) continue;
     h += '<div class="card"><div class="card-head"><h3>' + DKNAME[k] + "</h3><span class=\"muted small\">" + ds.length + "</span></div><div class=\"list\">" + ds.map((d) => {
       const open = UI.drillOpen === d.id; const n = drillCount(d.id); const ok = allowed({ belt: d.lvl || "white", gi: "both", kids: true });
-      let r = '<button class="row" data-act="drill-open" data-id="' + d.id + '" aria-expanded="' + open + '"><span class="pict dk ' + d.kind + '"><svg viewBox="0 0 24 24">' + (d.kind === "solo" ? PICT.stand : d.kind === "sub" ? TICON.sub : d.kind === "td" ? TICON.td : d.kind === "esc" ? TICON.esc : d.kind === "flow" ? TICON.trans : TICON.ctl) + '</svg></span><div class="txt"><b>' + esc(d.n) + "</b><small>" + esc(d.dose || "") + (d.lvl && d.lvl !== "white" ? " · from " + d.lvl : "") + (n ? " · done " + n + "×" : "") + "</small></div>" + CHEV + "</button>";
+      let r = '<button class="row" data-act="drill-open" data-id="' + d.id + '" aria-expanded="' + open + '"><span class="pict dk ' + d.kind + '"><svg viewBox="0 0 24 24">' + (d.kind === "solo" ? PICT.stand : d.kind === "sub" ? TICON.sub : d.kind === "td" ? TICON.td : d.kind === "esc" ? TICON.esc : d.kind === "flow" ? TICON.trans : TICON.ctl) + '</svg></span><div class="txt"><b>' + esc(dn(d)) + "</b><small>" + esc(d.dose || "") + (d.lvl && d.lvl !== "white" ? " · from " + d.lvl : "") + (n ? " · done " + n + "×" : "") + "</small></div>" + CHEV + "</button>";
       if (open) r += '<div class="dbody"><ol class="steps">' + (d.cues || []).map((c) => "<li>" + esc(c) + "</li>").join("") + "</ol>" + ((d.tech || []).length ? '<div class="chips">' + d.tech.map((t) => { const nd = findTech(t); return nd ? '<button class="chip pchip" data-act="open" data-id="' + nd.id + '">' + iconFor(nd) + "<span>" + esc(nd.n) + "</span></button>" : ""; }).join("") + "</div>" : "") + '<div class="actions"><button class="btn" data-act="drill-done" data-id="' + d.id + '">Done today</button>' + (d.custom ? '<button class="btn ghost" data-act="drill-edit" data-id="' + d.id + '">Edit</button>' : "") + "</div></div>";
       return r; }).join("") + "</div></div>"; }
   h += '<button class="btn ghost wide" data-act="drill-add">+ Add my own drill</button>';
@@ -1265,7 +1280,7 @@ function drillSheet(id) {
 function drillDone(id) {
   const d = allDrills().find((x) => x.id === id); if (!d) return;
   const b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", "", "number", 'inputmode="numeric"')) + "</div>" + field("f-note", "Note", inp("f-note", "", "text", 'placeholder="felt the timing / still slow on the left"'));
-  openSheet(d.n, b, { saveLabel: "Log it", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), cat: "drill", drill: d.id, n: d.n, min: +sv("f-min") || 0, note: sv("f-note").trim() }; S.body.items.push(rec); save("body"); if (CLUB.id) attMark(rec.d, true); toast("Logged"); render(); return true; } });
+  openSheet(dn(d), b, { saveLabel: "Log it", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), cat: "drill", drill: d.id, n: dn(d), min: +sv("f-min") || 0, note: sv("f-note").trim() }; S.body.items.push(rec); save("body"); if (CLUB.id) attMark(rec.d, true); toast("Logged"); render(); return true; } });
 }
 VIEWS.me = function () { const v = UI.seg.me || "belt"; return seg(SEGS.me, v, "segview") + (v === "weight" ? VIEWS.weight() : v === "comp" ? VIEWS.comp() : VIEWS.belt()); };
 
@@ -1490,7 +1505,7 @@ function vClubPay(P, adm) {
   h += '<button class="btn wide" data-act="club-paynow">' + (ok ? "Pay next month" : "Pay " + fmtMoney(P.fee && P.fee.month) + " for " + thisMonth()) + "</button></div>";
   if (adm) {
     const ms = (CLUB.members.list || []).slice().sort((a, b) => (paidThisMonth(a.uid) === paidThisMonth(b.uid) ? 0 : paidThisMonth(a.uid) ? 1 : -1));
-    h += '<div class="card"><div class="card-head"><h3>Who has paid · ' + thisMonth() + '</h3><span class="muted small">' + ms.filter((m) => paidThisMonth(m.uid)).length + " / " + ms.length + "</span></div><div class=\"list\">" + ms.map((m) => { const lp = lastPaid(m.uid); const ok = paidThisMonth(m.uid); const pp = pendingPay(m.uid); return '<div class="row"><span class="pill ' + (ok ? "ok" : pp.length ? "warn" : "bad") + '">' + (ok ? "paid" : pp.length ? "check" : "due") + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b><small>" + (pp.length ? "says paid " + esc(pp[0].per) + " · " + fmtMoney(pp[0].amt) + (pp[0].note ? " · " + esc(pp[0].note) : "") : lp ? "last: " + esc(lp.per) + " · " + fmtMoney(lp.amt) : "never") + "</small></div>" + (pp.length ? '<button class="btn" style="flex:none" data-act="club-confirm" data-uid="' + m.uid + '" data-id="' + pp[0].id + '">Confirm</button>' : '<button class="btn ghost" style="flex:none" data-act="club-pay" data-uid="' + m.uid + '">Log</button>') + "</div>"; }).join("") + "</div></div>";
+    h += '<div class="card"><div class="card-head"><h3>Who has paid · ' + thisMonth() + '</h3><span class="muted small">' + ms.filter((m) => paidThisMonth(m.uid)).length + " / " + ms.length + "</span></div><div class=\"list\">" + ms.map((m) => { const lp = lastPaid(m.uid); const ok = paidThisMonth(m.uid); const pp = pendingPay(m.uid); return '<div class="row"><span class="pill ' + (ok ? "ok" : pp.length ? "warn" : "bad") + '">' + (ok ? "paid" : pp.length ? "check" : "due") + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b><small>" + (pp.length ? "says paid " + esc(pp[0].per) + " · " + fmtMoney(pp[0].amt) + (pp[0].note ? " · " + esc(pp[0].note) : "") : lp ? "last: " + esc(lp.per) + " · " + fmtMoney(lp.amt) : "never") + "</small></div>" + (pp.length ? '<button class="btn" style="flex:none" data-act="club-confirm" data-uid="' + m.uid + '" data-id="' + pp[0].id + '">Confirm</button>' : '<button class="btn ghost" style="flex:none" data-act="club-pay" data-uid="' + m.uid + '">Log fee</button>') + "</div>"; }).join("") + "</div></div>";
   }
   return h;
 }
@@ -1606,7 +1621,7 @@ document.addEventListener("click", (e) => {
   if (act === "sheet-close") { closeSheet(); return; }
   if (act === "sheet-save") { if (UI.sheetSave && UI.sheetSave() !== false) closeSheet(); return; }
   if (act === "sheet-del") { if (armConfirmSheet(el)) { if (UI.sheetDel && UI.sheetDel() !== false) closeSheet(); } return; }
-  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
+  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
   if (act === "pk-add") { pkAdd(ds.pk, ds.id, ds.n); return; }
   if (act === "pk-inc") { pkChange(ds.pk, +ds.i, 1); return; }
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
@@ -1747,5 +1762,7 @@ document.addEventListener("keydown", (e) => { if (e.key === "Enter" && UI.sheet 
 
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}
+try { const l = localStorage.getItem("bjj-lang"); I18N.lang = l === "en" ? "en" : "mn"; } catch (e) { I18N.lang = "mn"; }
+if (I18N.lang === "mn") I18N.start();
 if (SB.configured()) { SB.loadSession(); if (SB.session) { setSync("saving", "Loading…"); startCloud(); } else showLogin(); } else startLocal();
 })();
