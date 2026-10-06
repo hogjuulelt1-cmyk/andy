@@ -7,6 +7,12 @@ to `main`. UI text is Mongolian; talk to the user in Mongolian.
 `bjj/` is a separate sub-app (`index.html`, `app.js`, `seed.js`) with an English UI. It
 shares the diary's Supabase session and `docs` table under `bjj/*` paths.
 
+`fit/` ("Тэнхээ") is a personalized home yoga/pilates/fitness sub-app with a Mongolian UI.
+`fit/SPEC.md` is the contract (schemas, engine API, design tokens): read it before changing
+`lib.js` (exercise library), `foods.js`, `engine.js` (pure logic, Node-testable) or `app.js`.
+Run `node fit/test.js` and `node fit/test-lib.js` after touching the engine or library.
+Research behind it: `reports/Хувийн йога фитнес апп судалгаа.md`.
+
 `tools/build.py` regenerates `index.html` from an old artifact file that is no longer
 in the repo — edit `index.html` directly.
 
