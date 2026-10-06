@@ -1,4 +1,5 @@
-import { getMessages, type Locale } from "@/lib/i18n";
+import Link from "next/link";
+import { getMessages, localePath, type Locale } from "@/lib/i18n";
 import { formatKrw } from "@/lib/money";
 import { formatMonth, formatRange, monthKey } from "@/lib/dates";
 import { t } from "@/lib/format";
@@ -92,14 +93,18 @@ export function DepartureList({ departures, locale }: { departures: Departure[];
                     <dt className="text-zinc-500 dark:text-zinc-400">{m.departure.depositLabel}</dt>
                     <dd className="text-right tabular-nums">{formatKrw(d.depositKrw)}</dd>
                   </dl>
-                  <button
-                    type="button"
-                    disabled
-                    title={m.departure.joinSoon}
-                    className="mt-1 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-50 dark:text-zinc-900"
-                  >
-                    {joinable ? m.departure.join : m.departure.status[d.status]}
-                  </button>
+                  {joinable ? (
+                    <Link
+                      href={localePath(locale, `/departures/${d.id}/join`)}
+                      className="mt-1 rounded-full bg-zinc-900 px-4 py-2 text-center text-sm font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900"
+                    >
+                      {m.departure.join}
+                    </Link>
+                  ) : (
+                    <span className="mt-1 rounded-full bg-zinc-200 px-4 py-2 text-center text-sm font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                      {m.departure.status[d.status]}
+                    </span>
+                  )}
                 </li>
               );
             })}

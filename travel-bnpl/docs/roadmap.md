@@ -12,11 +12,11 @@
 - Package list + detail page (Korean), itinerary per day, price range.
 - Departures calendar with seat fill (e.g. 4/6).
 
-## M2 — Join + deposit
+## M2 — Join + deposit (in progress)
 
 - Kakao/Naver login, profile.
 - Join a departure → Toss sandbox payment for deposit → webhook → seat held.
-- `buildInstallmentSchedule` + tests.
+- `buildInstallmentSchedule` + tests. ✅ (src/lib/installments.ts; join page at /departures/[id]/join shows the schedule)
 
 ## M3 — Installments + group
 

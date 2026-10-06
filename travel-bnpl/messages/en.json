@@ -62,5 +62,25 @@
     "joinSoon": "Joining opens soon",
     "depositLabel": "Deposit",
     "totalLabel": "Total"
+  },
+  "join": {
+    "heading": "Join this departure",
+    "back": "Back to departures",
+    "summary": "Payment summary",
+    "today": "Pay today",
+    "deposit": "Deposit (flight)",
+    "remainder": "Remaining",
+    "schedule": "Installment schedule",
+    "scheduleHint": "0% interest. The last charge is due 7 days before departure.",
+    "payInFull": "Departure is close, so the remainder is paid together with the deposit.",
+    "noRemainder": "Nothing remaining.",
+    "installment": "Installment {n}",
+    "due": "Due {date}",
+    "total": "Total",
+    "seatHold": "Your seat is confirmed as soon as the deposit is paid.",
+    "cta": "Pay the deposit",
+    "ctaSoon": "Payments are being connected. Opening soon.",
+    "notJoinable": "This departure cannot be joined.",
+    "bookingDate": "Based on booking date"
   }
 }
