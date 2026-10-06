@@ -266,6 +266,42 @@
     });
   }
 
+  // ---------- bundles: a fixed basket assembled from as few stalls as possible, with a bundle discount ----------
+  // discount: 7% when one stall supplies everything (one pickup), 4% when two stalls do (met at the collection point).
+  function bundlePlan(bundle, offers, reliability) {
+    const rel = {}; (reliability || []).forEach(x => { rel[x.id] = x; });
+    const cands = pid => offers.filter(o => o.productId === pid && o.stock);
+    const listTotal = bundle.items.reduce((s, it) => { const c = cands(it.productId); return s + (c.length ? Math.min(...c.map(o => o.price)) * it.qty : 0); }, 0);
+    const sellers = [...new Set(offers.map(o => o.sellerId))];
+    const options = [];
+    // One stall.
+    sellers.forEach(sid => {
+      const lines = []; let ok = true, total = 0;
+      bundle.items.forEach(it => { const o = cands(it.productId).find(x => x.sellerId === sid); if (!o) { ok = false; return; } lines.push({ offerId: o.id, qty: it.qty, price: o.price }); total += o.price * it.qty; });
+      if (ok) options.push({ stalls: [sid], lines, listTotal: total, discount: 0.07, total: Math.round(total * 0.93 / 50) * 50, risk: rel[sid] ? rel[sid].outRate : 0.1 });
+    });
+    // Two stalls: a main stall takes what it can at its price, the rest from the cheapest other stall that has it.
+    sellers.forEach(sid => {
+      const lines = []; let total = 0; const others = new Set();
+      let ok = true;
+      bundle.items.forEach(it => {
+        const c = cands(it.productId); if (!c.length) { ok = false; return; }
+        const mine = c.find(x => x.sellerId === sid), alt = c.slice().sort((a, b) => a.price - b.price)[0];
+        const o = mine || alt; if (o.sellerId !== sid) others.add(o.sellerId);
+        lines.push({ offerId: o.id, qty: it.qty, price: o.price }); total += o.price * it.qty;
+      });
+      if (ok && others.size === 1) { const stalls = [sid, ...others]; options.push({ stalls, lines, listTotal: total, discount: 0.04, total: Math.round(total * 0.96 / 50) * 50, risk: 1 - stalls.reduce((r, x) => r * (1 - (rel[x] ? rel[x].outRate : 0.1)), 1) }); }
+    });
+    // Any number of stalls, cheapest everywhere, no discount.
+    { const lines = []; let total = 0; const stalls = new Set(); let ok = true;
+      bundle.items.forEach(it => { const c = cands(it.productId).sort((a, b) => a.price - b.price)[0]; if (!c) { ok = false; return; } lines.push({ offerId: c.id, qty: it.qty, price: c.price }); total += c.price * it.qty; stalls.add(c.sellerId); });
+      if (ok) options.push({ stalls: [...stalls], lines, listTotal: total, discount: 0, total, risk: 1 - [...stalls].reduce((r, x) => r * (1 - (rel[x] ? rel[x].outRate : 0.1)), 1) }); }
+    // Fewest stalls first, then cheapest; a very unreliable single stall loses to a reliable one when the price is close.
+    options.sort((a, b) => (a.stalls.length - b.stalls.length) || (a.total * (1 + a.risk * 0.3) - b.total * (1 + b.risk * 0.3)));
+    const best = options[0] || null;
+    return { bundle, best, options, listTotal, saving: best ? Math.max(0, listTotal - best.total) : 0 };
+  }
+
   // ---------- buyer: the best way to fill a basket ----------
   // lines: [{productId, qty}]. Returns three plans: cheapest, most reliable, fewest stalls.
   function basketPlans(lines, offers, reliability, opts) {
@@ -343,5 +379,5 @@
     return { demand, demandSkill, nullSkill: mean(nullSkills), nullMax: Math.max(...nullSkills), customerAcc: tries ? hits / tries : 0, customerTop5: topN ? topHits / topN : 0, baseRate, winShare: priceWinShare(history, priceHistory, offers), bait: baitTest(history, priceHistory, offers, sellers), reliability: sellerReliability(history, sellers, days, 30) };
   }
 
-  return { synth, forecastSeries, dailySeries, weekdaysFrom, customerModel, priceWinShare, sellerReliability, baitTest, basketPlans, stockPlan, marketView, evaluate, BUYER_TYPES, SELLER_TRAITS, EXPERTS, WEEKDAYS, DAY, GAP_LABEL };
+  return { synth, bundlePlan, forecastSeries, dailySeries, weekdaysFrom, customerModel, priceWinShare, sellerReliability, baitTest, basketPlans, stockPlan, marketView, evaluate, BUYER_TYPES, SELLER_TRAITS, EXPERTS, WEEKDAYS, DAY, GAP_LABEL };
 });
