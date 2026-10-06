@@ -1,8 +1,8 @@
 {
   "name": "Chinbilig Jiu-jitsu",
   "short_name": "Jiu-jitsu",
-  "start_url": "/bjj/",
-  "scope": "/bjj/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f2f2f7",

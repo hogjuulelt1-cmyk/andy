@@ -26,7 +26,7 @@ function lines(s) { return String(s || "").split("\n").map((x) => x.trim()).filt
 const CHEV = '<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
 const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg>';
 
-/* ---------- Supabase (plain REST, shares the diary's session) ---------- */
+/* ---------- Supabase (plain REST) ---------- */
 const SB = {
   url: (CFG.supabaseUrl || "").replace(/\/$/, ""), key: CFG.supabaseAnonKey || "", session: null,
   configured() { return !!(this.url && this.key); },
@@ -81,7 +81,7 @@ function seedAll(force) {
 }
 function mergeSeed() {
   const ver = SEED.version || 1; if ((S.settings.seedVer || 1) >= ver) return false;
-  const have = new Map(nodes().map((n) => [n.id, n])); let added = 0; const FIELDS = ["gi", "belt", "pts", "energy", "when", "oc", "bait", "kids", "legal", "f", "rank"];
+  const have = new Map(nodes().map((n) => [n.id, n])); let added = 0; const FIELDS = ["gi", "belt", "pts", "energy", "when", "oc", "bait", "kids", "legal", "f", "rank", "them"];
   for (const n of SEED.nodes()) { const ex = have.get(n.id); if (!ex) { if (!n.p || have.has(n.p)) { nodes().push(n); have.set(n.id, n); added++; } } else for (const k of FIELDS) if (ex[k] === undefined && n[k] !== undefined) ex[k] = n[k]; }
   S.settings.seedVer = ver; return added;
 }
@@ -118,7 +118,7 @@ async function startCloud() {
     const rows = await SB.list("bjj/");
     for (const r of rows) { const k = r.path.slice(4); if (KEYS.includes(k)) S[k] = r.data; }
     normalize();
-    if (!S.settings.seeded) { seedAll(false); await initFromDiary(); for (const k of ["tree", "plans", "body", "belt", "settings"]) await SB.set("bjj/" + k, clone(S[k])); }
+    if (!S.settings.seeded) { seedAll(false); for (const k of ["tree", "plans", "body", "belt", "settings"]) await SB.set("bjj/" + k, clone(S[k])); }
     { const added = mergeSeed(); if (added) { await SB.set("bjj/tree", clone(S.tree)); await SB.set("bjj/settings", clone(S.settings)); } }
     mode = "cloud"; applyTheme(); setSync("ok"); document.body.classList.remove("locked"); render();
     if (S.settings.lastAdded) { toast(S.settings.lastAdded + " new moves added to the library"); delete S.settings.lastAdded; }
@@ -127,10 +127,6 @@ async function startCloud() {
 }
 async function refresh() {
   try { const rows = await SB.list("bjj/"); let ch = false; for (const r of rows) { const k = r.path.slice(4); if (KEYS.includes(k) && !dirty[k] && JSON.stringify(S[k]) !== JSON.stringify(r.data)) { S[k] = r.data; ch = true; } } if (ch) { normalize(); render(); } } catch (e) {}
-}
-async function initFromDiary() {
-  // Belt and age: initial values from the diary app profile.
-  try { const st = await SB.get("app/settings"); const p = st && st.profile; if (p) { S.belt.belt = p.belt || "white"; S.belt.stripes = +p.stripes || 0; S.belt.since = p.beltSince || ""; S.belt.track = (+p.age && +p.age >= 16) ? "adult" : "kids"; } } catch (e) {}
 }
 function startLocal() {
   try { const j = JSON.parse(localStorage.getItem(LKEY) || "null"); if (j) S = j; } catch (e) {}
@@ -142,32 +138,9 @@ function showLogin(msg) {
   $("main").innerHTML = '<form class="card" id="login"><h2>Sign in</h2>' + (msg ? '<p class="muted small">' + esc(msg) + "</p>" : "") +
     '<div class="field"><label for="lg-e">Email</label><input id="lg-e" type="email" autocomplete="username" required></div>' +
     '<div class="field"><label for="lg-p">Password</label><input id="lg-p" type="password" autocomplete="current-password" required></div>' +
-    '<button class="btn" type="submit">Sign in</button><p class="muted small">Same account as the diary app.</p></form>';
+    '<button class="btn" type="submit">Sign in</button></form>';
   setSync("local", "Not signed in");
   $("login").addEventListener("submit", async (e) => { e.preventDefault(); const b = e.target.querySelector("button"); b.disabled = true; try { await SB.login(sv("lg-e").trim(), sv("lg-p")); startCloud(); } catch (err) { b.disabled = false; showLogin("Wrong email or password."); } });
-}
-
-/* Mirror into the diary app: sessions into day docs, belt into the profile. Cloud only. */
-const TYPE2DIARY = { gi: "gi", nogi: "nogi", open: "open", priv: "gi", drill: "gi", comp: "comp" };
-async function mirrorSession(it, oldDate) {
-  if (mode !== "cloud") return;
-  try {
-    if (oldDate && oldDate !== it.d) await unmirrorSession(it.id, oldDate);
-    const path = "days/" + it.d; let d = await SB.get(path);
-    if (!d) d = { date: it.d, habits: {}, sched: {}, sleep: "", srec: "", sstudy: "", energy: 0, mood: 0, soreness: 0, pain: "", weight: "", meals: {}, journal: { win: "", learned: "", focus: "", thanks: "" }, sessions: [] };
-    d.sessions = d.sessions || [];
-    const rec = { type: TYPE2DIARY[it.type] || "gi", min: +it.min || 0, rpe: +it.rpe || 0, enj: 0, tech: (it.tech || []).map((t) => t.n).join("\n"), work: it.good || "", q: it.bad || "", res: it.note || "", bjj: it.id };
-    const i = d.sessions.findIndex((s) => s.bjj === it.id); if (i >= 0) d.sessions[i] = rec; else d.sessions.push(rec);
-    await SB.set(path, d);
-  } catch (e) { console.warn("mirror", e); }
-}
-async function unmirrorSession(id, date) {
-  if (mode !== "cloud") return;
-  try { const path = "days/" + date; const d = await SB.get(path); if (!d || !d.sessions) return; const n = d.sessions.filter((s) => s.bjj !== id); if (n.length !== d.sessions.length) { d.sessions = n; await SB.set(path, d); } } catch (e) { console.warn("unmirror", e); }
-}
-async function mirrorBelt() {
-  if (mode !== "cloud") return;
-  try { const st = await SB.get("app/settings"); if (!st) return; st.profile = st.profile || {}; st.profile.belt = S.belt.belt.split("-")[0]; st.profile.stripes = S.belt.stripes; st.profile.beltSince = S.belt.since; await SB.set("app/settings", st); } catch (e) { console.warn("belt", e); }
 }
 
 /* ---------- tree helpers ---------- */
@@ -207,6 +180,14 @@ const positions = () => nodes().filter((n) => n.k === "pos");
 function ancestors(id) { const out = []; let n = node(id); while (n) { out.unshift(n); n = n.p ? node(n.p) : null; } return out; }
 function subtreeIds(id) { const out = [id]; for (const c of kids(id)) out.push(...subtreeIds(c.id)); return out; }
 function posOf(id) { return ancestors(id)[0]; }
+/* Setups: every move elsewhere whose result is this position, grouped by the position it starts from. */
+function entriesTo(posId) {
+  const out = []; for (const m of nodes()) { if (m.k !== "mv") continue; const from = posOf(m.id); if (!from || from.id === posId) continue;
+    const oc = m.oc && m.oc.length ? m.oc : m.to ? [{ to: m.to, f: "common" }] : []; const o = oc.find((x) => x.to === posId); if (o) out.push({ m, from, f: o.f || "common" }); }
+  const groups = {}; for (const e of out) (groups[e.from.id] = groups[e.from.id] || []).push(e);
+  return Object.keys(groups).sort((a, b) => CATS.findIndex((c) => c[0] === node(a).cat) - CATS.findIndex((c) => c[0] === node(b).cat)).map((k) => ({ from: node(k), items: groups[k].sort((a, b) => (a.f === b.f ? 0 : a.f === "rare" ? 1 : -1)) }));
+}
+function themLine(p) { return p && p.them ? '<span class="them"><svg viewBox="0 0 24 24">' + TICON.df + "</svg>" + esc(p.them) + "</span>" : ""; }
 function countDesc(id) { return subtreeIds(id).length - 1; }
 function tbadge(n) { if (n.k === "df") return '<span class="tbadge df">Defense</span>'; return n.t ? '<span class="tbadge ' + n.t + '">' + TNAME[n.t] + "</span>" : ""; }
 function kindLabel(n) { return n.k === "pos" ? "Position" : n.k === "df" ? "Opponent" : "Me"; }
@@ -326,7 +307,7 @@ VIEWS.tech = function () {
     if (UI.walkCat) h += '<div class="jump"><p class="muted small">I ended up in…</p><div class="chips">' + positions().filter((p) => p.cat === UI.walkCat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div></div>";
   } else h += '<div class="card-head"><h3>Where are you?</h3><span class="muted small">tap a position to start</span></div>';
   h += rollGraphSvg();
-  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> " + (cur.k === "pos" ? metaBadges(cur) : "") + " · " + q + "</p>"; }
+  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> " + (cur.k === "pos" ? metaBadges(cur) : "") + " · " + q + "</p>" + (cur.k === "pos" ? themLine(cur) : ""); }
   else h += '<div class="legend">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + '</div><p class="muted small">Jump node to node. It only ends with a submission or points.</p>';
   h += "</div>";
   const all = positions();
@@ -344,6 +325,7 @@ function vNode(n) {
   h += '<div class="card"><div class="path">' + path.map((x, i) => '<button class="pn ' + x.k + (i === path.length - 1 ? " cur" : "") + '" data-act="open" data-id="' + x.id + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + kindLabel(x) + '</span><span class="nm">' + esc(x.n) + "</span></span></button>").join("") + "</div>";
   h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1"></span>') + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
   { const mb = metaBadges(n, true); if (mb) h += '<div class="meta">' + mb + "</div>"; }
+  if (n.k === "pos" && n.them) h += '<p class="small"><span class="muted">Them:</span> ' + esc(n.them) + "</p>";
   if (n.k === "mv" && n.when) h += '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>";
   if (n.bait) h += '<div class="tip"><b>' + (n.k === "df" ? "Their trap" : "Trap") + ":</b> " + esc(n.bait) + "</div>";
   if (n.k === "mv" && n.oc && n.oc.length) h += '<p class="small"><span class="muted">Lands in:</span> ' + n.oc.filter((o) => node(o.to)).map((o) => '<button class="to-link sm" data-act="open" data-id="' + o.to + '">' + esc(node(o.to).n) + (o.f === "rare" ? " · rare" : "") + "</button>").join(" ") + "</p>";
@@ -354,6 +336,13 @@ function vNode(n) {
   if (n.k === "mv") { const st = logStats(n.id); const bits = []; if (st.drilled) bits.push(st.drilled + " sessions drilled"); if (st.given) bits.push(st.given + " times finished"); if (st.got) bits.push(st.got + " times caught"); const rs = rollStatsFor(n.id); if (rs.used) bits.push("used in " + rs.used + " roll" + (rs.used > 1 ? "s" : "")); if (bits.length) h += '<p class="muted small">' + bits.join(" · ") + "</p>"; }
   if (n.k === "pos") h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="' + n.id + '">Roll from here</button></div>';
   h += "</div>";
+  if (n.k === "pos") {
+    const en = entriesTo(n.id); const cnt = en.reduce((a, g) => a + g.items.length, 0);
+    h += '<div class="card"><div class="card-head"><h3>Setup · how you get here</h3><span class="muted small">' + (cnt ? cnt + " entr" + (cnt > 1 ? "ies" : "y") : "none yet") + "</span></div>";
+    if (cnt) h += '<div class="list">' + en.map((g) => '<div class="group-label" style="color:' + CAT_COLOR[g.from.cat] + '">from ' + esc(g.from.n) + "</div>" + g.items.map((e) => '<button class="node-row" data-act="open" data-id="' + e.m.id + '"><span class="pict" style="color:' + nodeColor(e.m) + '">' + iconFor(e.m) + '</span><div class="txt"><b>' + esc(e.m.n) + "</b>" + (e.m.when ? "<small>" + esc(e.m.when) + "</small>" : "") + "</div>" + (e.f === "rare" ? '<span class="pill na">rare</span>' : "") + tbadge(e.m) + CHEV + "</button>").join("")).join("") + "</div>";
+    else h += '<p class="empty">No move leads here yet. Add how you pull, sweep or pass into it.</p>';
+    h += '<button class="btn ghost wide" data-act="add-entry" data-id="' + n.id + '">+ Add an entry</button></div>';
+  }
   h += '<div class="card"><div class="card-head"><h3>' + childHeading(n) + "</h3>" + seg([["map", "Map"], ["list", "List"]], UI.tech.map ? "map" : "list", "techmap") + "</div>";
   if (UI.tech.map && ch.length) h += mindMapSvg(n) + '<p class="muted small">Tap a branch for its next step. Dashed amber = their defense.</p>';
   else if (ch.length) { const rowOf = (c) => '<button class="node-row' + (c.k === "df" ? " df" : "") + '" data-act="open" data-id="' + c.id + '"><span class="pict" style="color:' + nodeColor(c) + '">' + iconFor(c) + '</span><div class="txt"><b>' + esc(c.n) + "</b>" + (c.en ? "<small>" + esc(c.en) + "</small>" : "") + "</div>" + (c.k === "df" ? (c.f === "rare" ? '<span class="pill na">rare</span>' : "") + '<span class="cnt">' + kids(c.id).length + " answers</span>" : metaBadges(c) + tbadge(c)) + (c.k !== "df" && kids(c.id).length ? '<span class="cnt">' + kids(c.id).length + "</span>" : "") + CHEV + "</button>";
@@ -443,11 +432,11 @@ function nextOf(n) {
 }
 function gNode(n, x, y, r, role, attrs, badge) {
   const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? (n.t ? typeColor(n.t) : "var(--accent)") : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : n.k === "grp" && !n.t ? TICON.sit : TICON[n.t] || TICON.trans;
-  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const ls = role === "ring2" ? [] : wrapText(n.n, role === "cur" ? 20 : 15);
+  const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const ls = role === "ring2" ? [n.n.length > 14 ? n.n.slice(0, 13).trim() + "…" : n.n] : wrapText(n.n, role === "cur" ? 20 : 15);
   return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
     '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
     '<svg class="ic" x="' + (-ir / 2) + '" y="' + (-ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>" +
-    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + fs + 'px">' + esc(l) + "</text>").join("") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + "</g>";
+    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (role === "ring2" ? 9 : fs) + 'px">' + esc(l) + "</text>").join("") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + "</g>";
 }
 function gEdge(ka, a, kb, b, cls, color) { return '<line class="g-edge ' + cls + '" data-a="' + ka + '" data-b="' + kb + '" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>"; }
 function rollGraphSvg() {
@@ -473,14 +462,16 @@ function rollGraphSvg() {
       const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const gk = e.n.t || e.n.id; const key = "h:" + gk; const open = R.grp === gk;
       put(key, e.n, x, y, open ? 19 : 16, "group" + (open ? " open" : ""), 'data-t="' + esc(gk) + '"', e.items.length);
       edges += gEdge("c", [0, 0], key, [x, y], "step" + (open ? "" : " faint"), e.n.t ? typeColor(e.n.t) : "var(--accent)");
-      if (open) { const m = e.items.length; const sector = Math.min(120, 30 + m * 22); e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 96), y2 = Math.sin(a2) * (r1 + 96); const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next" + (it.f === "rare" ? " rare" : ""), 'data-how="' + it.how + '"'); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n)); }); }
+      if (open) { const m = e.items.length; const sector = Math.min(120, 30 + m * 22); e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 96), y2 = Math.sin(a2) * (r1 + 96); const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next" + (it.f === "rare" ? " rare" : ""), 'data-how="' + it.how + '"'); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n));
+          const n2 = nextOf(it.n).filter((z) => z.n.k === "df").slice(0, 2); const sec2 = m > 1 ? Math.min(24, sector / (m - 1) * 0.8) : 30;
+          n2.forEach((e2, q) => { const d3 = d2 + (n2.length > 1 ? -sec2 / 2 + sec2 * q : 0); const a3 = d3 * Math.PI / 180; const x3 = Math.cos(a3) * (r1 + 170), y3 = Math.sin(a3) * (r1 + 170); const k3 = "n2:" + it.n.id + ":" + e2.n.id; put(k3, e2.n, x3, y3, 9, "ring2", 'data-p="' + it.n.id + '"'); edges += gEdge(k2, [x2, y2], k3, [x3, y3], "faint df", nodeColor(e2.n)); }); }); }
       return;
     }
     const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "n:" + e.n.id;
     put(key, e.n, x, y, e.f === "rare" ? 14 : 17, "next" + (e.f === "rare" ? " rare" : "") + (e.how === "works" ? " works" : ""), 'data-how="' + e.how + '"');
     edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : nodeColor(e.n));
     const next2 = nextOf(e.n).slice(0, 3); const sector = n1 > 1 ? Math.min(44, span / (n1 - 1) * 0.9) : 60;
-    next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 92), y2 = Math.sin(a2) * (r1 + 92); const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, 10, "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint", e2.n.k === "fin" ? "var(--ok)" : nodeColor(e2.n)); });
+    next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 92), y2 = Math.sin(a2) * (r1 + 92); const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, 10, "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint" + (e2.n.k === "df" ? " df" : e2.how === "works" ? " works" : ""), e2.n.k === "fin" || e2.how === "works" ? "var(--ok)" : nodeColor(e2.n)); });
     if (nextOf(e.n).length > 3) { const a3 = (deg + sector / 2 + 10) * Math.PI / 180; nodesOut += '<text class="more" x="' + (Math.cos(a3) * (r1 + 92)).toFixed(1) + '" y="' + (Math.sin(a3) * (r1 + 92) + 4).toFixed(1) + '" text-anchor="middle">+' + (nextOf(e.n).length - 3) + "</text>"; }
   });
   put("c", cur, 0, 0, 26, "cur");
@@ -523,7 +514,7 @@ function rollStepTo(id) {
 function rollRewind(i) { const R = UI.roll; if (!R || i >= R.steps.length - 1) return; R.steps = R.steps.slice(0, i + 1); const last = R.steps[i]; R.cur = last.id; const lp = R.steps.slice().reverse().find((x) => x.k === "pos"); R.pos = lp ? lp.id : R.pos; R.finished = false; render(); toast("Back to " + last.n); }
 function quickSheet(id) {
   const n = node(id); if (!n) return;
-  const b = '<div class="actions" style="align-items:center"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + "</span>" + tbadge(n) + metaBadges(n, true) + "</div>" + (n.when ? '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>" : "") + (n.bait ? '<div class="tip"><b>Trap:</b> ' + esc(n.bait) + "</div>" : "") + (n.s && n.s.length ? '<ol class="steps">' + n.s.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>" : "") + (n.x ? '<p class="small">' + esc(n.x) + "</p>" : "") + (!n.s.length && !n.x ? '<p class="muted small">No steps written yet.</p>' : "") + '<button class="btn ghost wide" data-act="open" data-id="' + n.id + '">Open & edit</button>';
+  const b = '<div class="actions" style="align-items:center"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + "</span>" + tbadge(n) + metaBadges(n, true) + "</div>" + (n.k === "pos" && n.them ? '<p class="small"><span class="muted">Them:</span> ' + esc(n.them) + "</p>" : "") + (n.when ? '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>" : "") + (n.bait ? '<div class="tip"><b>Trap:</b> ' + esc(n.bait) + "</div>" : "") + (n.s && n.s.length ? '<ol class="steps">' + n.s.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>" : "") + (n.x ? '<p class="small">' + esc(n.x) + "</p>" : "") + (!n.s.length && !n.x ? '<p class="muted small">No steps written yet.</p>' : "") + '<button class="btn ghost wide" data-act="open" data-id="' + n.id + '">Open & edit</button>';
   openSheet(n.n, b, {});
 }
 /* --- technique mind map: root on the left, branches to the right (2 levels, tap +N for more) --- */
@@ -667,6 +658,23 @@ function vRoll(r) {
   h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="' + (r.steps[0] ? r.steps[0].id : "st") + '">Roll again from the start</button>' + delBtn("roll:" + r.id, "roll-del", 'data-id="' + r.id + '"') + "</div>";
   return h;
 }
+/* Setup entry: a new move under another position whose result is this one. */
+function entrySheet(posId) {
+  const target = node(posId); if (!target) return;
+  const srcs = positions().filter((p) => p.id !== posId);
+  const b = field("f-n", "Move", inp("f-n", "", "text", 'autofocus placeholder="e.g. Pull guard from collar grip"')) +
+    field("f-from", "Starting position", '<select id="f-from">' + srcs.map((p) => '<option value="' + p.id + '">' + esc(p.n) + "</option>").join("") + "</select>") +
+    '<div class="field"><span class="lbl">Type</span>' + chips("t", TYPES.filter((t) => ["td", "sweep", "pass", "esc", "trans"].includes(t[0])), "trans") + "</div>" +
+    field("f-when", "Opens when (situation)", inp("f-when", "", "text", 'placeholder="They push / they stand up"')) +
+    field("f-s", "Steps (one per line)", ta("f-s", "", "Step 1\nStep 2"));
+  openSheet("Entry into " + target.n, b, { state: { picks: { t: "trans" } }, onSave() {
+    const name = sv("f-n").trim(); if (!name) { $("f-n").focus(); return false; }
+    const from = sv("f-from"); if (!node(from)) return false;
+    const t = pickVal("t", "trans");
+    nodes().push({ id: uid(), k: "mv", p: from, n: name, en: "", t, s: lines(sv("f-s")), x: "", to: posId, cat: "", gi: "both", belt: "white", pts: t === "td" || t === "sweep" ? 2 : t === "pass" ? 3 : 0, energy: 2, when: sv("f-when").trim(), bait: "", kids: true, oc: [{ to: posId, f: "common" }] });
+    save("tree"); toast("Entry added"); render(); return true;
+  } });
+}
 function nodeSheet(id, parentId) {
   const n = id ? node(id) : null; const parent = parentId ? node(parentId) : null;
   const kind = n ? n.k : parent ? (parent.k === "mv" ? "df" : "mv") : "pos";
@@ -684,6 +692,7 @@ function nodeSheet(id, parentId) {
     field("f-bait", "Trap (what you offer, what you want them to do)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="Leave the arm loose so they reach…"')) +
     '<div class="field"><span class="lbl">Kids rules</span>' + chips("kids", [["ok", "Allowed"], ["no", "Not for kids"]], n && n.kids === false ? "no" : "ok") + "</div>";
   if (kind === "df") b += '<div class="field"><span class="lbl">How common</span>' + chips("f", [["common", "Common"], ["rare", "Rare"]], n ? n.f || "common" : "common") + "</div>" + field("f-bait", "Their trap (what they bait with)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="They offer the underhook to…"'));
+  if (kind === "pos") b += field("f-them", "Them (where the opponent is)", inp("f-them", n ? n.them || "" : "", "text", 'placeholder="On top, inside your locked legs…"'));
   if (kind === "pos") b += '<div class="field"><span class="lbl">Position quality</span>' + chips("rank", [["-2", "Hard"], ["-1", "Tough"], ["0", "Neutral"], ["1", "Good"], ["2", "Dominant"]], n ? String(n.rank || 0) : "0") + "</div>";
   openSheet(title, () => b + (kind === "mv" ? picker("oc", "Can also land in (tap + to mark rare)", "pos", { ph: "Position…", counts: true }) : ""), {
     state: { picks: { cat: n ? n.cat : "guard", t: n ? n.t : "sub", gi: n ? n.gi || "both" : "both", belt: n ? n.belt || "white" : "white", energy: n ? n.energy || 2 : 2, kids: n && n.kids === false ? "no" : "ok", f: n ? n.f || "common" : "common", rank: n ? String(n.rank || 0) : "0" }, pk: { oc: kind === "mv" && n && n.oc ? n.oc.filter((o) => node(o.to)).map((o) => ({ id: o.to, n: node(o.to).n, c: o.f === "rare" ? 2 : 1 })) : [] } },
@@ -691,7 +700,7 @@ function nodeSheet(id, parentId) {
       const name = sv("f-n").trim(); if (!name) { $("f-n").focus(); return false; }
       const rec = n || { id: uid(), k: kind, p: parentId || null };
       rec.n = name; rec.en = sv("f-en").trim(); rec.x = sv("f-x").trim();
-      if (kind === "pos") { rec.cat = pickVal("cat", "guard"); rec.rank = +pickVal("rank", "0"); }
+      if (kind === "pos") { rec.cat = pickVal("cat", "guard"); rec.rank = +pickVal("rank", "0"); rec.them = sv("f-them").trim(); }
       if (kind === "mv") { rec.t = pickVal("t", "sub"); rec.to = sv("f-to"); rec.when = sv("f-when").trim(); rec.gi = pickVal("gi", "both"); rec.belt = pickVal("belt", "white"); rec.pts = +sv("f-pts") || 0; rec.energy = pickVal("energy", 2); rec.bait = sv("f-bait").trim(); rec.kids = pickVal("kids", "ok") === "no" ? false : true; rec.oc = (UI.sheet.pk.oc || []).filter((x) => x.id).map((x) => ({ to: x.id, f: x.c >= 2 ? "rare" : "common" })); if (!rec.to && rec.oc.length) rec.to = rec.oc[0].to; }
       if (kind === "df") { rec.f = pickVal("f", "common"); rec.bait = sv("f-bait").trim(); }
       if (kind !== "df") rec.s = lines(sv("f-s"));
@@ -784,9 +793,9 @@ function sessSheet(id) {
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim();
-      if (!s) S.log.items.push(rec); save("log"); mirrorSession(rec, old); toast("Training saved"); render(); return true;
+      if (!s) S.log.items.push(rec); save("log"); toast("Training saved"); render(); return true;
     },
-    onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); unmirrorSession(s.id, s.d); toast("Deleted"); render(); return true; } : null,
+    onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); toast("Deleted"); render(); return true; } : null,
   });
 }
 
@@ -928,7 +937,7 @@ function beltSheet(promo) {
       S.belt.track = t; S.belt.belt = belt; S.belt.stripes = stripes;
       if (promo) { if (beltChanged || !S.belt.since) S.belt.since = d || todayIso(); S.belt.history.push({ id: uid(), d: d || todayIso(), track: t, belt, stripes, note: sv("f-note").trim() }); toast("Congratulations!"); }
       else S.belt.since = d;
-      save("belt"); mirrorBelt(); render(); return true;
+      save("belt"); render(); return true;
     },
   });
 }
@@ -1075,6 +1084,7 @@ document.addEventListener("click", (e) => {
     case "open": UI.tab = "tech"; UI.tech.id = ds.id; UI.tech.q = ""; UI.rollId = null; { const g = UI.graph["n:" + ds.id]; if (g) g.sel = null; } go("enter-l"); break;
     case "back": UI.tech.id = ds.id || null; go("enter-r"); break;
     case "add-node": nodeSheet(null, ds.p || null); break;
+    case "add-entry": entrySheet(ds.id); break;
     case "edit-node": nodeSheet(ds.id); break;
     case "del-node": if (armConfirm(ds.key)) { const ids = subtreeIds(ds.id); const n = node(ds.id); S.tree.nodes = nodes().filter((x) => !ids.includes(x.id)); UI.tech.id = n && n.p ? n.p : null; save("tree"); toast("Deleted"); go("enter-r"); } break;
     case "add-plan": planSheet(); break;

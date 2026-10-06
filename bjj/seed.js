@@ -977,6 +977,19 @@ window.BJJ_SEED = (function () {
   };
 
   const ENERGY = { td: 3, sweep: 2, pass: 2, sub: 2, esc: 3, trans: 2, grip: 1, ctl: 1 };
+  // Where the opponent is while you are in this position (the other half of the picture).
+  const THEM = {
+    st: 'Standing too, fighting for grips', cg_b: 'On top, inside your locked legs, trying to posture up',
+    hg_b: 'On top, one leg trapped, hunting the pass', dlr_b: 'Standing or kneeling, one leg hooked by yours',
+    sp_b: 'Standing, sleeves held, pushed away by your feet', bf_b: 'Kneeling in front, chest close, your hooks under their thighs',
+    xg_b: 'Standing over you, one leg loaded on your shoulder', slx_b: 'Standing, one leg trapped between yours',
+    cg_t: 'On their back, legs locked around you, breaking your posture', og_t: 'On their back, feet and grips keeping you away',
+    hg_t: 'On their back, holding one of your legs with theirs', sc_t: 'Flat on their back, framing to make space',
+    kob_t: 'Flat, your knee on their belly, trying to turn or push', mt_t: 'Flat under you, bridging and framing',
+    bk_t: 'In front of you, your hooks in, hand fighting', tt_t: 'On hands and knees, hiding neck and elbows',
+    sc_b: 'On top, chest on chest, pinning your far arm', mt_b: 'Sitting on your hips, posting or attacking',
+    bk_b: 'Behind you, hooks in, hunting the choke', tt_b: 'Over you, sprawled or attacking the back',
+  };
   const RANKS = { st: 0, cg_b: 0, hg_b: -1, dlr_b: 0, sp_b: 0, bf_b: 0, xg_b: 1, slx_b: 1, cg_t: 0, og_t: 0, hg_t: 1, sc_t: 1, kob_t: 2, mt_t: 2, bk_t: 2, tt_t: 1, sc_b: -1, mt_b: -2, bk_b: -2, tt_b: -1 };
   // Per-node annotations (gi/no-gi, belt, points, energy, situation, outcomes, traps, rules). Keyed by path id.
   const META = window.BJJ_META || {};
@@ -987,7 +1000,7 @@ window.BJJ_SEED = (function () {
       const id = node.id || path;
       const rec = { id, k: kind, p: parent, n: node.n, en: node.en || '', t: node.t || '', s: node.s || [], x: node.x || '', to: node.to || '', cat: node.cat || '' };
       const m = META[id] || {};
-      if (kind === 'pos') rec.rank = m.rank != null ? m.rank : (RANKS[id] != null ? RANKS[id] : 0);
+      if (kind === 'pos') { rec.rank = m.rank != null ? m.rank : (RANKS[id] != null ? RANKS[id] : 0); rec.them = m.them || node.them || THEM[id] || ''; }
       if (kind === 'mv') {
         rec.gi = m.gi || node.gi || 'both'; rec.belt = m.belt || node.belt || 'white'; rec.energy = m.energy || node.energy || ENERGY[rec.t] || 2;
         rec.pts = m.pts != null ? m.pts : node.pts != null ? node.pts : (rec.t === 'td' ? 2 : rec.t === 'sweep' ? 2 : rec.t === 'pass' ? 3 : rec.to === 'mt_t' || rec.to === 'bk_t' ? 4 : rec.to === 'kob_t' ? 2 : 0);
@@ -1002,5 +1015,5 @@ window.BJJ_SEED = (function () {
     return out;
   }
 
-  return { version: 3, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
+  return { version: 4, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
 })();
