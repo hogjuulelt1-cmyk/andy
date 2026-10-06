@@ -428,6 +428,17 @@ details.fold[open] summary::after{transform:rotate(-135deg)}
 .hist .crumb{font-size:.78rem;min-height:30px;display:inline-flex;align-items:center}
 .crumb.pos{background:var(--accent);color:var(--accent-ink)} .crumb.mv{background:var(--sunk);color:var(--ink)} .crumb.df{background:var(--df-bg);color:var(--df-ink)}
 .crumb.last{box-shadow:0 0 0 2px var(--accent-soft)}
+/* club */
+.clubhead .stat:last-child b{font-size:1.2rem;line-height:1.2;padding-top:4px}
+.facts{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.86rem} .facts a{font-weight:600;text-decoration:none}
+.week{display:flex;flex-direction:column;gap:10px}
+.day .dn{font-size:.8rem;font-weight:600;color:var(--muted);margin-bottom:4px} .day.today .dn{color:var(--accent)}
+.sess{display:flex;align-items:center;gap:10px;width:100%;border:0;background:var(--sunk);border-radius:12px;padding:10px 12px;margin-top:6px;text-align:left;color:inherit;min-height:46px;border-left:4px solid var(--t-trans)}
+.sess.gi{border-left-color:var(--t-pass)} .sess.nogi{border-left-color:var(--t-td)} .sess.open{border-left-color:var(--ok);background:var(--ok-soft)} .sess.kids{border-left-color:var(--t-esc)} .sess.comp{border-left-color:var(--t-sub)} .sess.sc{border-left-color:var(--t-sweep)}
+.sess .t{font-variant-numeric:tabular-nums;font-weight:700;flex:none;width:48px} .sess .nm{flex:1;min-width:0;font-weight:500}
+.bdot{width:14px;height:14px;border-radius:4px;flex:none;border:1px solid rgba(0,0,0,.15)}
+nav.tabs .in{grid-template-columns:repeat(4,1fr)}
+nav.tabs button{font-size:.72rem}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;z-index:40;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -474,6 +485,6 @@ details.fold[open] summary::after{transform:rotate(-135deg)}
 <script src="config.js"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=5"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
