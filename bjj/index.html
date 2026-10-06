@@ -220,11 +220,11 @@ textarea{min-height:64px;resize:vertical}
 .canvas .hint{position:absolute;left:12px;top:12px;font-size:.74rem;color:var(--muted);background:var(--surface);padding:4px 9px;border-radius:999px;box-shadow:var(--shadow);pointer-events:none}
 .g-node{cursor:pointer}
 .g-node circle.hit{fill:transparent}
-.g-node circle.b{fill:var(--surface);stroke:currentColor;stroke-width:2}
+.g-node circle.b{fill:var(--surface);stroke:transparent;stroke-width:2}
 .g-node .ic{color:currentColor}
 .g-node.pos circle.b,.g-node.root circle.b{fill:currentColor}
 .g-node.pos .ic,.g-node.root .ic{color:#fff}
-.g-node.df circle.b{fill:var(--df-bg);stroke-dasharray:4 3}
+.g-node.df circle.b{fill:var(--df-bg)}
 .g-node text.lb{font-size:11px;font-weight:600;fill:var(--ink)}
 .g-node.sel circle.b{stroke:var(--accent);stroke-width:3.5}
 .g-node.cur circle.b{stroke:var(--accent);stroke-width:4}
@@ -238,7 +238,39 @@ textarea{min-height:64px;resize:vertical}
 .g-badge circle{fill:var(--accent)} .g-badge text{fill:#fff;font-size:10px;font-weight:700;pointer-events:none}
 .pict{flex:none;width:30px;height:30px;display:grid;place-items:center;color:var(--muted)}
 .pict svg{width:22px;height:22px}
-.canvas .gchip .pict{width:34px;height:34px;border-radius:50%;background:var(--sunk)}
+.canvas .gchip .pict{width:34px;height:34px}
+/* wheel + walk */
+.wheelcard{padding-top:10px}
+svg.wheel{width:100%;max-width:330px;height:auto;display:block;margin:0 auto;overflow:visible}
+.wheel .ring{fill:none;stroke:var(--line);stroke-width:2}
+.wheel .ringarr{fill:none;stroke:var(--line);stroke-width:2}
+.wheel .trail{fill:none;stroke:var(--accent);stroke-linecap:round;opacity:.9}
+.wheel .trail.try{stroke-dasharray:4 4;stroke:var(--warn);stroke-width:2} .wheel .trail.win{stroke:var(--ok);stroke-width:3.5}
+.wheel .trail-dot{fill:var(--accent)}
+.wheel .ph{cursor:pointer}
+.wheel .ph circle{fill:var(--surface);stroke:currentColor;stroke-width:2}
+.wheel .ph text.lb{font-size:11px;font-weight:600;fill:var(--ink)}
+.wheel .ph.vis circle{stroke-width:3.5}
+.wheel .ph.pick circle{stroke:var(--accent);stroke-width:3.5}
+.wheel .ph.cur circle{fill:currentColor} .wheel .ph.cur svg{color:#fff} .wheel .ph.cur text.lb{fill:var(--accent)}
+.wheel .center{color:var(--muted)} .wheel .center circle{fill:var(--sunk);stroke:var(--line);stroke-width:2}
+.wheel .center text{font-size:9px;fill:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.wheel .center.win{color:var(--ok)} .wheel .center.win circle{fill:var(--ok-soft);stroke:var(--ok)} .wheel .center.win text{fill:var(--ok)}
+.wheel .curlb{font-size:11px;fill:var(--muted);font-weight:600}
+.walk{display:flex;flex-direction:column;gap:8px}
+.walk h3{color:var(--ink);text-transform:none;letter-spacing:0;font-size:1.2rem} .walk h3 .q{color:var(--muted);font-weight:500}
+.walk .qsub{font-weight:600;margin-top:-4px}
+.histwrap{overflow-x:auto;margin:0 -16px;padding:2px 16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.histwrap::-webkit-scrollbar{display:none}
+.hist{display:flex;gap:4px;align-items:center;width:max-content}
+.hist .sep{color:var(--muted);font-size:.8rem}
+.crumb{border:1.5px solid var(--line);padding:3px 9px;border-radius:999px;background:var(--surface);font-weight:600;font-size:.76rem;min-height:28px;white-space:nowrap}
+.crumb.pos{background:var(--ink);color:var(--bg);border-color:var(--ink)} .crumb.df{background:transparent;color:var(--df-ink);border-color:var(--df-ink);border-style:dashed} .crumb.mv{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.crumb.last{box-shadow:0 0 0 2px var(--accent)}
+.row.choice{min-height:52px} .row.choice.ok .txt b{color:var(--ok)}
+.chip.pchip{display:inline-flex;align-items:center;gap:6px;background:var(--surface);min-height:38px} .chip.pchip svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round} .chip.pchip span{color:var(--ink)}
+.jump{padding:8px 10px;border-radius:12px;background:var(--sunk);display:flex;flex-direction:column;gap:6px}
+@media (prefers-reduced-motion:no-preference){.wheel .ph.cur circle{animation:pulse 1.6s ease-in-out infinite}}
 .roll{display:flex;flex-direction:column;gap:8px}
 .roll h3{color:var(--ink);text-transform:none;letter-spacing:0;font-size:1.05rem}
 .crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:.76rem}

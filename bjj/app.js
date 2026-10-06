@@ -70,8 +70,8 @@ function blank() {
 }
 let S = blank();
 let mode = "local";
-const UI = { tab: "tech", tech: { id: null, q: "", view: "pos", map: true }, body: { cat: "warm", open: null }, comp: { id: null }, confirm: null, sheet: null, anim: "" };
-try { const t = localStorage.getItem("bjj-tab"); if (t) UI.tab = t; if (localStorage.getItem("bjj-map") === "0") UI.tech.map = false; } catch (e) {}
+const UI = { tab: "tech", tech: { id: null, q: "", view: "pos", map: false }, body: { cat: "warm", open: null }, comp: { id: null }, confirm: null, sheet: null, anim: "" };
+try { const t = localStorage.getItem("bjj-tab"); if (t) UI.tab = t; if (localStorage.getItem("bjj-map") === "1") UI.tech.map = true; } catch (e) {}
 
 function seedAll(force) {
   if (force || !S.tree.nodes.length) S.tree.nodes = SEED.nodes();
@@ -215,7 +215,7 @@ function render(anim) {
   renderBelt(); renderTabs();
   const m = $("main"); const fn = VIEWS[UI.tab] || VIEWS.tech;
   m.className = ""; m.innerHTML = fn(); if (anim) { void m.offsetWidth; m.className = anim; }
-  renderTimer(); initGraphs();
+  renderTimer(); initGraphs(); const hw = $("hist"); if (hw && hw.parentElement) hw.parentElement.scrollLeft = hw.scrollWidth;
 }
 function go(anim) { render(anim); window.scrollTo({ top: 0, behavior: "instant" }); }
 let toastT;
@@ -282,17 +282,22 @@ VIEWS.tech = function () {
   let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="tq" type="search" placeholder="Search positions, techniques…" value="' + esc(UI.tech.q) + '" autocomplete="off"></div>';
   if (UI.tech.q.trim().length >= 2) return h + vSearch(UI.tech.q.trim().toLowerCase());
   if (!["pos", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
-  h += seg([["pos", "Positions"], ["plans", "Game plans"], ["rolls", "Rolls"]], UI.tech.view, "techview");
+  h += seg([["pos", "Roll"], ["plans", "Game plans"], ["rolls", "History"]], UI.tech.view, "techview");
   if (UI.tech.view === "plans") return h + vPlans();
   if (UI.tech.view === "rolls") return h + vRolls();
   const R = UI.roll;
-  h += '<div class="card"><div class="card-head"><h3>' + (R ? "Rolling · step " + (R.steps.length) : "Position map") + "</h3>" + (R ? '<span class="muted small">' + esc(node(R.pos).n) + "</span>" : '<span class="muted small">arrows = where a move takes you</span>') + "</div>";
-  h += posMapSvg();
+  h += '<div class="card wheelcard">' + wheelSvg();
   if (R) h += rollPanel();
-  else h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="st">Start a roll</button><button class="btn ghost" data-act="add-node" data-p="">+ Add position</button></div><p class="muted small">Tap a position to see where it leads and to start a roll from there. A roll walks the tree step by step: your move → their defense → your answer → next position, as long as you like.</p>';
+  else {
+    const cat = UI.walkCat;
+    h += '<div class="walk"><h3>Where are you?</h3>';
+    if (cat) h += '<p class="muted small">' + esc(CATS.find((c) => c[0] === cat)[1]) + ' · pick the position</p><div class="chips">' + positions().filter((p) => p.cat === cat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[cat] + '">' + iconFor(p) + '<span>' + esc(p.n) + "</span></button>").join("") + "</div>";
+    else h += '<p class="muted small">Tap a phase on the wheel, then the position. From there you answer one question at a time: what do you do, what do they do, what do you do next. It loops until a submission or points.</p><div class="actions"><button class="btn" data-act="walk-pos" data-id="st">Start standing</button></div>';
+    h += "</div>";
+  }
   h += "</div>";
   const all = positions();
-  h += '<details class="card fold"><summary><h3>All positions</h3><span class="muted small">' + all.length + " · list view</span></summary><div class=\"list\">" + CATS.map(([cat, label]) => { const ps = all.filter((p) => p.cat === cat); return ps.length ? '<div class="group-label" style="color:' + CAT_COLOR[cat] + '">' + label + "</div>" + ps.map((p) => '<button class="node-row" data-act="open" data-id="' + p.id + '"><span class="pict" style="color:' + CAT_COLOR[cat] + '">' + pictSvg(cat) + '</span><div class="txt"><b>' + esc(p.n) + "</b>" + (p.en ? "<small>" + esc(p.en) + "</small>" : "") + '</div><span class="cnt">' + kids(p.id).length + "</span>" + CHEV + "</button>").join("") : ""; }).join("") + "</div></details>";
+  h += '<details class="card fold"><summary><h3>All positions</h3><span class="muted small">' + all.length + " · browse & edit</span></summary><div class=\"list\">" + CATS.map(([cat, label]) => { const ps = all.filter((p) => p.cat === cat); return ps.length ? '<div class="group-label" style="color:' + CAT_COLOR[cat] + '">' + label + "</div>" + ps.map((p) => '<button class="node-row" data-act="open" data-id="' + p.id + '"><span class="pict" style="color:' + CAT_COLOR[cat] + '">' + iconFor(p) + '</span><div class="txt"><b>' + esc(p.n) + "</b>" + (p.en ? "<small>" + esc(p.en) + "</small>" : "") + '</div><span class="cnt">' + kids(p.id).length + "</span>" + CHEV + "</button>").join("") : ""; }).join("") + '</div><button class="btn ghost wide" data-act="add-node" data-p="">+ Add position</button></details>';
   return h;
 };
 function vSearch(q) {
@@ -309,7 +314,7 @@ function vNode(n) {
   if (n.x) h += '<p class="small">' + esc(n.x) + "</p>";
   if (n.to && node(n.to)) h += '<div><button class="to-link" data-act="open" data-id="' + n.to + '">→ Next: ' + esc(node(n.to).n) + "</button></div>";
   if (n.k === "mv") { const st = logStats(n.id); const bits = []; if (st.drilled) bits.push(st.drilled + " sessions drilled"); if (st.given) bits.push(st.given + " times finished"); if (st.got) bits.push(st.got + " times caught"); const rs = rollStatsFor(n.id); if (rs.used) bits.push("used in " + rs.used + " roll" + (rs.used > 1 ? "s" : "")); if (bits.length) h += '<p class="muted small">' + bits.join(" · ") + "</p>"; }
-  if (n.k === "pos") h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="' + n.id + '">Start a roll here</button></div>';
+  if (n.k === "pos") h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="' + n.id + '">Roll from here</button></div>';
   h += "</div>";
   h += '<div class="card"><div class="card-head"><h3>' + childHeading(n) + "</h3>" + seg([["map", "Map"], ["list", "List"]], UI.tech.map ? "map" : "list", "techmap") + "</div>";
   if (UI.tech.map && ch.length) h += mindMapSvg(n) + '<p class="muted small">Tap a branch to see its next step, then Open to drill in. Amber dashed circles are the opponent’s defenses.</p>';
@@ -326,11 +331,12 @@ function vNode(n) {
 /* ======================= ICONS ======================= */
 /* Category pictograms (two stick figures) and move-type glyphs. 24×24, stroke = currentColor. */
 const PICT = {
-  stand: '<circle cx="7.5" cy="5" r="2"/><path d="M7.5 7v7l-3 6M7.5 14l3 6M7.5 9.5l4.5 2"/><circle cx="16.5" cy="5" r="2"/><path d="M16.5 7v7l-3 6M16.5 14l3 6M16.5 9.5l-4.5 2"/>',
-  guard: '<circle cx="4" cy="16.5" r="2"/><path d="M6 17.5h6l5-7M12 17.5l3 4"/><circle cx="18.5" cy="6" r="2"/><path d="M18.5 8v6l2.5 5M18.5 14l-3 5"/>',
-  pass: '<circle cx="17" cy="4.5" r="2"/><path d="M17 6.5v7l-3 6M17 13.5l3 6M17 9l-4 1"/><circle cx="4" cy="17.5" r="2"/><path d="M6 18.5h5l3-6M11 18.5l3-2"/>',
-  top: '<circle cx="4" cy="18" r="2"/><path d="M6 19h15"/><circle cx="13" cy="6.5" r="2"/><path d="M13 8.5v5M13 13.5l-4 5M13 13.5l4 5M13 10.5l-4 2M13 10.5l4 2"/>',
-  escape: '<circle cx="4" cy="16" r="2"/><path d="M6 17c3-6 8-6 12 0M15 16l3 4"/><circle cx="18" cy="5.5" r="2"/><path d="M18 7.5v4l-3 2"/>',
+  stand: '<circle cx="12" cy="4.5" r="2.2"/><path d="M12 7v7M12 14l-3.5 6M12 14l3.5 6M8 10.5l4-1.5 4 1.5"/>',
+  guard: '<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>',
+  pass: '<path d="M4 17c3-9 13-9 16 0M20 17l-1-4M20 17l-4-1M3 20h18"/>',
+  top: '<path d="M4 18h16M5 15l2-8 5 4 5-4 2 8z"/>',
+  escape: '<path d="M14 4h5v16h-5M4 12h11M11 8l4 4-4 4"/>',
+  finish: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/>',
 };
 const TICON = {
   sub: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
@@ -378,6 +384,35 @@ function canvasHtml(id, svgInner, bounds, legend) {
     '<div class="hint">drag · pinch · tap</div><div class="gchip"></div></div>' + (legend || "");
 }
 
+/* --- the wheel: 5 phases in a loop, finish in the middle, the current roll drawn on top --- */
+const PHASES = CATS.map((c) => c[0]);
+function wheelSvg() {
+  const C = 150, RR = 102, LR = 138, W = 300, H = 300; const R = UI.roll;
+  const ang = (i) => (-90 + i * 72) * Math.PI / 180; const pt = (i, r) => [C + Math.cos(ang(i)) * r, C + Math.sin(ang(i)) * r];
+  const phaseOf = (pid) => { const p = node(pid); return p ? PHASES.indexOf(p.cat) : -1; };
+  const steps = R ? R.steps : []; const posSteps = steps.filter((x) => x.k === "pos"); const curPh = R ? phaseOf(R.pos) : -1;
+  const visits = {}; for (const x of posSteps) { const i = phaseOf(x.id); visits[i] = (visits[i] || 0) + 1; }
+  let h = '<svg class="wheel" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Roll wheel"><defs><marker id="warr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 1L9 5L0 9z" fill="context-stroke"/></marker></defs>';
+  // ring with direction arrows
+  h += '<circle class="ring" cx="' + C + '" cy="' + C + '" r="' + RR + '"/>';
+  for (let i = 0; i < 5; i++) { const a1 = ang(i) + 0.42, a2 = ang(i + 1) - 0.42; const [x1, y1] = [C + Math.cos(a1) * RR, C + Math.sin(a1) * RR], [x2, y2] = [C + Math.cos(a2) * RR, C + Math.sin(a2) * RR]; h += '<path class="ringarr" marker-end="url(#warr)" d="M' + x1.toFixed(1) + " " + y1.toFixed(1) + " A" + RR + " " + RR + " 0 0 1 " + x2.toFixed(1) + " " + y2.toFixed(1) + '"/>'; }
+  // trail chords
+  let last = -1, lastId = null; const seen = {};
+  for (const x of posSteps) { const i = phaseOf(x.id); if (last >= 0 && i !== last) { const [x1, y1] = pt(last, RR - 14), [x2, y2] = pt(i, RR - 14); const k = last + ">" + i; seen[k] = (seen[k] || 0) + 1; const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, dm = Math.hypot(mx - C, my - C); let qx, qy; if (dm < 48) { const px = -(y2 - y1), py = x2 - x1, pl = Math.hypot(px, py) || 1; qx = mx + (px / pl) * 52; qy = my + (py / pl) * 52; } else { qx = mx + (C - mx) * 0.35; qy = my + (C - my) * 0.35; } h += '<path class="trail" style="stroke-width:' + (2 + seen[k]) + '" marker-end="url(#warr)" d="M' + x1.toFixed(1) + " " + y1.toFixed(1) + " Q" + qx.toFixed(1) + " " + qy.toFixed(1) + " " + x2.toFixed(1) + " " + y2.toFixed(1) + '"/>'; } else if (last >= 0 && i === last && x.id !== lastId) { const [x1, y1] = pt(i, RR - 14); h += '<circle class="trail-dot" cx="' + x1.toFixed(1) + '" cy="' + y1.toFixed(1) + '" r="5"/>'; } last = i; lastId = x.id; }
+  const subTried = steps.some((x) => x.k === "mv" && x.t === "sub"); const finished = R && R.finished;
+  if (subTried && curPh >= 0) { const [x1, y1] = pt(curPh, RR - 14); h += '<path class="trail' + (finished ? " win" : " try") + '" marker-end="url(#warr)" d="M' + x1.toFixed(1) + " " + y1.toFixed(1) + " L" + C + " " + C + '"/>'; }
+  // center
+  h += '<g class="ph center' + (finished ? " win" : "") + '"><circle cx="' + C + '" cy="' + C + '" r="30"/><svg x="' + (C - 13) + '" y="' + (C - 17) + '" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + PICT.finish + '</svg><text x="' + C + '" y="' + (C + 20) + '" text-anchor="middle">finish</text></g>';
+  // phases
+  CATS.forEach(([cat, label], i) => {
+    const [x, y] = pt(i, RR), [lx, ly] = pt(i, LR); const cur = i === curPh, vis = !!visits[i]; const anchor = Math.abs(Math.cos(ang(i))) < 0.3 ? "middle" : Math.cos(ang(i)) > 0 ? "start" : "end";
+    h += '<g class="ph' + (cur ? " cur" : "") + (vis ? " vis" : "") + (UI.walkCat === cat && !R ? " pick" : "") + '" data-act="walk-phase" data-cat="' + cat + '" style="color:' + CAT_COLOR[cat] + '"><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="22"/><svg x="' + (x - 13).toFixed(1) + '" y="' + (y - 13).toFixed(1) + '" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + PICT[cat] + "</svg>" +
+      '<text class="lb" x="' + lx.toFixed(1) + '" y="' + (ly + 4).toFixed(1) + '" text-anchor="' + anchor + '">' + esc(label.split(",")[0]) + "</text>" + (visits[i] > 1 ? '<g class="g-badge"><circle cx="' + (x + 17).toFixed(1) + '" cy="' + (y - 17).toFixed(1) + '" r="9"/><text x="' + (x + 17).toFixed(1) + '" y="' + (y - 13.5).toFixed(1) + '" text-anchor="middle">×' + visits[i] + "</text></g>" : "") + "</g>";
+  });
+  if (R) { const p = node(R.pos); if (p) { const [x, y] = pt(curPh, RR); h += '<text class="curlb" x="' + C + '" y="' + (H - 4) + '" text-anchor="middle">now: ' + esc(p.n) + "</text>"; } }
+  return h + "</svg>";
+}
+
 /* --- technique mind map: root on the left, branches to the right (2 levels, tap +N for more) --- */
 function mindMapSvg(root) {
   const gid = "n:" + root.id, st = gState(gid); const R = 15, RR = 24, GAPX = 44, ROW = 40, DEPTH = 2;
@@ -401,47 +436,18 @@ function mindMapSvg(root) {
   return canvasHtml(gid, edges + nodesOut + rootSvg, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }, legend);
 }
 
-/* --- position map: icon nodes in category bands, arrows = transitions; the roll path is drawn on top --- */
-function posMapSvg() {
-  const st = gState("pos"); const R = 21, CW = 104, CH = 78, GX = 8, COLS = 3, BAND = 30, PADB = 10;
-  const all = positions(); const pos = {}; let y = 0, bands = "", nodesOut = ""; const maxW = COLS * CW + (COLS - 1) * GX + PADB * 2;
-  for (const [cat, label] of CATS) {
-    const ps = all.filter((p) => p.cat === cat); if (!ps.length) continue;
-    const rows = Math.ceil(ps.length / COLS); const bh = BAND + rows * CH + PADB; const cols = Math.min(COLS, ps.length);
-    bands += '<g class="g-band"><rect x="0" y="' + y + '" width="' + maxW + '" height="' + bh + '" rx="18"/><text x="' + PADB + 4 + '" y="' + (y + 20) + '" style="fill:' + CAT_COLOR[cat] + '">' + esc(label) + "</text></g>";
-    const x0 = (maxW - (cols * CW + (cols - 1) * GX)) / 2;
-    ps.forEach((p, i) => { const r = Math.floor(i / COLS), c = i % COLS; const n = ps.length - r * COLS; const xo = r === rows - 1 && n < COLS ? (maxW - (n * CW + (n - 1) * GX)) / 2 : x0; pos[p.id] = { cx: xo + c * (CW + GX) + CW / 2, cy: y + BAND + r * CH + R + 4, cat }; });
-    y += bh + 14;
-  }
-  const agg = {};
-  for (const m of nodes()) if (m.k === "mv" && m.to && pos[m.to]) { const from = posOf(m.id).id; if (from === m.to || !pos[from]) continue; const k = from + ">" + m.to; agg[k] = agg[k] || { from, to: m.to, n: 0, names: [], t: m.t }; agg[k].n++; agg[k].names.push(m.n); }
-  const roll = UI.roll; const rollPos = roll ? roll.steps.filter((s) => s.k === "pos").map((s) => s.id) : []; const cur = roll ? roll.pos : null;
-  const sel = st.sel; const conn = new Set(); let edges = "";
-  const edgePath = (a, b) => { const down = b.cy > a.cy, same = Math.abs(a.cy - b.cy) < 1; if (same) { const l = a.cx < b.cx; return "M" + (l ? a.cx + R : a.cx - R) + " " + a.cy + " L" + (l ? b.cx - R - 2 : b.cx + R + 2) + " " + b.cy; } const off = down ? 0 : -14; const x1 = a.cx + off, y1 = down ? a.cy + R : a.cy - R, x2 = b.cx + off, y2 = down ? b.cy - R - 2 : b.cy + R + 2, my = (y1 + y2) / 2; return "M" + x1 + " " + y1 + " C" + x1 + " " + my + "," + x2 + " " + my + "," + x2 + " " + y2; };
-  for (const e of Object.values(agg)) {
-    const a = pos[e.from], b = pos[e.to]; const hl = sel && (e.from === sel || e.to === sel); if (hl) { conn.add(e.from); conn.add(e.to); }
-    edges += '<path class="g-edge' + (sel ? (hl ? " hl" : " dim") : "") + '" style="stroke-width:' + (1.5 + Math.min(e.n, 4) * 0.5) + ";stroke:" + (hl ? typeColor(e.t) : CAT_COLOR[a.cat]) + (hl ? "" : ";opacity:" + (sel || roll ? 0.1 : 0.32)) + '" marker-end="url(#arr-pos)" d="' + edgePath(a, b) + '"><title>' + esc(e.names.join(", ")) + "</title></path>";
-  }
-  // roll path
-  let rp = "";
-  for (let i = 1; i < rollPos.length; i++) { const a = pos[rollPos[i - 1]], b = pos[rollPos[i]]; if (!a || !b || rollPos[i - 1] === rollPos[i]) continue; rp += '<path class="g-edge roll" marker-end="url(#arr-pos)" d="' + edgePath(a, b) + '"/>'; }
-  for (const p of all) { const q = pos[p.id]; if (!q) continue; const visited = rollPos.includes(p.id); nodesOut += iconNode(p, q.cx, q.cy, R, { cls: (sel === p.id ? "sel " : "") + (cur === p.id ? "cur " : "") + (visited ? "vis " : "") + (sel && sel !== p.id && !conn.has(p.id) ? "dim" : roll && cur !== p.id && !visited ? "faint" : ""), max: 15 }); }
-  const legend = '<div class="legend" style="padding-top:10px">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + "</div>";
-  return canvasHtml("pos", bands + edges + rp + nodesOut, { x: -6, y: -6, w: maxW + 12, h: y + 6 }, legend);
-}
-
 /* --- canvas behaviour: pan, pinch, wheel, tap, momentum --- */
 function initGraphs() {
   document.querySelectorAll(".canvas[data-graph]").forEach((el) => {
     if (el.dataset.ready) return; el.dataset.ready = "1";
     const id = el.dataset.graph, st = gState(id), vp = el.querySelector(".vp"), bgp = el.querySelector(".bgp");
     const bx = +el.dataset.x0, by = +el.dataset.y0, bw = +el.dataset.w, bh = +el.dataset.h; const S0 = 1;
-    if (id !== "pos") el.style.height = Math.min(460, Math.max(220, Math.round(bh * S0 + 70))) + "px"; else if (UI.roll) el.style.height = "280px";
+    el.style.height = Math.min(460, Math.max(220, Math.round(bh * S0 + 70))) + "px";
     const W = el.clientWidth || 358, H = el.clientHeight || 440;
     const apply = () => { vp.setAttribute("transform", "translate(" + st.tx + " " + st.ty + ") scale(" + st.s + ")"); bgp.setAttribute("transform", "translate(" + (st.tx % (22 * st.s)) + " " + (st.ty % (22 * st.s)) + ") scale(" + st.s + ")"); };
     const fit = () => { const s = Math.min(1.2, Math.max(0.5, Math.min((W - 24) / bw, (H - 24) / bh))); st.s = s; st.tx = (W - bw * s) / 2 - bx * s; st.ty = bh * s > H - 24 ? 12 - by * s : (H - bh * s) / 2 - by * s; apply(); };
     const zoomAt = (f, cx, cy) => { const ns = Math.min(3, Math.max(0.35, st.s * f)); const k = ns / st.s; st.tx = cx - (cx - st.tx) * k; st.ty = cy - (cy - st.ty) * k; st.s = ns; apply(); };
-    const home = () => { const s = Math.min(S0, Math.max(0.8, (W - 16) / bw)); st.s = s; st.tx = bw * s <= W - 16 ? (W - bw * s) / 2 - bx * s : 8 - bx * s; st.ty = bh * s <= H - 24 ? (H - bh * s) / 2 - by * s : id === "pos" ? 8 - by * s : H / 2; apply(); };
+    const home = () => { const s = Math.min(S0, Math.max(0.8, (W - 16) / bw)); st.s = s; st.tx = bw * s <= W - 16 ? (W - bw * s) / 2 - bx * s : 8 - bx * s; st.ty = bh * s <= H - 24 ? (H - bh * s) / 2 - by * s : H / 2; apply(); };
     const centerOn = (nid) => { const g = el.querySelector('.g-node[data-id="' + nid + '"] circle.b'); if (!g) return; const cx = +g.getAttribute("cx"), cy = +g.getAttribute("cy"); st.tx = W / 2 - cx * st.s; st.ty = H / 2 - cy * st.s; apply(); };
     if (!st.s) home(); else apply();
     if (st.focus) { centerOn(st.focus); st.focus = null; }
@@ -469,20 +475,18 @@ function initGraphs() {
 function tapNode(gid, nid, el) {
   const st = gState(gid);
   if (!nid) { if (st.sel) { st.sel = null; refreshGraph(gid, el); } return; }
-  if (gid !== "pos") { const g = el.querySelector('.g-node[data-id="' + nid + '"] .g-badge'); if (g) st.open[nid] = true; else if (st.sel === nid && kids(nid).length) st.open[nid] = !st.open[nid]; }
+  { const g = el.querySelector('.g-node[data-id="' + nid + '"] .g-badge'); if (g) st.open[nid] = true; else if (st.sel === nid && kids(nid).length) st.open[nid] = !st.open[nid]; }
   st.sel = nid; refreshGraph(gid, el);
 }
 function refreshGraph(gid, el) {
-  const html = gid === "pos" ? posMapSvg() : mindMapSvg(node(gid.slice(2)));
+  const html = mindMapSvg(node(gid.slice(2)));
   const tmp = document.createElement("div"); tmp.innerHTML = html; const fresh = tmp.querySelector(".canvas");
   el.replaceWith(fresh); initGraphs();
 }
 function updateChip(gid, chip) {
   const st = gState(gid); const n = st.sel ? node(st.sel) : null;
   if (!n) { chip.classList.remove("on"); chip.innerHTML = ""; return; }
-  let sub = "", btns = '<button class="btn" data-act="open" data-id="' + n.id + '">Open</button>';
-  if (gid === "pos") { let outN = 0, inN = 0; for (const m of nodes()) if (m.k === "mv" && m.to) { if (posOf(m.id).id === n.id && m.to !== n.id) outN++; if (m.to === n.id && posOf(m.id).id !== n.id) inN++; } sub = kids(n.id).length + " options · " + outN + " paths out · " + inN + " in"; if (!UI.roll) btns = '<button class="btn ghost" data-act="open" data-id="' + n.id + '">Open</button><button class="btn" data-act="roll-start" data-pos="' + n.id + '">Roll</button>'; else if (UI.roll.pos !== n.id) btns = '<button class="btn" data-act="roll-goto" data-pos="' + n.id + '">I’m here now</button>'; }
-  else sub = (n.k === "df" ? "Their defense" : n.k === "pos" ? "Position" : TNAME[n.t] || "Option") + (kids(n.id).length ? " · " + kids(n.id).length + (n.k === "mv" ? " defenses" : " answers") : "") + (n.to && node(n.to) ? " · → " + node(n.to).n : "");
+  let sub = (n.k === "df" ? "Their defense" : n.k === "pos" ? "Position" : TNAME[n.t] || "Option") + (kids(n.id).length ? " · " + kids(n.id).length + (n.k === "mv" ? " defenses" : " answers") : "") + (n.to && node(n.to) ? " · → " + node(n.to).n : ""); const btns = '<button class="btn" data-act="open" data-id="' + n.id + '">Open</button>';
   chip.innerHTML = '<span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + '</span><div class="txt"><b>' + esc(n.n) + "</b><small>" + esc(sub) + "</small></div>" + btns;
   chip.classList.add("on");
 }
@@ -492,11 +496,13 @@ function updateChip(gid, chip) {
 function rollStart(posId) {
   const p = node(posId) || positions()[0]; if (!p) return;
   UI.roll = { pos: p.id, cur: p.id, steps: [{ id: p.id, k: "pos", n: p.n, t: "" }], t0: Date.now() };
-  UI.tech.id = null; UI.tech.view = "pos"; UI.tech.q = ""; const st = gState("pos"); st.sel = null; st.focus = p.id; render();
+  UI.tech.id = null; UI.tech.view = "pos"; UI.tech.q = ""; UI.walkCat = null; render();
 }
 function rollGoto(posId, how) {
   const R = UI.roll, p = node(posId); if (!R || !p) return;
-  R.pos = p.id; R.cur = p.id; R.steps.push({ id: p.id, k: "pos", n: p.n, t: "", how: how || "" }); gState("pos").focus = p.id; render();
+  const times = R.steps.filter((x) => x.k === "pos" && x.id === p.id).length;
+  R.pos = p.id; R.cur = p.id; R.steps.push({ id: p.id, k: "pos", n: p.n, t: "", how: how || "" }); UI.walkCat = null; render();
+  if (times) toast("Back in " + p.n + " (" + (times + 1) + (times === 1 ? "nd" : times === 2 ? "rd" : "th") + " time)");
 }
 function rollPick(nid) {
   const R = UI.roll, n = node(nid); if (!R || !n) return;
@@ -506,24 +512,27 @@ function rollPick(nid) {
 }
 function rollPanel() {
   const R = UI.roll; const cur = node(R.cur) || node(R.pos); const kind = cur.k; const ch = kids(cur.id);
-  const crumbs = R.steps.slice(-5).map((s) => '<span class="crumb ' + s.k + '">' + esc(s.n) + "</span>").join('<span class="muted">›</span>');
-  let h = '<div class="roll"><div class="crumbs">' + crumbs + "</div>";
-  const row = (n, act, extra) => '<button class="row" data-act="' + act + '" data-id="' + n.id + '"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + '</span><div class="txt"><b>' + esc(n.n) + "</b>" + (extra ? "<small>" + extra + "</small>" : "") + "</div>" + CHEV + "</button>";
+  const trail = R.steps.map((st, i) => '<button type="button" class="crumb ' + st.k + (i === R.steps.length - 1 ? " last" : "") + '" data-act="roll-rewind" data-i="' + i + '">' + esc(st.n) + "</button>").join('<span class="sep">›</span>');
+  let h = '<div class="walk"><div class="histwrap"><div class="hist" id="hist">' + trail + "</div></div>";
+  if (UI.walkCat) h += '<div class="jump"><p class="muted small">I ended up in…</p><div class="chips">' + positions().filter((p) => p.cat === UI.walkCat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div></div>";
+  const row = (n, act, extra) => '<button class="row choice" data-act="' + act + '" data-id="' + n.id + '"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + '</span><div class="txt"><b>' + esc(n.n) + "</b>" + (extra ? "<small>" + extra + "</small>" : "") + "</div>" + CHEV + "</button>";
+  const ok = (label, sub, act, attrs) => '<button class="row choice ok" data-act="' + act + '" ' + (attrs || "") + '><span class="pict" style="color:var(--ok)">' + svgIcon('<path d="M5 12l5 5L19 7"/>') + '</span><div class="txt"><b>' + label + "</b><small>" + sub + "</small></div>" + CHEV + "</button>";
   if (kind === "pos") {
-    h += '<h3>You are in ' + esc(cur.n) + " · what do you do?</h3>";
-    h += ch.length ? '<div class="list">' + ch.map((n) => row(n, "roll-pick", (TNAME[n.t] || "") + (n.to && node(n.to) ? " · → " + esc(node(n.to).n) : ""))).join("") + "</div>" : '<p class="empty">No options here yet.</p>';
+    h += '<h3><span class="q">You are in</span> ' + esc(cur.n) + '</h3><p class="qsub">What do you do?</p>';
+    h += ch.length ? '<div class="list">' + ch.map((n) => row(n, "roll-pick", (TNAME[n.t] || "") + (n.to && node(n.to) ? " · leads to " + esc(node(n.to).n) : ""))).join("") + "</div>" : '<p class="empty">No options written for this position yet.</p>';
   } else if (kind === "mv") {
-    h += "<h3>" + esc(cur.n) + " · what does the opponent do?</h3>";
-    h += '<div class="list">' + ch.map((n) => row(n, "roll-pick", kids(n.id).length + " answers")).join("");
-    if (cur.t === "sub") h += '<button class="row" data-act="roll-finish"><span class="pict" style="color:var(--ok)">' + svgIcon('<path d="M5 12l5 5L19 7"/>') + '</span><div class="txt"><b>Tap! I finished it</b><small>end the roll with a submission</small></div>' + CHEV + "</button>";
-    if (cur.to && node(cur.to)) h += '<button class="row" data-act="roll-goto" data-pos="' + cur.to + '"><span class="pict" style="color:var(--ok)">' + svgIcon('<path d="M5 12l5 5L19 7"/>') + '</span><div class="txt"><b>It worked → ' + esc(node(cur.to).n) + "</b><small>continue from the new position</small></div>" + CHEV + "</button>";
+    h += '<h3><span class="q">You go for</span> ' + esc(cur.n) + '</h3><p class="qsub">What does the opponent do?</p>';
+    h += '<div class="list">' + ch.map((n) => row(n, "roll-pick", kids(n.id).length ? kids(n.id).length + " answers ready" : "no answer yet")).join("");
+    if (cur.t === "sub") h += ok("Tap! It’s over", "finish the roll with this submission", "roll-finish");
+    if (cur.to && node(cur.to)) h += ok("It works → " + esc(node(cur.to).n), "continue from the new position", "roll-goto", 'data-pos="' + cur.to + '"');
+    if (!ch.length && !cur.to && cur.t !== "sub") h += '<p class="empty">No defense written yet.</p>';
     h += "</div>";
   } else {
-    h += "<h3>They " + esc(cur.n.replace(/^They /i, "").toLowerCase()) + " · your answer?</h3>";
-    h += ch.length ? '<div class="list">' + ch.map((n) => row(n, "roll-pick", (TNAME[n.t] || "") + (n.to && node(n.to) ? " · → " + esc(node(n.to).n) : ""))).join("") + "</div>" : '<p class="empty">No answer written yet. This is a gap in your game.</p>';
+    h += '<h3><span class="q">They</span> ' + esc(cur.n.replace(/^They /i, "").toLowerCase()) + '</h3><p class="qsub">What do you do now?</p>';
+    h += ch.length ? '<div class="list">' + ch.map((n) => row(n, "roll-pick", (TNAME[n.t] || "") + (n.to && node(n.to) ? " · leads to " + esc(node(n.to).n) : ""))).join("") + "</div>" : '<p class="empty">No answer written yet. This is a gap in your game.</p>';
   }
-  h += '<div class="actions" style="margin-top:8px"><button class="btn ghost" data-act="roll-other">Something else happened…</button><button class="btn ghost" data-act="roll-undo"' + (R.steps.length < 2 ? " disabled" : "") + '>Undo</button></div>';
-  h += '<div class="actions"><button class="btn" data-act="roll-end">End roll</button><button class="btn ghost danger" data-act="roll-cancel">' + (UI.confirm === "roll-cancel" ? "Discard this roll?" : "Discard") + '</button></div></div>';
+  h += '<div class="actions" style="margin-top:6px"><button class="btn ghost" data-act="roll-other">Something else happened…</button><button class="btn ghost" data-act="roll-undo"' + (R.steps.length < 2 ? " disabled" : "") + '>Undo</button></div>';
+  h += '<div class="actions"><button class="btn" data-act="roll-end">End: points / time</button><button class="btn ghost danger" data-act="roll-cancel">' + (UI.confirm === "roll-cancel" ? "Discard this roll?" : "Discard") + '</button></div></div>';
   return h;
 }
 function rollOtherSheet() {
@@ -532,11 +541,11 @@ function rollOtherSheet() {
 }
 function rollEndSheet(finished) {
   const R = UI.roll; if (!R) return;
-  const b = '<div class="field"><span class="lbl">How did it end?</span>' + chips("res", [["sub", "I finished a sub"], ["tapped", "I got tapped"], ["time", "Time ran out"], ["drill", "Just drilling"]], finished ? "sub" : "time") + "</div>" + field("f-note", "Note", ta("f-note", "", "What worked, what to fix…")) + '<div class="field"><span class="lbl">Date</span>' + inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"') + "</div>";
-  openSheet("End roll", b, { state: { picks: { res: finished ? "sub" : "time" } }, saveLabel: "Save roll", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), res: pickVal("res", "time"), note: sv("f-note").trim(), steps: R.steps, sec: Math.round((Date.now() - R.t0) / 1000) }; S.rolls.items.push(rec); save("rolls"); UI.roll = null; UI.tech.view = "rolls"; UI.rollId = rec.id; const st = gState("pos"); st.sel = null; render(); toast("Roll saved"); return true; } });
+  const b = '<div class="field"><span class="lbl">How did it end?</span>' + chips("res", [["sub", "I finished a sub"], ["points", "Won on points"], ["tapped", "I got tapped"], ["time", "Time ran out"], ["drill", "Just drilling"]], finished ? "sub" : "time") + "</div>" + field("f-note", "Note", ta("f-note", "", "What worked, what to fix…")) + '<div class="field"><span class="lbl">Date</span>' + inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"') + "</div>";
+  openSheet("End roll", b, { state: { picks: { res: finished ? "sub" : "time" } }, saveLabel: "Save roll", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), res: pickVal("res", "time"), note: sv("f-note").trim(), steps: R.steps, sec: Math.round((Date.now() - R.t0) / 1000) }; S.rolls.items.push(rec); save("rolls"); UI.roll = null; UI.tech.view = "rolls"; UI.rollId = rec.id; render(); toast("Roll saved"); return true; } });
 }
 function rollStatsFor(nid) { let used = 0; for (const r of S.rolls.items) if (r.steps.some((s) => s.id === nid)) used++; return { used }; }
-const RES_NAME = { sub: "Finished with a submission", tapped: "Got tapped", time: "Time ran out", drill: "Drilling" };
+const RES_NAME = { sub: "Finished with a submission", points: "Won on points", tapped: "Got tapped", time: "Time ran out", drill: "Drilling" };
 function rollSummary(r) {
   const ps = r.steps.filter((s) => s.k === "pos"), mv = r.steps.filter((s) => s.k === "mv"), df = r.steps.filter((s) => s.k === "df"), gaps = r.steps.filter((s) => s.how === "gap");
   const subs = mv.filter((s) => s.t === "sub").length; const counts = {}; for (const s of ps) counts[s.n] = (counts[s.n] || 0) + 1; const most = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
@@ -934,11 +943,14 @@ document.addEventListener("click", (e) => {
     case "settings": settingsSheet(); break;
     case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); break;
     case "roll-start": rollStart(ds.pos); break;
+    case "walk-phase": UI.walkCat = UI.walkCat === ds.cat && !UI.roll ? null : ds.cat; render(); break;
+    case "walk-pos": if (UI.roll) rollGoto(ds.id, "gap"); else rollStart(ds.id); break;
     case "roll-pick": rollPick(ds.id); break;
     case "roll-goto": rollGoto(ds.pos, "worked"); break;
     case "roll-other": rollOtherSheet(); break;
+    case "roll-rewind": if (UI.roll) { const i = +ds.i; if (i < UI.roll.steps.length - 1) { UI.roll.steps = UI.roll.steps.slice(0, i + 1); const last = UI.roll.steps[i]; UI.roll.cur = last.id; const lp = UI.roll.steps.slice().reverse().find((x) => x.k === "pos"); UI.roll.pos = lp ? lp.id : UI.roll.pos; UI.roll.finished = false; render(); toast("Rewound to " + last.n); } } break;
     case "roll-undo": if (UI.roll && UI.roll.steps.length > 1) { UI.roll.steps.pop(); const last = UI.roll.steps[UI.roll.steps.length - 1]; UI.roll.cur = last.id; const lp = UI.roll.steps.slice().reverse().find((x) => x.k === "pos"); UI.roll.pos = lp ? lp.id : UI.roll.pos; render(); } break;
-    case "roll-finish": rollEndSheet(true); break;
+    case "roll-finish": UI.roll.finished = true; rollEndSheet(true); break;
     case "roll-end": rollEndSheet(false); break;
     case "roll-cancel": if (armConfirm("roll-cancel")) { UI.roll = null; render(); } break;
     case "roll-open": UI.rollId = ds.id; go("enter-l"); break;
