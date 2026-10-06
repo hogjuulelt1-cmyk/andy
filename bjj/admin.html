@@ -32,6 +32,11 @@ code{font-family:var(--display);font-size:1rem;letter-spacing:.08em;background:v
 .muted{color:var(--muted)}.small{font-size:.84rem}.empty{color:var(--muted);padding:14px 0;text-align:center}
 #login{max-width:380px;margin:12vh auto;display:flex;flex-direction:column;gap:12px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}.toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:grid;place-items:center;z-index:20;padding:16px}.modal form{background:var(--surface);border-radius:16px;padding:20px;width:min(560px,100%);display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow:auto}
+.bar{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden;min-width:90px}.bar i{display:block;height:100%;background:var(--accent)}.bar.full i{background:var(--ok)}
+.sw{display:inline-block;width:28px;height:10px;border-radius:2px;border:1px solid var(--line);vertical-align:middle;margin-right:6px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font:inherit;font-size:.84rem;font-weight:600;color:var(--muted);cursor:pointer}.tabs button.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap}
 @media (max-width:760px){.app{grid-template-columns:1fr}aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line)}aside h1{width:100%;padding-bottom:6px}aside .who{margin-top:0;width:100%}main{padding:16px}}
 </style>
 </head>
@@ -39,6 +44,8 @@ code{font-family:var(--display);font-size:1rem;letter-spacing:.08em;background:v
 <div id="root"></div>
 <div class="toast" id="toast"></div>
 <script src="config.js"></script>
-<script src="admin.js?v=1"></script>
+<script src="meta.js?v=3"></script>
+<script src="seed.js?v=7"></script>
+<script src="admin.js?v=2"></script>
 </body>
 </html>
