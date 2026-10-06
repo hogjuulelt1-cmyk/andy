@@ -7,15 +7,6 @@ to `main`. UI text is Mongolian; talk to the user in Mongolian.
 `tools/build.py` regenerates `index.html` from an old artifact file that is no longer
 in the repo — edit `index.html` directly.
 
-## Travel BNPL (`travel-bnpl/`)
-
-A separate Next.js + Prisma app (Korea → Mongolia tour packages, deposit + 0%
-installments). It has its own `CLAUDE.md`, `docs/`, `package.json` and pnpm
-workspace; run its commands from inside `travel-bnpl/`. It is excluded from the
-Chinbilig Vercel deploy via `.vercelignore` and needs its own Vercel project with
-Root Directory = `travel-bnpl`. Its SessionStart hook lives at
-`travel-bnpl/.claude/hooks/session-start.sh`.
-
 ## Skills (in `.claude/skills/`)
 
 Load the matching skill before starting the work:
