@@ -10,7 +10,7 @@
 
 ## Нэг файлт preview
 
-`node tools/build-preview.mjs out/preview.html` — бүх демо урсгалыг (багц → нэгдэх → Toss checkout → 내 여행 → 동행 그룹) нэг статик HTML болгож гаргана; ижил `messages/*.json`, `seed/*.json`-оос уншина, төлөв localStorage-д. Vercel-гүйгээр хуваалцахад (claude.ai artifact, GitHub Pages г.м.) зориулсан.
+`pnpm preview` (`tools/build-preview.ts`) — бүх демо урсгалыг (багц → нэгдэх → Toss checkout → 내 여행 → 동행 그룹) нэг статик HTML болгож гаргана; ижил `messages/*.json`, `seed/*.json`-оос уншина, `src/lib/art.ts` (зураглал, маршрутын зураг) болон `src/lib/matching.ts`-г esbuild-ээр bundle хийж ашиглана, төлөв localStorage-д. Vercel-гүйгээр хуваалцахад (claude.ai artifact, GitHub Pages г.м.) зориулсан.
 
 ## Ажиллуулах
 

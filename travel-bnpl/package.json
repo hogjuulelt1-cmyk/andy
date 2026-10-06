@@ -15,7 +15,8 @@
     "test:e2e": "playwright test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "preview": "tsx tools/build-preview.ts out/preview.html"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -34,6 +35,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^18.0.5",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "eslint-config-prettier": "^10.1.8",
