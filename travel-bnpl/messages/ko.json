@@ -13,5 +13,12 @@
       "installments": "나머지는 출발 전까지 0% 분할"
     },
     "comingSoon": "곧 오픈합니다."
+  },
+  "nav": {
+    "language": "언어",
+    "locales": {
+      "ko": "한국어",
+      "en": "English"
+    }
   }
 }

@@ -13,5 +13,12 @@
       "installments": "Rest in 0% installments before departure"
     },
     "comingSoon": "Opening soon."
+  },
+  "nav": {
+    "language": "Language",
+    "locales": {
+      "ko": "한국어",
+      "en": "English"
+    }
   }
 }
