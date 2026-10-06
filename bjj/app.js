@@ -224,7 +224,7 @@ function beltHtml(big) {
   const bar = b.id === "black" ? "#c62828" : "#111114";
   return '<span class="b-main">' + beltSwatch(b) + '</span><span class="b-bar" style="background:' + bar + '">' + "<i></i>".repeat(st) + "</span>";
 }
-function renderBelt() { const el = $("belt"); if (!el) return; const b = beltDef(S.belt.track, S.belt.belt); el.innerHTML = beltHtml(); el.setAttribute("aria-label", b.n + " belt, " + (S.belt.stripes || 0) + " stripes"); }
+function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = "belt-page"; el.dataset.v = "open"; el.style.cursor = "pointer"; const b = beltDef(S.belt.track, S.belt.belt); el.innerHTML = beltHtml(); el.setAttribute("aria-label", b.n + " belt, " + (S.belt.stripes || 0) + " stripes"); }
 
 /* ---------- tabs & render ---------- */
 const TABS = [
@@ -932,6 +932,7 @@ function sessSheet(id) {
   let b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", s ? s.d : todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", s ? s.min : 60, "number", 'inputmode="numeric" min="0" step="5"')) + "</div>";
   b += '<div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, s ? s.type : "gi") + "</div>";
   b += '<div class="grid2">' + field("f-rolls", "Rounds (sparring)", inp("f-rolls", s ? s.rolls : "", "number", 'inputmode="numeric" min="0"')) + '<div class="field"><span class="lbl">How hard was it (1–5)</span>' + scale("rpe", s ? +s.rpe : 0, 1, 5) + "</div></div>";
+  if (CLUB.id && CLUB.members) { const me = myUid(); const ms = (CLUB.members.list || []).filter((m) => attKey(m) !== me).sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))); const sel = (UI.sheet && UI.sheet.with) || (s && s.with) || []; if (ms.length) b += '<div class="field"><span class="lbl">Rolled with</span><div class="chips">' + ms.map((m) => '<button type="button" class="chip' + (sel.includes(attKey(m)) ? " on" : "") + '" data-act="with-toggle" data-who="' + attKey(m) + '">' + esc(m.n || m.email || "Member") + "</button>").join("") + "</div></div>"; }
   b += picker("tech", "Techniques drilled", "mv", { ph: "Search techniques…" });
   b += picker("subs", "I finished", "sub", { ph: "Add a submission…", counts: true });
   b += picker("taps", "Caught me", "sub", { ph: "What caught you…", counts: true });
@@ -940,15 +941,15 @@ function sessSheet(id) {
   b += field("f-note", "Notes", ta("f-note", s ? s.note : "", ""));
   return b; };
   openSheet(s ? "Edit training" : "Log training", body, {
-    state: { picks: { type: s ? s.type : "gi", rpe: s ? +s.rpe : 0 }, pk: { tech: clone(s ? s.tech || [] : []), subs: clone(s ? s.subs || [] : []), taps: clone(s ? s.taps || [] : []) } },
+    state: { picks: { type: s ? s.type : "gi", rpe: s ? +s.rpe : 0 }, with: clone(s ? s.with || [] : []), pk: { tech: clone(s ? s.tech || [] : []), subs: clone(s ? s.subs || [] : []), taps: clone(s ? s.taps || [] : []) } },
     onSave() {
       const d = sv("f-d"); if (!d || d > todayIso()) { toast("Check the date"); return false; }
       const min = +sv("f-min"); if (!min) { $("f-min").focus(); return false; }
       const rec = s || { id: uid() }; const old = s ? s.d : "";
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
-      rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim();
-      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); toast("Training saved"); render(); return true;
+      rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
+      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); } toast("Training saved"); render(); return true;
     },
     onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); toast("Deleted"); render(); return true; } : null,
   });
@@ -1049,14 +1050,17 @@ function blogSheet(id, rid) {
 VIEWS.belt = function () {
   const track = S.belt.track; const ladder = SEED.belts[track]; const cur = beltDef(track, S.belt.belt);
   const idx = ladder.findIndex((b) => b.id === S.belt.belt);
-  let h = '<div class="card"><div class="belt big" role="img" aria-label="' + esc(cur.n) + ' belt">' + beltHtml(true) + "</div>";
-  h += '<div><h2>' + esc(cur.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : "") + "</h2>" + (S.belt.since ? '<p class="muted small">' + fmtLong(S.belt.since) + " · " + monthsSince(S.belt.since) + " months</p>" : '<p class="muted small">Log when you got it.</p>') + "</div>";
-  if (cur.min) h += '<p class="small">' + esc(cur.min) + " (IBJJF).</p>";
-  h += '<div class="actions"><button class="btn" data-act="add-promo">Log a promotion</button><button class="btn ghost" data-act="edit-belt">Edit current belt</button></div></div>';
+  let h = '<button class="card beltcard" data-act="belt-page" aria-expanded="' + !!UI.beltPage + '"><div class="belt big" role="img" aria-label="' + esc(cur.n) + ' belt">' + beltHtml(true) + '</div><div class="card-head"><div><h2>' + esc(cur.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : "") + "</h2>" + (S.belt.since ? '<p class="muted small">' + fmtLong(S.belt.since) + " · " + monthsSince(S.belt.since) + " months" + (S.belt.byCoach ? " · set by your coach" : "") + "</p>" : '<p class="muted small">Tap to log when you got it.</p>') + "</div>" + CHEV + "</div></button>";
+  if (!UI.beltPage) return h + vBeltGoalsHistory(track, cur);
+  if (cur.min) h += '<div class="card"><p class="small">' + esc(cur.min) + " (IBJJF).</p>" + '<div class="actions"><button class="btn" data-act="add-promo">Log a promotion</button><button class="btn ghost" data-act="edit-belt">Edit current belt</button></div></div>';
+  else h += '<div class="card"><div class="actions"><button class="btn" data-act="add-promo">Log a promotion</button><button class="btn ghost" data-act="edit-belt">Edit current belt</button></div></div>';
   h += seg([["kids", "Kids 4–15"], ["adult", "Adult 16+"]], track, "belttrack");
   h += '<div class="card"><h3>Ladder</h3><div class="ladder">' + ladder.map((b, i) => '<div class="rung' + (i === idx ? " cur" : i < idx ? " past" : "") + '"><span class="sw">' + beltSwatch(b) + '</span><span style="flex:1">' + esc(b.n) + (i === idx ? ' <span class="pill ok">now</span>' : "") + '</span><span class="muted small">' + esc(b.age) + " yrs</span></div>").join("") + "</div>" +
     '<p class="muted small">' + (track === "kids" ? "Kids belts run to age 15, then the adult ladder." : "0–4 stripes per belt. Times are minimums.") + "</p></div>";
-  // goals
+  return h;
+};
+function vBeltGoalsHistory(track, cur) {
+  let h = "";
   const goals = S.belt.goals[S.belt.belt] || [];
   const done = goals.filter((g) => g.done).length;
   h += '<div class="card"><div class="card-head"><h3>Things to learn at this belt</h3><span class="muted small num">' + done + " / " + goals.length + "</span></div>";
@@ -1104,7 +1108,8 @@ VIEWS.weight = function () {
   let h = '<div class="card"><form class="grid2" id="w-form" style="align-items:end">' + field("w-kg", "Today’s weight, kg", inp("w-kg", "", "number", 'inputmode="decimal" step="0.1" min="10" max="200" placeholder="' + (last ? last.kg : "45.0") + '"')) + field("w-d", "Date", inp("w-d", todayIso(), "date", 'max="' + todayIso() + '"')) + '<button class="btn" type="submit" style="grid-column:1/-1">Log it</button></form></div>';
   if (last) {
     const wkAgo = items.filter((x) => x.d <= addDays(last.d, -7)).pop(); const diff = wkAgo ? (last.kg - wkAgo.kg) : null;
-    h += '<div class="card"><div class="summary"><div class="stat"><b>' + last.kg + '</b><span>latest, kg</span></div><div class="stat"><b>' + (diff == null ? "—" : (diff > 0 ? "+" : "") + diff.toFixed(1)) + '</b><span>7 days</span></div><div class="stat"><b>' + (lim == null ? "—" : (lim - last.kg).toFixed(1)) + '</b><span>' + (lim == null ? "no limit set" : "to the limit") + "</span></div></div>" + weightChart(items.slice(-30), lim) + "</div>";
+    const rng = UI.wRange || "90"; const from = rng === "all" ? "" : addDays(todayIso(), -+rng); const shown = items.filter((x) => x.d >= from);
+    h += '<div class="card"><div class="summary"><div class="stat"><b>' + last.kg + '</b><span>latest, kg</span></div><div class="stat"><b>' + (diff == null ? "—" : (diff > 0 ? "+" : "") + diff.toFixed(1)) + '</b><span>7 days</span></div><div class="stat"><b>' + (lim == null ? "—" : (lim - last.kg).toFixed(1)) + '</b><span>' + (lim == null ? "no limit set" : "to the limit") + "</span></div></div>" + '<div class="chips">' + [["30", "30 days"], ["90", "3 months"], ["365", "Year"], ["all", "All"]].map((r) => '<button type="button" class="chip' + (rng === r[0] ? " on" : "") + '" data-act="w-range" data-v="' + r[0] + '">' + r[1] + "</button>").join("") + "</div>" + weightChart(shown.length ? shown : items.slice(-1), lim) + "</div>";
   }
   h += '<div class="card"><h3>Competition weight class</h3>' + field("w-cls", "Category", '<select id="w-cls" data-act-change="w-cls">' + Object.entries(SEED.weightClasses).map(([k, v]) => '<option value="' + k + '"' + (k === S.weight.cls ? " selected" : "") + ">" + esc(v.n) + "</option>").join("") + "</select>") +
     '<div class="list">' + cls.c.map((c) => '<button class="row" data-act="w-target" data-v="' + esc(c[0]) + '"><span class="check' + (S.weight.target === c[0] ? " on" : "") + '">' + CHECK + '</span><div class="txt"><b>' + esc(c[0]) + "</b></div><span class=\"num\">" + (c[1] == null ? "no limit" : c[1] + " kg limit") + "</span></button>").join("") + "</div>" +
@@ -1120,7 +1125,8 @@ function weightSheet(id) {
   });
 }
 function weightChart(items, lim) {
-  if (items.length < 2) return '<p class="muted small">The chart appears after two or more entries.</p>';
+  if (items.length === 1) items = [{ d: addDays(items[0].d, -1), kg: items[0].kg, ghost: true }, items[0]];
+  if (!items.length) return "";
   const W = 320, H = 160, px = 28, py = 14; const vals = items.map((x) => +x.kg); let lo = Math.min(...vals, lim == null ? Infinity : lim), hi = Math.max(...vals, lim == null ? -Infinity : lim); if (hi - lo < 2) { lo -= 1; hi += 1; } lo = Math.floor(lo - 0.5); hi = Math.ceil(hi + 0.5);
   const x = (i) => px + (i / (items.length - 1)) * (W - px - 6), y = (v) => py + (1 - (v - lo) / (hi - lo)) * (H - py * 2);
   const d = items.map((it, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(it.kg).toFixed(1)).join(" ");
@@ -1256,7 +1262,7 @@ function drillDone(id) {
   const b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", "", "number", 'inputmode="numeric"')) + "</div>" + field("f-note", "Note", inp("f-note", "", "text", 'placeholder="felt the timing / still slow on the left"'));
   openSheet(d.n, b, { saveLabel: "Log it", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), cat: "drill", drill: d.id, n: d.n, min: +sv("f-min") || 0, note: sv("f-note").trim() }; S.body.items.push(rec); save("body"); if (CLUB.id) attMark(rec.d, true); toast("Logged"); render(); return true; } });
 }
-VIEWS.me = function () { const v = UI.seg.me || "belt"; return seg(SEGS.me, v, "segview") + (v === "weight" ? VIEWS.weight() : v === "comp" ? VIEWS.comp() : (S.belt.byCoach ? '<div class="tip">Your belt is set by your coach. Ask them if something is off.</div>' : "") + VIEWS.belt()); };
+VIEWS.me = function () { const v = UI.seg.me || "belt"; return seg(SEGS.me, v, "segview") + (v === "weight" ? VIEWS.weight() : v === "comp" ? VIEWS.comp() : VIEWS.belt()); };
 
 /* ======================= CLUB ======================= */
 /* Shared docs: clubs/index, club/<id>/profile, club/<id>/members, club/<id>/pay/<uid>. Local mode keeps them in localStorage. */
@@ -1294,7 +1300,7 @@ async function clubLoad() {
       CLUB.profile = await cget("club/" + id + "/profile");
       if (!CLUB.profile) { S.settings.clubId = ""; save("settings"); CLUB.id = null; CLUB.index = (await cget("clubs/index")) || { list: [] }; }
       else { CLUB.id = id; CLUB.members = (await cget("club/" + id + "/members")) || { list: [] }; CLUB.pay = {}; const rows = await clist("club/" + id + "/pay/"); for (const r of rows) CLUB.pay[r.path.split("/").pop()] = r.data;
-        CLUB.attMonth = (await cget("club/" + id + "/att/" + thisMonth())) || { days: {} }; CLUB.att = { ym: thisMonth(), doc: CLUB.attMonth }; CLUB.results = (await cget("club/" + id + "/results")) || { list: [] }; CLUB.notes = (await cget("club/" + id + "/notes")) || { list: [] }; CLUB.events = (await cget("club/" + id + "/events")) || { list: [] }; }
+        CLUB.attMonth = (await cget("club/" + id + "/att/" + thisMonth())) || { days: {} }; CLUB.rolls = (await cget("club/" + id + "/rolls/" + thisMonth())) || { list: [] }; CLUB.att = { ym: thisMonth(), doc: CLUB.attMonth }; CLUB.results = (await cget("club/" + id + "/results")) || { list: [] }; CLUB.notes = (await cget("club/" + id + "/notes")) || { list: [] }; CLUB.events = (await cget("club/" + id + "/events")) || { list: [] }; }
     }
   } catch (e) { CLUB.err = "Could not load the club"; console.warn(e); }
   CLUB.busy = false; CLUB.loadedFor = S.settings.clubId || "-"; if (UI.tab === "club") render();
@@ -1355,6 +1361,13 @@ async function clubLeave() {
 }
 function fmtMoney(v) { v = +v || 0; return v.toLocaleString("en-US") + "₮"; }
 function lastPaid(uid) { const p = CLUB.pay[uid]; if (!p || !p.items.length) return null; return p.items.slice().sort((a, b) => (a.per < b.per ? 1 : -1))[0]; }
+function membership(uid) {
+  const p = CLUB.pay[uid]; const ok = p ? p.items.filter((x) => x.status !== "pending").map((x) => x.per).sort() : []; const last = ok[ok.length - 1]; const today = todayIso();
+  if (!last) return { state: "none", text: "No payment yet", days: null };
+  const y = +last.slice(0, 4), m = +last.slice(5); const end = new Date(y, m, 0); const endIso = end.getFullYear() + "-" + pad(end.getMonth() + 1) + "-" + pad(end.getDate()); const days = daysBetween(today, endIso);
+  if (days >= 0) return { state: "active", text: days === 0 ? "Expires today" : "Expires in " + days + " day" + (days > 1 ? "s" : ""), days, until: endIso };
+  return { state: "expired", text: "Expired " + (-days) + " day" + (days < -1 ? "s" : "") + " ago", days, until: endIso };
+}
 function paidThisMonth(uid) { const p = CLUB.pay[uid]; return !!(p && p.items.some((x) => x.per === thisMonth() && x.status !== "pending")); }
 function pendingPay(uid) { const p = CLUB.pay[uid]; return p ? p.items.filter((x) => x.status === "pending") : []; }
 function nextOpenMat(sched) {
@@ -1379,7 +1392,8 @@ VIEWS.club = function () {
   h += '<div class="card clubhead"><div class="card-head"><h2>' + esc(P.n) + "</h2>" + (adm ? '<button class="btn ghost" data-act="club-edit">Edit</button>' : "") + "</div>" +
     '<p class="muted small">' + [P.city, P.coach ? "Coach " + P.coach : ""].filter(Boolean).map(esc).join(" · ") + "</p>" + (P.about ? '<p class="small">' + esc(P.about) + "</p>" : "") +
     '<div class="facts">' + (P.addr ? '<span>' + esc(P.addr) + "</span>" : "") + (P.phone ? '<a href="tel:' + esc(P.phone) + '">' + esc(P.phone) + "</a>" : "") + (P.ig ? '<a href="https://instagram.com/' + esc(P.ig.replace(/^@/, "")) + '" target="_blank" rel="noopener">@' + esc(P.ig.replace(/^@/, "")) + "</a>" : "") + "</div>" +
-    '<div class="summary"><div class="stat"><b>' + fmtMoney(P.fee && P.fee.month) + '</b><span>per month</span></div><div class="stat"><b>' + fmtMoney(P.fee && P.fee.drop) + '</b><span>drop-in</span></div><div class="stat"><b>' + (nom || "—") + '</b><span>next open mat</span></div></div>' +
+    (function () { const ms = membership(myUid()); const pend = pendingPay(myUid()).length; const act = (CLUB.members.list || []).filter((m) => membership(m.uid || m.id).state === "active").length; return '<div class="mstat ' + ms.state + '"><span class="pill ' + (ms.state === "active" ? "ok" : ms.state === "expired" ? "bad" : "na") + '">' + (ms.state === "active" ? "Active" : ms.state === "expired" ? "Expired" : "Not a paying member") + "</span><b>" + esc(pend && ms.state !== "active" ? "Waiting for the coach to confirm" : ms.text) + "</b>" + (adm ? '<span class="muted small">' + act + " of " + (CLUB.members.list || []).length + " members active</span>" : "") + "</div>"; })() +
+    '<div class="summary"><div class="stat"><b>' + (nom || "—") + '</b><span>next open mat</span></div><div class="stat"><b>' + ((P.schedule || []).length) + '</b><span>classes a week</span></div><div class="stat"><b>' + ((CLUB.members.list || []).length) + '</b><span>members</span></div></div>' +
     (adm ? '<div class="codes"><span>Club code <b>' + esc(P.code || "—") + '</b></span><span>Coach code <b>' + esc(P.coachCode || "—") + "</b></span></div>" : "") + "</div>";
   h += seg([["today", "Today"], ["sched", "Schedule"], ["members", "Members"], ["pay", "Pay"]], UI.clubSeg, "clubseg");
   if (UI.clubSeg === "sched") h += vClubSched(P, adm);
@@ -1431,8 +1445,22 @@ function vClubToday(P, adm) {
   h += '<div class="card"><div class="card-head"><h3>My month</h3><span class="muted small">' + cal.n + " on the mat · " + cal.missed + " missed</span></div>" + cal.html + '<p class="muted small">Green = trained (logged training counts too). Red = a class day you missed.</p></div>';
   const mine = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.uid === me);
   if (mine.length) h += '<div class="card"><h3>My medals</h3><div class="list">' + mine.map((r) => '<div class="row"><span class="medal ' + r.medal + '"></span><div class="txt"><b>' + esc(r.event) + "</b><small>" + fmtD(r.d) + " · " + r.medal + "</small></div><span class=\"pill " + (r.status === "ok" ? "ok" : "na") + '">' + (r.status === "ok" ? "approved" : "waiting for coach") + "</span></div>").join("") + "</div></div>";
+  const ps = partnerStats(); if (ps.my.length || ps.top.length) h += '<div class="card"><div class="card-head"><h3>Training partners</h3><span class="muted small">' + (ps.people ? "you rolled with " + ps.people + (ps.people > 1 ? " people" : " person") : "") + "</span></div>" + (ps.my.length ? '<div class="chips">' + ps.my.slice(0, 8).map((x) => '<span class="chip">' + esc(x.n) + " · " + x.c + "×</span>").join("") + "</div>" : '<p class="muted small">Tick who you rolled with when you log training.</p>') + (ps.top.length ? '<p class="muted small" style="margin-top:6px">Most rounds together this month</p><div class="list">' + ps.top.map((x) => '<div class="row' + (x.me ? " me" : "") + '"><div class="txt"><b>' + esc(x.a) + " &amp; " + esc(x.b) + "</b></div><span class=\"muted small\">" + x.c + " rounds</span></div>").join("") + "</div>" : "") + "</div>";
   const lb = leaderboard(); if (lb.length) h += '<div class="card"><div class="card-head"><h3>Mat time · ' + thisMonth() + '</h3></div><div class="list">' + lb.map((x, i) => '<div class="row"><b class="rankn">' + (i + 1) + '</b><div class="txt"><b>' + esc(x.n) + "</b></div><span class=\"muted small\">" + x.n0 + " days</span></div>").join("") + "</div></div>";
   return h;
+}
+/* who rolled with whom: club/<id>/rolls/<yyyy-mm> = { list: [{ d, a, b }] } */
+async function rollsShare(rec) {
+  if (!rec.with || !rec.with.length) return; const ym = rec.d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/rolls/" + ym)) || { list: [] }; const me = myUid();
+  doc.list = doc.list.filter((x) => !(x.sid === rec.id)); for (const w of rec.with) doc.list.push({ sid: rec.id, d: rec.d, a: me, b: w }); await cset("club/" + CLUB.id + "/rolls/" + ym, doc); if (ym === thisMonth()) CLUB.rolls = doc;
+}
+function partnerStats() {
+  const me = myUid(); const mine = {}; for (const s of S.log.items) for (const w of s.with || []) mine[w] = (mine[w] || 0) + 1;
+  const name = (k) => { const m = (CLUB.members.list || []).find((x) => attKey(x) === k); return m ? m.n || m.email || "Member" : "Someone"; };
+  const my = Object.keys(mine).map((k) => ({ n: name(k), c: mine[k] })).sort((a, b) => b.c - a.c);
+  const pairs = {}; for (const r of (CLUB.rolls && CLUB.rolls.list) || []) { const k = [r.a, r.b].sort().join("|"); pairs[k] = (pairs[k] || 0) + 1; }
+  const top = Object.keys(pairs).map((k) => { const [a, b] = k.split("|"); return { a: name(a), b: name(b), c: pairs[k], me: a === me || b === me }; }).sort((a, b) => b.c - a.c).slice(0, 5);
+  return { my, top, people: my.length };
 }
 function leaderboard() { const doc = CLUB.attMonth; if (!doc) return []; const c = {}; for (const d in doc.days) for (const w of doc.days[d]) c[w] = (c[w] || 0) + 1; return Object.keys(c).map((w) => { const m = (CLUB.members.list || []).find((x) => attKey(x) === w); return { n: m ? m.n || m.email || "Member" : "Member", n0: c[w] }; }).sort((a, b) => b.n0 - a.n0).slice(0, 5); }
 function noteSheet() { openSheet("Post a notice", field("n-t", "Notice", ta("n-t", "", "Open mat moved to 13:00 on Saturday…")), { saveLabel: "Post", async onSave() { const t = sv("n-t").trim(); if (!t) return false; CLUB.notes.list.push({ id: uid(), d: todayIso(), by: myName(), text: t }); await cset("club/" + CLUB.id + "/notes", CLUB.notes); render(); return true; } }); }
@@ -1446,7 +1474,8 @@ async function resultSubmit(ev) {
 }
 function vClubPay(P, adm) {
   const me = myUid(); const mine = (CLUB.pay[me] && CLUB.pay[me].items || []).slice().sort((a, b) => (a.d < b.d ? 1 : -1)); const ok = paidThisMonth(me); const pend = pendingPay(me).some((x) => x.per === thisMonth());
-  let h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (ok ? "ok" : pend ? "na" : "warn") + '">' + (ok ? "Paid for " + thisMonth() : pend ? "Waiting for the coach" : "Not paid for " + thisMonth()) + "</span></div>";
+  const ms = membership(me);
+  let h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (ms.state === "active" ? "ok" : pend ? "na" : "warn") + '">' + (ms.state === "active" ? ms.text : pend ? "Waiting for the coach" : ms.state === "expired" ? ms.text : "Not paid yet") + '</span></div><p class="muted small">Monthly fee ' + fmtMoney(P.fee && P.fee.month) + (P.fee && P.fee.drop ? " · drop-in " + fmtMoney(P.fee.drop) : "") + "</p>";
   if (!mine.length) h += '<p class="empty">No payments yet. Pay the monthly fee here and your coach confirms it.</p>';
   else h += '<div class="list">' + mine.map((x) => '<button class="row" data-act="club-pay" data-id="' + x.id + '"><span class="pill ' + (x.status === "pending" ? "na" : "ok") + '">' + (x.status === "pending" ? "sent" : "confirmed") + '</span><div class="txt"><b>' + fmtMoney(x.amt) + " · " + esc(x.per) + "</b><small>" + fmtD(x.d) + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div>";
   h += '<button class="btn wide" data-act="club-paynow">' + (ok ? "Pay next month" : "Pay " + fmtMoney(P.fee && P.fee.month) + " for " + thisMonth()) + "</button></div>";
@@ -1543,7 +1572,7 @@ function clubSheet(edit) {
     return true;
   } });
 }
-function sessSheet(i) {
+function classSheet(i) {
   const P = CLUB.profile; const sched = (P.schedule || []).slice().sort((a, b) => a.d - b.d || (a.t < b.t ? -1 : 1)); const x = i != null ? sched[i] : null;
   const b = '<div class="field"><span class="lbl">Day</span>' + chips("d", DAYS.map((d, j) => [String(j), d]), x ? String(x.d) : "0") + "</div>" + '<div class="grid2">' + field("s-t", "Starts", inp("s-t", x ? x.t : "18:00", "time")) + field("s-n", "Name", inp("s-n", x ? x.n : "", "text", 'placeholder="Fundamentals"')) + "</div>" +
     '<div class="field"><span class="lbl">Kind</span>' + chips("kind", Object.entries(KIND), x ? x.kind : "gi") + "</div>";
@@ -1583,6 +1612,9 @@ document.addEventListener("click", (e) => {
     case "club-join": if (ds.open) clubJoin(ds.id, "", false); else joinSheet(ds.id, false); break;
     case "club-coach": joinSheet(ds.id, true); break;
     case "club-paynow": payNowSheet(); break;
+    case "w-range": UI.wRange = ds.v; render(); break;
+    case "with-toggle": if (UI.sheet) { UI.sheet.with = UI.sheet.with || []; const i = UI.sheet.with.indexOf(ds.who); if (i >= 0) UI.sheet.with.splice(i, 1); else UI.sheet.with.push(ds.who); el.classList.toggle("on", i < 0); } break;
+    case "belt-page": UI.tab = "me"; UI.seg.me = "belt"; UI.beltPage = ds.v === "open" ? true : !UI.beltPage; go(UI.beltPage ? "enter-l" : "enter-r"); break;
     case "drillf": UI.drillF = ds.v; render(); break;
     case "drill-open": UI.drillOpen = UI.drillOpen === ds.id ? null : ds.id; if (UI.tab !== "train" || UI.seg.train !== "drills") { UI.tab = "train"; UI.seg.train = "drills"; UI.drillOpen = ds.id; go("enter-l"); } else render(); break;
     case "drill-done": drillDone(ds.id); break;
@@ -1603,7 +1635,7 @@ document.addEventListener("click", (e) => {
     case "club-approve": case "club-reject": if (isSuper()) { (async () => { const p = await cget("club/" + ds.id + "/profile"); const idx = (await cget("clubs/index")) || { list: [] }; if (act === "club-approve") { if (p) { p.status = "approved"; await cset("club/" + ds.id + "/profile", p); } const r = idx.list.find((x) => x.id === ds.id); if (r) r.status = "approved"; } else { idx.list = idx.list.filter((x) => x.id !== ds.id); if (p) { p.status = "rejected"; await cset("club/" + ds.id + "/profile", p); } } await cset("clubs/index", idx); CLUB.loadedFor = null; toast(act === "club-approve" ? "Approved" : "Rejected"); render(); })(); } break;
     case "up-ok": case "up-no": if (isSuper()) { (async () => { const doc = (await cget("app/upgrades")) || { list: [] }; const u = doc.list.find((x) => x.id === ds.id); if (!u) return; if (act === "up-ok") { const pro = (await cget("app/pro")) || { u: {} }; const cur = pro.u[u.uid] && pro.u[u.uid].until >= thisMonth() ? pro.u[u.uid].until : thisMonth(); const y = +cur.slice(0, 4), m = +cur.slice(5) + (+ds.m || 1); const until = (y + Math.floor((m - 1) / 12)) + "-" + pad(((m - 1) % 12) + 1); pro.u[u.uid] = { until, n: u.n }; await cset("app/pro", pro); CLUB.pro = pro; u.status = "ok"; u.until = until; } else u.status = "no"; await cset("app/upgrades", doc); CLUB.upgrades = doc; toast(act === "up-ok" ? "Upgraded" : "Rejected"); render(); })(); } break;
     case "club-codes": if (isSuper()) { (async () => { const p = await cget("club/" + ds.id + "/profile"); if (!p) return; if (!p.code) { p.code = genCode(6); p.coachCode = genCode(8); await cset("club/" + ds.id + "/profile", p); } openSheet(p.n, '<div class="codes big"><span>Club code <b>' + esc(p.code) + '</b></span><span>Coach code <b>' + esc(p.coachCode) + '</b></span></div><p class="small muted">Give the coach code to the head coach only. Members join with the club code' + (p.open ? ", or without one until a coach claims the club" : "") + ".</p>", {}); })(); } break;
-    case "club-sess": if (isAdmin()) sessSheet(ds.i != null && ds.i !== "" ? +ds.i : null); break;
+    case "club-sess": if (isAdmin()) classSheet(ds.i != null && ds.i !== "" ? +ds.i : null); break;
     case "club-pay": paySheet(ds.id || null, ds.uid || null); break;
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
