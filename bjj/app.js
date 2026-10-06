@@ -296,9 +296,10 @@ VIEWS.tech = function () {
   let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="tq" type="search" placeholder="Search positions, techniques…" value="' + esc(UI.tech.q) + '" autocomplete="off"></div>';
   if (UI.tech.q.trim().length >= 2) return h + vSearch(UI.tech.q.trim().toLowerCase());
   if (UI.setupEd) return vSetupEdit();
-  if (!["pos", "setups", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
-  h += seg([["pos", "Roll"], ["setups", "Setups"], ["plans", "Game plans"], ["rolls", "History"]], UI.tech.view, "techview");
+  if (!["pos", "setups", "learn", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
+  h += seg([["pos", "Roll"], ["setups", "Setups"], ["learn", "Learn"], ["plans", "Plans"], ["rolls", "History"]], UI.tech.view, "techview");
   if (UI.tech.view === "setups") return h + vSetups();
+  if (UI.tech.view === "learn") return h + vLearn();
   if (UI.tech.view === "plans") return h + vPlans();
   if (UI.tech.view === "rolls") return h + vRolls();
   const R = UI.roll;
@@ -734,7 +735,8 @@ function setupRow(sp) {
     (setupEnds(sp) ? '<span class="pill ok">ends in a sub</span>' : '<span class="pill warn">no finish yet</span>') + (setupHasTrap(sp) ? '<span class="pill na">trap</span>' : "") + '<button class="chip" data-act="setup-roll" data-id="' + sp.id + '">Roll it</button></div></div>';
 }
 function vSetups() {
-  let h = '<div class="card"><div class="card-head"><h3>Setups</h3><span class="muted small">my paths to a submission</span></div>';
+  let h = vRoute();
+  h += '<div class="card"><div class="card-head"><h3>Setups</h3><span class="muted small">my paths to a submission</span></div>';
   if (!S.plans.setups.length) h += '<p class="empty">A setup is the chain you choose yourself: position → my move → their likely reaction → my answer … → submission. Build one, then roll it and the next planned step is starred on the graph.</p>';
   else h += '<div class="list">' + S.plans.setups.map(setupRow).join("") + "</div>";
   h += '<button class="btn ghost wide" data-act="add-setup">+ New setup</button></div>';
@@ -749,7 +751,7 @@ function vSetupEdit() {
   const E = UI.setupEd; const last = E.steps[E.steps.length - 1]; const lastN = last ? node(last.id) : null;
   let h = '<button class="back" data-act="setup-cancel"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Setups</button>';
   h += '<div class="card"><h2>' + (E.id ? "Edit setup" : "New setup") + '</h2>' + field("f-sn", "Name", inp("f-sn", E.n, "text", 'placeholder="' + esc(setupName(E.steps)) + '"'));
-  h += '<div class="path">' + E.steps.map((s, i) => '<div class="pn ' + s.k + (i === E.steps.length - 1 ? " cur" : "") + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + (s.k === "pos" ? (i ? "now in" : "start") : s.k === "df" ? "they" : TNAME[s.t] || "me") + '</span><span class="nm">' + esc(s.n) + "</span></span></div>").join("") + "</div>";
+  h += '<div class="path">' + E.steps.map((s, i) => '<div class="pn ' + s.k + (i === E.steps.length - 1 ? " cur" : "") + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + (s.k === "pos" ? (i ? "now in" : "start") : s.k === "df" ? "they" : TNAME[s.t] || "me") + '</span><span class="nm">' + esc(s.n) + "</span>" + (keyOf(node(s.id)) ? '<span class="key">' + esc(keyOf(node(s.id))) + "</span>" : "") + "</span></div>").join("") + "</div>";
   if (!E.steps.length) h += '<p class="muted small">Where does it start?</p><div class="chips">' + positions().map((p) => '<button class="chip pchip" data-act="setup-step" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div>";
   else {
     const opts = nextOf(lastN).filter((e) => e.n.k !== "fin"); const me = opts.filter((e) => e.n.k === "mv"), they = opts.filter((e) => e.n.k === "df"), land = opts.filter((e) => e.n.k === "pos");
@@ -763,6 +765,90 @@ function vSetupEdit() {
   h += field("f-sx", "Note (why this works, the trap)", ta("f-sx", E.x, ""));
   h += '<div class="actions">' + (E.id ? delBtn("setup:" + E.id, "setup-del") : "") + '<button class="btn ghost" data-act="setup-undo"' + (E.steps.length ? "" : " disabled") + '>↶ Undo</button><button class="btn" data-act="setup-save" style="flex:1">Save setup</button></div></div>';
   return h;
+}
+/* ======================= ROUTES (from one position to another) ======================= */
+function keyOf(n) { if (!n) return ""; if (n.bait) return "Trap: " + n.bait; if (n.s && n.s.length) return n.s[0]; return n.x || n.when || ""; }
+function posEdges() {
+  const E = {};
+  for (const m of nodes()) { if (m.k !== "mv" || !allowed(m)) continue; const from = posOf(m.id); if (!from) continue;
+    const oc = m.oc && m.oc.length ? m.oc : m.to ? [{ to: m.to, f: "common" }] : [];
+    for (const o of oc) { if (!node(o.to) || o.to === from.id) continue; (E[from.id] = E[from.id] || []).push({ to: o.to, m, rare: o.f === "rare" }); } }
+  return E;
+}
+function findRoutes(from, to, max) {
+  const E = posEdges(); const out = [];
+  const walk = (pos, path, cost, seen) => { if (path.length > 9 || out.length > 400) return; for (const e of E[pos] || []) { if (seen.has(e.to)) continue; const p = path.concat([{ id: e.m.id, k: "mv", n: e.m.n, t: e.m.t }, { id: e.to, k: "pos", n: node(e.to).n, t: "" }]); const c = cost + 1 + (e.rare ? 1.5 : 0); if (e.to === to) { out.push({ p, c }); continue; } const s2 = new Set(seen); s2.add(e.to); walk(e.to, p, c, s2); } };
+  walk(from, [{ id: from, k: "pos", n: node(from).n, t: "" }], 0, new Set([from]));
+  out.sort((a, b) => a.c - b.c || a.p.length - b.p.length);
+  const seen = new Set(), res = []; for (const r of out) { const k = r.p.map((s) => s.id).join(">"); if (seen.has(k)) continue; seen.add(k); res.push(r.p); if (res.length >= (max || 3)) break; }
+  return res;
+}
+function vRoute() {
+  const ps = positions(); const r = UI.route || { from: "cg_b", to: "mt_t" };
+  const sel = (id, cur) => '<select id="' + id + '">' + ps.map((p) => '<option value="' + p.id + '"' + (p.id === cur ? " selected" : "") + ">" + esc(p.n) + "</option>").join("") + "</select>";
+  let h = '<div class="card"><div class="card-head"><h3>Find a route</h3><span class="muted small">from here to there</span></div><div class="grid2">' + field("f-rfrom", "From", sel("f-rfrom", r.from)) + field("f-rto", "To", sel("f-rto", r.to)) + '</div><button class="btn wide" data-act="route-find">Show the ways</button>';
+  if (UI.route) {
+    const routes = UI.route.from === UI.route.to ? [] : findRoutes(UI.route.from, UI.route.to, 3); UI.routeList = routes;
+    if (!routes.length) h += '<p class="empty">' + (UI.route.from === UI.route.to ? "Pick two different positions." : "No written path yet. Add a move whose result is that position, or go through another position.") + "</p>";
+    else h += routes.map((p, i) => '<div class="route"><div class="path">' + p.map((s, j) => '<div class="pn ' + s.k + (j === p.length - 1 ? " cur" : "") + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + (s.k === "pos" ? (j ? "then in" : "start") : TNAME[s.t] || "me") + '</span><span class="nm">' + esc(s.n) + "</span>" + (s.k === "mv" && keyOf(node(s.id)) ? '<span class="key">' + esc(keyOf(node(s.id))) + "</span>" : "") + "</span></div>").join("") + '</div><div class="actions"><span class="muted small" style="flex:1">' + ((p.length - 1) / 2) + " move" + (p.length > 3 ? "s" : "") + '</span><button class="btn ghost" data-act="route-save" data-i="' + i + '">Make it a setup</button></div></div>').join("");
+  }
+  return h + "</div>";
+}
+
+/* ======================= LEARN (quiz with spaced repetition) ======================= */
+function learnDb() { S.settings.learn = S.settings.learn || { cards: {} }; return S.settings.learn; }
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function pickN(arr, n, not) { return shuffle(arr.filter((x) => !not.has(x.id))).slice(0, n); }
+function learnCards() {
+  const out = []; const today = todayIso();
+  for (const n of nodes()) { if (n.k !== "mv" || !allowed(n)) continue; const pos = posOf(n.id); if (!pos) continue; const par = node(n.p);
+    if (n.when && par.k === "pos") out.push({ id: "when:" + n.id, type: "when", n, pos });
+    if (par && par.k === "df") out.push({ id: "ans:" + n.id, type: "ans", n, pos, df: par, mv: node(par.p) });
+    if (n.to && node(n.to) && par.k === "pos") out.push({ id: "land:" + n.id, type: "land", n, pos });
+    if (n.s && n.s.length > 1 && par.k === "pos") out.push({ id: "key:" + n.id, type: "key", n, pos }); }
+  const db = learnDb().cards; for (const c of out) { const d = db[c.id]; c.due = !d || d.due <= today; c.new = !d; c.f = d ? d.f || 0 : 0; }
+  return out;
+}
+function learnQ(card) {
+  const n = card.n, pos = card.pos; const sib = nodes().filter((m) => m.k === "mv" && m.id !== n.id && posOf(m.id) && posOf(m.id).id === pos.id && node(m.p).k === "pos");
+  const opt = (x) => ({ id: x.id, n: x.n });
+  if (card.type === "when") { const others = pickN(sib.filter((m) => m.when !== n.when), 3, new Set([n.id])); if (others.length < 2) return null; return { prompt: "In <b>" + esc(pos.n) + "</b>: " + esc(n.when) + ". What do you go for?", options: shuffle([opt(n)].concat(others.map(opt))), correct: n.id, tag: "Situation" }; }
+  if (card.type === "ans") { const others = pickN(sib, 3, new Set([n.id, ...kids(card.df.id).map((k) => k.id)])); if (others.length < 2) return null; return { prompt: "<b>" + esc(pos.n) + "</b>: you go for <b>" + esc(card.mv.n) + "</b>, they <b>" + esc(card.df.n.replace(/^They /, "")) + "</b>. Your answer?", options: shuffle([opt(n)].concat(others.map(opt))), correct: n.id, tag: "Counter" }; }
+  if (card.type === "land") { const others = pickN(positions().filter((p) => p.id !== n.to && p.id !== pos.id), 3, new Set()); return { prompt: "<b>" + esc(pos.n) + "</b> · <b>" + esc(n.n) + "</b> usually lands you in…", options: shuffle([opt(node(n.to))].concat(others.map(opt))), correct: n.to, tag: "Where it lands" }; }
+  if (card.type === "key") { const others = pickN(sib.filter((m) => m.s && m.s.length && m.s[0] !== n.s[0]), 3, new Set([n.id])); if (others.length < 2) return null; return { prompt: "<b>" + esc(pos.n) + "</b> · <b>" + esc(n.n) + "</b>. The first thing to do?", options: shuffle([{ id: n.id, n: n.s[0] }].concat(others.map((m) => ({ id: m.id, n: m.s[0] })))), correct: n.id, tag: "Key point" }; }
+  return null;
+}
+function learnStart() {
+  const cards = learnCards(); const due = shuffle(cards.filter((c) => c.due && !c.new)), fresh = shuffle(cards.filter((c) => c.new)), rest = shuffle(cards.filter((c) => !c.due));
+  const deck = due.concat(fresh, rest).slice(0, 40); const qs = []; const used = new Set();
+  for (const c of deck) { if (qs.length >= 10 || used.has(c.n.id)) continue; const q = learnQ(c); if (q) { q.card = c; qs.push(q); used.add(c.n.id); } }
+  if (!qs.length) { toast("Not enough written moves to quiz yet"); return; }
+  UI.learn = { qs, i: 0, picked: null, right: 0, wrong: [] }; render(); window.scrollTo({ top: 0, behavior: "instant" });
+}
+function learnPick(i) {
+  const L = UI.learn; if (!L || L.picked != null) return; const q = L.qs[L.i]; L.picked = i; const ok = q.options[i].id === q.correct;
+  const db = learnDb().cards; const d = db[q.card.id] || { iv: 0, due: todayIso(), n: 0, f: 0 };
+  if (ok) { L.right++; d.iv = d.iv ? Math.round(d.iv * 2.2) : 1; d.n++; d.due = addDays(todayIso(), d.iv); } else { L.wrong.push(q); d.iv = 0; d.f = (d.f || 0) + 1; d.due = todayIso(); }
+  db[q.card.id] = d; save("settings"); render();
+}
+function learnNext() { const L = UI.learn; if (!L) return; L.i++; L.picked = null; render(); window.scrollTo({ top: 0, behavior: "instant" }); }
+function vLearn() {
+  const L = UI.learn;
+  if (!L) {
+    const cards = learnCards(); const due = cards.filter((c) => c.due && !c.new).length, seen = cards.filter((c) => !c.new).length; const weak = cards.filter((c) => c.f >= 2).sort((a, b) => b.f - a.f).slice(0, 6);
+    let h = '<div class="card"><div class="card-head"><h3>Learn</h3><span class="muted small">quiz yourself on your own tree</span></div><p class="small">Ten questions from your positions: which move fits the situation, what you answer when they defend, where a move lands, and the first thing to do. Right answers come back later, wrong ones tomorrow.</p>' +
+      '<div class="summary"><div class="stat"><b>' + due + '</b><span>due today</span></div><div class="stat"><b>' + seen + '</b><span>seen</span></div><div class="stat"><b>' + cards.length + '</b><span>cards</span></div></div><button class="btn wide" data-act="learn-start">Start · 10 questions</button></div>';
+    if (weak.length) h += '<div class="card"><h3>Weak spots</h3><div class="list">' + weak.map((c) => '<button class="node-row" data-act="open" data-id="' + c.n.id + '"><span class="pict" style="color:' + nodeColor(c.n) + '">' + iconFor(c.n) + '</span><div class="txt"><b>' + esc(c.n.n) + "</b><small>" + esc(c.pos.n) + " · missed " + c.f + "×</small></div>" + CHEV + "</button>").join("") + "</div></div>";
+    return h;
+  }
+  if (L.i >= L.qs.length) {
+    return '<div class="card"><h2>' + L.right + " / " + L.qs.length + '</h2><p class="small">' + (L.right === L.qs.length ? "Clean sweep." : L.right >= 7 ? "Solid. The misses come back tomorrow." : "Open the misses and read the steps once.") + "</p>" + (L.wrong.length ? '<div class="list">' + L.wrong.map((q) => '<button class="node-row" data-act="open" data-id="' + q.card.n.id + '"><span class="pict" style="color:' + nodeColor(q.card.n) + '">' + iconFor(q.card.n) + '</span><div class="txt"><b>' + esc(q.card.n.n) + "</b><small>" + esc(q.card.pos.n) + "</small></div>" + CHEV + "</button>").join("") + "</div>" : "") + '<div class="actions"><button class="btn ghost" data-act="learn-stop">Done</button><button class="btn" style="flex:1" data-act="learn-start">Again</button></div></div>';
+  }
+  const q = L.qs[L.i]; const n = q.card.n; const done = L.picked != null;
+  let h = '<div class="card"><div class="card-head"><span class="pill na">' + q.tag + '</span><span class="muted small">' + (L.i + 1) + " / " + L.qs.length + '</span></div><p class="qprompt">' + q.prompt + '</p><div class="opts">' + q.options.map((o, i) => '<button class="opt' + (done ? (o.id === q.correct ? " ok" : i === L.picked ? " bad" : " off") : "") + '" data-act="learn-pick" data-i="' + i + '"' + (done ? " disabled" : "") + ">" + esc(o.n) + "</button>").join("") + "</div>";
+  if (done) h += '<div class="tip' + (q.options[L.picked].id === q.correct ? " good" : "") + '"><b>' + (q.options[L.picked].id === q.correct ? "Yes." : "Not quite.") + "</b> " + esc(n.n) + (n.when ? " · " + esc(n.when) : "") + (n.s && n.s.length ? '<ol class="steps">' + n.s.slice(0, 3).map((x) => "<li>" + esc(x) + "</li>").join("") + "</ol>" : "") + (n.bait ? '<p class="small"><b>Trap:</b> ' + esc(n.bait) + "</p>" : "") + '</div><div class="actions"><button class="btn ghost" data-act="open" data-id="' + n.id + '">Open</button><button class="btn" style="flex:1" data-act="learn-next">' + (L.i + 1 < L.qs.length ? "Next" : "Finish") + "</button></div>";
+  else h += '<div class="actions"><button class="btn ghost" data-act="learn-stop">Stop</button></div>';
+  return h + "</div>";
 }
 function vPlans() {
   let h = '<div class="card"><div class="card-head"><h3>Game plans by opponent</h3></div>';
@@ -1123,6 +1209,12 @@ document.addEventListener("click", (e) => {
     case "roll-start": rollStart(ds.pos); break;
     case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
     case "add-setup": setupEdit(null, ds.pos || null); break;
+    case "route-find": UI.route = { from: sv("f-rfrom"), to: sv("f-rto") }; render(); break;
+    case "route-save": { const r = (UI.routeList || [])[+ds.i]; if (!r) break; UI.setupEd = { id: null, n: node(r[0].id).n + " → " + node(r[r.length - 1].id).n, x: "", steps: r.map((s) => ({ id: s.id, k: s.k, n: s.n, t: s.t || "" })) }; UI.tech.id = null; render(); break; }
+    case "learn-start": learnStart(); break;
+    case "learn-pick": learnPick(+ds.i); break;
+    case "learn-next": learnNext(); break;
+    case "learn-stop": UI.learn = null; render(); break;
     case "edit-setup": setupEdit(ds.id); break;
     case "setup-roll": { const sp = setupById(ds.id); if (sp && sp.steps[0]) { rollStart(sp.steps[0].id); UI.roll.plan = sp.id; render(); } break; }
     case "setup-step": { const E = UI.setupEd; if (!E) break; E.n = sv("f-sn"); E.x = sv("f-sx"); const n = node(ds.id); if (n) E.steps.push({ id: n.id, k: n.k, n: n.n, t: n.t || "" }); render(); break; }

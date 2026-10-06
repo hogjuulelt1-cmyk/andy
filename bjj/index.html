@@ -285,6 +285,12 @@ svg.wheel{width:100%;max-width:330px;height:auto;display:block;margin:0 auto;ove
 .g-trap circle{fill:#e2b41a;stroke:var(--surface);stroke-width:1.5} .g-trap svg{color:#fff}
 .canvas .gtog{position:absolute;right:12px;top:12px;display:flex;background:var(--surface);border-radius:999px;box-shadow:var(--shadow);padding:3px} .canvas .gtog button{border:0;background:none;border-radius:999px;padding:5px 10px;font-size:.74rem;font-weight:600;color:var(--muted);min-height:28px} .canvas .gtog button.on{background:var(--accent);color:var(--accent-ink)}
 .plan-line{color:#9a7a12} .spath .sp.df{color:var(--df-ink)} .spath .sp.mv{color:var(--accent)} .spath .sep{margin:0 4px;color:var(--muted)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .chip.pchip.rare{opacity:.6}
+.path .pt .key{display:block;font-size:.8rem;color:var(--muted);margin-top:2px;font-weight:400;text-transform:none;letter-spacing:0;font-family:var(--body)}
+.route{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+.qprompt{font-size:1.05rem;line-height:1.4;margin:6px 0 12px}
+.opts{display:flex;flex-direction:column;gap:8px} .opt{border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left;font-size:.95rem;font-weight:500;color:inherit;min-height:46px}
+.opt.ok{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)} .opt.bad{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)} .opt.off{opacity:.5}
+.tip.good{background:var(--ok-soft)}
 .rn.ring2.ans{opacity:.9} .rn.ring2.ans text.lb{font-weight:600;fill:var(--ink)}
 .rn text.lb.sub{font-size:8.5px;font-weight:500;fill:var(--muted)}
 .rn.trail{opacity:.55} .rn.trail circle.b{stroke:var(--muted)} .rn.trail .ic{color:var(--muted)}
@@ -422,6 +428,6 @@ details.fold[open] summary::after{transform:rotate(-135deg)}
 <script src="config.js"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
