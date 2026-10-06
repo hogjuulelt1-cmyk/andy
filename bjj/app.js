@@ -77,7 +77,13 @@ function seedAll(force) {
   if (force || !S.tree.nodes.length) S.tree.nodes = SEED.nodes();
   if (force || !S.plans.items.length) S.plans.items = SEED.plans.map((p) => Object.assign({ id: uid() }, clone(p)));
   if (force || !S.body.routines.length) S.body.routines = SEED.routines.map((r) => Object.assign({ id: uid() }, clone(r)));
-  S.settings.seeded = true;
+  S.settings.seeded = true; S.settings.seedVer = SEED.version || 1;
+}
+function mergeSeed() {
+  const ver = SEED.version || 1; if ((S.settings.seedVer || 1) >= ver) return false;
+  const have = new Set(nodes().map((n) => n.id)); let added = 0;
+  for (const n of SEED.nodes()) if (!have.has(n.id) && (!n.p || have.has(n.p))) { nodes().push(n); have.add(n.id); added++; }
+  S.settings.seedVer = ver; return added;
 }
 function normalize() {
   const b = blank();
@@ -90,7 +96,7 @@ const dirty = {}, timers = {}, chains = {};
 function setSync(k, msg) {
   const el = $("sync"); if (!el) return;
   el.className = "sync " + (k === "local" ? "saving" : k);
-  $("sync-t").textContent = msg || { ok: "All changes saved", saving: "Saving…", local: "Saved on this device only", err: "Error" }[k];
+  $("sync-t").textContent = msg || { ok: "Synced", saving: "Saving…", local: "On this device", err: "Not saved" }[k];
 }
 function save(key) {
   dirty[key] = 1; setSync(mode === "cloud" ? "saving" : "local");
@@ -113,7 +119,9 @@ async function startCloud() {
     for (const r of rows) { const k = r.path.slice(4); if (KEYS.includes(k)) S[k] = r.data; }
     normalize();
     if (!S.settings.seeded) { seedAll(false); await initFromDiary(); for (const k of ["tree", "plans", "body", "belt", "settings"]) await SB.set("bjj/" + k, clone(S[k])); }
+    { const added = mergeSeed(); if (added) { await SB.set("bjj/tree", clone(S.tree)); await SB.set("bjj/settings", clone(S.settings)); } }
     mode = "cloud"; applyTheme(); setSync("ok"); document.body.classList.remove("locked"); render();
+    if (S.settings.lastAdded) { toast(S.settings.lastAdded + " new moves added to the library"); delete S.settings.lastAdded; }
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !Object.keys(dirty).length) refresh(); });
   } catch (e) { if (e.message === "noauth") showLogin(); else { setSync("err", "Could not connect"); console.error(e); } }
 }
@@ -126,7 +134,7 @@ async function initFromDiary() {
 }
 function startLocal() {
   try { const j = JSON.parse(localStorage.getItem(LKEY) || "null"); if (j) S = j; } catch (e) {}
-  normalize(); if (!S.settings.seeded) { seedAll(false); localStorage.setItem(LKEY, JSON.stringify(S)); }
+  normalize(); if (!S.settings.seeded) { seedAll(false); localStorage.setItem(LKEY, JSON.stringify(S)); } else if (mergeSeed()) localStorage.setItem(LKEY, JSON.stringify(S));
   mode = "local"; applyTheme(); setSync("local"); render();
 }
 function showLogin(msg) {
@@ -294,7 +302,7 @@ VIEWS.tech = function () {
   } else h += '<div class="card-head"><h3>Where are you?</h3><span class="muted small">tap a position to start</span></div>';
   h += rollGraphSvg();
   if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> · " + q + ' <span class="muted">tap a node</span></p>'; }
-  else h += '<div class="legend">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + '</div><p class="muted small">You jump from node to node: the position you are in sits in the middle, every move you could make orbits it, and what comes after each move is faded further out. It loops until a submission or points.</p>';
+  else h += '<div class="legend">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + '</div><p class="muted small">Jump node to node. It only ends with a submission or points.</p>';
   h += "</div>";
   const all = positions();
   h += '<details class="card fold"><summary><h3>All positions</h3><span class="muted small">' + all.length + " · browse & edit</span></summary><div class=\"list\">" + CATS.map(([cat, label]) => { const ps = all.filter((p) => p.cat === cat); return ps.length ? '<div class="group-label" style="color:' + CAT_COLOR[cat] + '">' + label + "</div>" + ps.map((p) => '<button class="node-row" data-act="open" data-id="' + p.id + '"><span class="pict" style="color:' + CAT_COLOR[cat] + '">' + iconFor(p) + '</span><div class="txt"><b>' + esc(p.n) + "</b>" + (p.en ? "<small>" + esc(p.en) + "</small>" : "") + '</div><span class="cnt">' + kids(p.id).length + "</span>" + CHEV + "</button>").join("") : ""; }).join("") + '</div><button class="btn ghost wide" data-act="add-node" data-p="">+ Add position</button></details>';
@@ -309,7 +317,7 @@ function vNode(n) {
   const path = ancestors(n.id); const ch = kids(n.id); const back = n.p ? n.p : "";
   let h = '<button class="back" data-act="back" data-id="' + back + '"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>' + (n.p ? esc(node(n.p).n) : "Positions") + "</button>";
   h += '<div class="card"><div class="path">' + path.map((x, i) => '<button class="pn ' + x.k + (i === path.length - 1 ? " cur" : "") + '" data-act="open" data-id="' + x.id + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + kindLabel(x) + '</span><span class="nm">' + esc(x.n) + "</span></span></button>").join("") + "</div>";
-  h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1"></span>') + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button>' + delBtn("n:" + n.id, "del-node", 'data-id="' + n.id + '"') + "</div>";
+  h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1"></span>') + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
   if (n.s && n.s.length) h += '<ol class="steps">' + n.s.map((s) => "<li>" + esc(s) + "</li>").join("") + "</ol>";
   if (n.x) h += '<p class="small">' + esc(n.x) + "</p>";
   if (n.to && node(n.to)) h += '<div><button class="to-link" data-act="open" data-id="' + n.to + '">→ Next: ' + esc(node(n.to).n) + "</button></div>";
@@ -317,8 +325,10 @@ function vNode(n) {
   if (n.k === "pos") h += '<div class="actions"><button class="btn" data-act="roll-start" data-pos="' + n.id + '">Roll from here</button></div>';
   h += "</div>";
   h += '<div class="card"><div class="card-head"><h3>' + childHeading(n) + "</h3>" + seg([["map", "Map"], ["list", "List"]], UI.tech.map ? "map" : "list", "techmap") + "</div>";
-  if (UI.tech.map && ch.length) h += mindMapSvg(n) + '<p class="muted small">Tap a branch to see its next step, then Open to drill in. Amber dashed circles are the opponent’s defenses.</p>';
-  else if (ch.length) h += '<div class="list">' + ch.map((c) => '<button class="node-row' + (c.k === "df" ? " df" : "") + '" data-act="open" data-id="' + c.id + '"><span class="pict" style="color:' + nodeColor(c) + '">' + iconFor(c) + '</span><div class="txt"><b>' + esc(c.n) + "</b>" + (c.en ? "<small>" + esc(c.en) + "</small>" : "") + "</div>" + (c.k === "df" ? '<span class="cnt">' + kids(c.id).length + " answers</span>" : tbadge(c)) + (c.k !== "df" && kids(c.id).length ? '<span class="cnt">' + kids(c.id).length + "</span>" : "") + CHEV + "</button>").join("") + "</div>";
+  if (UI.tech.map && ch.length) h += mindMapSvg(n) + '<p class="muted small">Tap a branch for its next step. Dashed amber = their defense.</p>';
+  else if (ch.length) { const rowOf = (c) => '<button class="node-row' + (c.k === "df" ? " df" : "") + '" data-act="open" data-id="' + c.id + '"><span class="pict" style="color:' + nodeColor(c) + '">' + iconFor(c) + '</span><div class="txt"><b>' + esc(c.n) + "</b>" + (c.en ? "<small>" + esc(c.en) + "</small>" : "") + "</div>" + (c.k === "df" ? '<span class="cnt">' + kids(c.id).length + " answers</span>" : tbadge(c)) + (c.k !== "df" && kids(c.id).length ? '<span class="cnt">' + kids(c.id).length + "</span>" : "") + CHEV + "</button>";
+    if (n.k === "pos" && ch.length > 6) h += '<div class="list">' + TYPES.map(([t, label]) => { const g = ch.filter((c) => (c.t || "trans") === t); return g.length ? '<div class="group-label" style="color:' + typeColor(t) + '">' + label + (g.length > 1 ? "s" : "") + " · " + g.length + "</div>" + g.map(rowOf).join("") : ""; }).join("") + "</div>";
+    else h += '<div class="list">' + ch.map(rowOf).join("") + "</div>"; }
   else h += '<p class="empty">' + (n.k === "mv" ? "Write how the opponent defends, then add your answer." : "Nothing here yet. Add your first option.") + "</p>";
   h += '<button class="btn ghost wide" data-act="add-node" data-p="' + n.id + '">+ ' + (n.k === "mv" ? "Add a defense" : "Add an option") + "</button></div>";
   if (n.k === "pos") {
@@ -395,18 +405,18 @@ function nextOf(n) {
   if (n.k === "mv") { if (n.to && node(n.to)) out.push({ n: node(n.to), how: "works" }); if (n.t === "sub") out.push({ n: FINISH, how: "tap" }); }
   return out;
 }
-function gNode(n, x, y, r, role, attrs) {
-  const col = n.k === "fin" ? "var(--ok)" : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : TICON[n.t] || TICON.trans;
+function gNode(n, x, y, r, role, attrs, badge) {
+  const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? typeColor(n.t) : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : TICON[n.t] || TICON.trans;
   const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const ls = role === "ring2" ? [] : wrapText(n.n, role === "cur" ? 20 : 15);
   return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
     '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
     '<svg class="ic" x="' + (-ir / 2) + '" y="' + (-ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>" +
-    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + fs + 'px">' + esc(l) + "</text>").join("") + "</g>";
+    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + fs + 'px">' + esc(l) + "</text>").join("") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + "</g>";
 }
 function gEdge(ka, a, kb, b, cls, color) { return '<line class="g-edge ' + cls + '" data-a="' + ka + '" data-b="' + kb + '" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>"; }
 function rollGraphSvg() {
   const R = UI.roll; let nodesOut = "", edges = ""; const P = {}; let minX = -40, maxX = 40, minY = -40, maxY = 40;
-  const put = (key, n, x, y, r, role, attrs) => { P[key] = [x, y]; nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || "")); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
+  const put = (key, n, x, y, r, role, attrs, badge) => { P[key] = [x, y]; nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || ""), badge); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
   if (!R) {
     const CR = 150; CATS.forEach(([cat], i) => { const a = (-90 + i * 72) * Math.PI / 180; const cx = Math.cos(a) * CR, cy = Math.sin(a) * CR; const ps = positions().filter((p) => p.cat === cat); const rr = ps.length > 1 ? 30 + ps.length * 7 : 0; ps.forEach((p, j) => { const b = a + (j / ps.length) * 2 * Math.PI; put("s:" + p.id, p, cx + Math.cos(b) * rr, cy + Math.sin(b) * rr, 15, "start"); }); });
     const seen = {}; for (const m of nodes()) if (m.k === "mv" && m.to && P["s:" + m.to]) { const from = posOf(m.id).id; const k = from + ">" + m.to; if (from === m.to || !P["s:" + from] || seen[k]) continue; seen[k] = 1; edges += gEdge("s:" + from, P["s:" + from], "s:" + m.to, P["s:" + m.to], "faint", CAT_COLOR[node(from).cat]); }
@@ -416,9 +426,18 @@ function rollGraphSvg() {
   // trail (the way you came), to the left
   const prev = R.steps.slice(0, -1); let lastKey = "c";
   for (let i = 0; i < Math.min(4, prev.length); i++) { const st = prev[prev.length - 1 - i]; const n = node(st.id); if (!n) break; const key = "t" + i; const x = -(i + 1) * 78, y = i % 2 ? 18 : -18; put(key, n, x, y, 11, "trail", 'data-i="' + (prev.length - 1 - i) + '"'); edges += gEdge(key, [x, y], lastKey, lastKey === "c" ? [0, 0] : P[lastKey], "trail"); lastKey = key; }
-  // next steps on the right
-  const next = nextOf(cur); const n1 = next.length; const r1 = Math.min(170, Math.max(112, 96 + n1 * 9)); const span = n1 > 1 ? Math.min(200, 60 + n1 * 28) : 0;
+  // next steps on the right; many options are bundled by type into hubs
+  const all = nextOf(cur); let next = all, hubs = null;
+  if (cur.k === "pos" && all.length > 7) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
+  const n1 = next.length; const r1 = Math.min(170, Math.max(112, 96 + n1 * 9)); const span = n1 > 1 ? Math.min(200, 60 + n1 * 28) : 0;
   next.forEach((e, k) => {
+    if (e.how === "group") {
+      const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "h:" + e.n.t; const open = R.grp === e.n.t;
+      put(key, e.n, x, y, open ? 19 : 16, "group" + (open ? " open" : ""), 'data-t="' + e.n.t + '"', e.items.length);
+      edges += gEdge("c", [0, 0], key, [x, y], "step" + (open ? "" : " faint"), typeColor(e.n.t));
+      if (open) { const m = e.items.length; const sector = Math.min(110, 30 + m * 22); e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const x2 = Math.cos(a2) * (r1 + 96), y2 = Math.sin(a2) * (r1 + 96); const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next", 'data-how="' + it.how + '"'); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n)); }); }
+      return;
+    }
     const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "n:" + e.n.id;
     put(key, e.n, x, y, 17, "next", 'data-how="' + e.how + '"');
     edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : nodeColor(e.n));
@@ -427,6 +446,7 @@ function rollGraphSvg() {
     if (nextOf(e.n).length > 3) { const a3 = (deg + sector / 2 + 10) * Math.PI / 180; nodesOut += '<text class="more" x="' + (Math.cos(a3) * (r1 + 92)).toFixed(1) + '" y="' + (Math.sin(a3) * (r1 + 92) + 4).toFixed(1) + '" text-anchor="middle">+' + (nextOf(e.n).length - 3) + "</text>"; }
   });
   put("c", cur, 0, 0, 26, "cur");
+  if (hubs && !R.grp) nodesOut += '<text class="more" x="0" y="52" text-anchor="middle">tap a type to open it</text>';
   if (!n1) nodesOut += '<text class="more" x="70" y="4">no next step written · add one or tap “Elsewhere”</text>';
   return canvasHtml("roll", edges + nodesOut, { x: minX, y: minY, w: maxX - minX, h: maxY - minY }, "", true);
 }
@@ -451,6 +471,7 @@ function rollTap(g) {
   const R = UI.roll; if (!R) return;
   if (role === "trail") { rollRewind(+g.dataset.i); return; }
   if (role === "cur") { quickSheet(id); return; }
+  if (role.indexOf("group") === 0) { R.grp = R.grp === g.dataset.t ? null : g.dataset.t; render(); return; }
   if (role === "ring2") { rollStepTo(g.dataset.p); if (UI.roll && UI.roll.cur === g.dataset.p) rollStepTo(id); return; }
   rollStepTo(id);
 }
@@ -554,12 +575,12 @@ function rollStart(posId) {
 function rollGoto(posId, how) {
   const R = UI.roll, p = node(posId); if (!R || !p) return;
   const times = R.steps.filter((x) => x.k === "pos" && x.id === p.id).length;
-  R.pos = p.id; R.cur = p.id; R.steps.push({ id: p.id, k: "pos", n: p.n, t: "", how: how || "" }); UI.walkCat = null; render();
+  R.pos = p.id; R.cur = p.id; R.grp = null; R.steps.push({ id: p.id, k: "pos", n: p.n, t: "", how: how || "" }); UI.walkCat = null; render();
   if (times) toast("Back in " + p.n + " (" + (times + 1) + (times === 1 ? "nd" : times === 2 ? "rd" : "th") + " time)");
 }
 function rollPick(nid) {
   const R = UI.roll, n = node(nid); if (!R || !n) return;
-  R.steps.push({ id: n.id, k: n.k, n: n.n, t: n.t || "" }); R.cur = n.id;
+  R.steps.push({ id: n.id, k: n.k, n: n.n, t: n.t || "" }); R.cur = n.id; R.grp = null;
   if (n.k === "mv" && !kids(n.id).length) { if (n.to && node(n.to)) { rollGoto(n.to, "auto"); return; } if (n.t === "sub") { R.cur = n.id; } }
   render();
 }
@@ -630,12 +651,13 @@ function nodeSheet(id, parentId) {
       if (!n) { nodes().push(rec); if (kind === "pos") UI.tech.id = null; else UI.tech.id = parentId; }
       save("tree"); toast(n ? "Saved" : "Added"); render(); return true;
     },
+    onDelete: n ? () => { const ids = subtreeIds(n.id); S.tree.nodes = nodes().filter((x) => !ids.includes(x.id)); UI.tech.id = n.p || null; save("tree"); toast("Deleted"); go("enter-r"); return true; } : null,
   });
 }
 function vPlans() {
   let h = '<div class="card"><div class="card-head"><h3>Game plans by opponent</h3></div>';
   if (!S.plans.items.length) h += '<p class="empty">No game plans yet. Add one per type of opponent.</p>';
-  else h += S.plans.items.map((p) => '<div class="plan"><div class="actions" style="align-items:center"><b style="flex:1">' + esc(p.n) + '</b><button class="x" data-act="edit-plan" data-id="' + p.id + '">Edit</button>' + delBtn("p:" + p.id, "del-plan", 'data-id="' + p.id + '"') + '</div><p class="small">' + esc(p.x) + '</p><div class="refs">' + (p.tags || []).filter((t) => node(t)).map((t) => '<button class="chip" data-act="open" data-id="' + t + '">' + esc(node(t).n) + "</button>").join("") + "</div></div>").join("");
+  else h += S.plans.items.map((p) => '<div class="plan"><button class="row" data-act="edit-plan" data-id="' + p.id + '"><div class="txt"><b>' + esc(p.n) + '</b><small>' + esc(p.x) + "</small></div>" + CHEV + '</button><div class="refs">' + (p.tags || []).filter((t) => node(t)).map((t) => '<button class="chip" data-act="open" data-id="' + t + '">' + esc(node(t).n) + "</button>").join("") + "</div></div>").join("");
   h += '<button class="btn ghost wide" data-act="add-plan">+ Add game plan</button></div>';
   return h;
 }
@@ -650,6 +672,7 @@ function planSheet(id) {
       const rec = p || { id: uid() }; rec.n = name; rec.x = sv("f-x").trim(); rec.tags = (UI.sheet.pk.pos || []).map((x) => x.id).filter(Boolean);
       if (!p) S.plans.items.push(rec); save("plans"); render(); return true;
     },
+    onDelete: p ? () => { S.plans.items = S.plans.items.filter((x) => x.id !== p.id); save("plans"); render(); return true; } : null,
   });
 }
 
@@ -770,7 +793,7 @@ VIEWS.body = function () {
     h += '<div class="card"><button class="row" data-act="body-open" data-id="' + r.id + '" aria-expanded="' + open + '"><div class="txt"><b>' + esc(r.n) + "</b><small>" + (r.min ? r.min + " min · " : "") + (r.items || []).length + " exercises</small></div>" + CHEV + "</button>";
     if (open) {
       h += '<div class="list">' + (r.items || []).map((it, i) => { const on = (UI.body.done[r.id] || {})[i]; return '<div class="row' + (on ? " done" : "") + '"><button class="check' + (on ? " on" : "") + '" data-act="body-check" data-id="' + r.id + '" data-i="' + i + '" aria-pressed="' + !!on + '">' + CHECK + '</button><div class="txt">' + esc(it) + "</div></div>"; }).join("") + "</div>";
-      h += '<div class="actions"><button class="btn" data-act="body-log" data-id="' + r.id + '">Done, log it</button><button class="btn ghost" data-act="edit-routine" data-id="' + r.id + '">Edit</button>' + delBtn("r:" + r.id, "del-routine", 'data-id="' + r.id + '"') + "</div>";
+      h += '<div class="actions"><button class="btn" data-act="body-log" data-id="' + r.id + '">Done, log it</button><button class="btn ghost" data-act="edit-routine" data-id="' + r.id + '">Edit</button></div>';
     }
     h += "</div>";
   }
@@ -795,6 +818,7 @@ function routineSheet(id) {
   openSheet(r ? "Edit routine" : "New routine", b, {
     state: { picks: { cat: r ? r.cat : UI.body.cat } },
     onSave() { const n = sv("f-n").trim(); if (!n) { $("f-n").focus(); return false; } const rec = r || { id: uid() }; rec.n = n; rec.cat = pickVal("cat", UI.body.cat); rec.min = +sv("f-min") || 0; rec.items = lines(sv("f-items")); if (!r) S.body.routines.push(rec); UI.body.cat = rec.cat; UI.body.open = rec.id; save("body"); render(); return true; },
+    onDelete: r ? () => { S.body.routines = S.body.routines.filter((x) => x.id !== r.id); save("body"); render(); return true; } : null,
   });
 }
 function blogSheet(id, rid) {
@@ -820,7 +844,7 @@ VIEWS.belt = function () {
   h += '<div class="actions"><button class="btn" data-act="add-promo">Log a promotion</button><button class="btn ghost" data-act="edit-belt">Edit current belt</button></div></div>';
   h += seg([["kids", "Kids 4–15"], ["adult", "Adult 16+"]], track, "belttrack");
   h += '<div class="card"><h3>Ladder</h3><div class="ladder">' + ladder.map((b, i) => '<div class="rung' + (i === idx ? " cur" : i < idx ? " past" : "") + '"><span class="sw">' + beltSwatch(b) + '</span><span style="flex:1">' + esc(b.n) + (i === idx ? ' <span class="pill ok">now</span>' : "") + '</span><span class="muted small">' + esc(b.age) + " yrs</span></div>").join("") + "</div>" +
-    '<p class="muted small">' + (track === "kids" ? "Kids belts go up to age 15. From 16 you move to the adult ladder (usually blue after green)." : "0–4 stripes per belt. Times are minimums, the coach decides.") + "</p></div>";
+    '<p class="muted small">' + (track === "kids" ? "Kids belts run to age 15, then the adult ladder." : "0–4 stripes per belt. Times are minimums.") + "</p></div>";
   // goals
   const goals = S.belt.goals[S.belt.belt] || [];
   const done = goals.filter((g) => g.done).length;
@@ -832,9 +856,16 @@ VIEWS.belt = function () {
   h += "</div>";
   // history
   const hist = S.belt.history.slice().sort((a, b) => (a.d < b.d ? 1 : -1));
-  h += '<div class="card"><h3>Promotion history</h3>' + (hist.length ? '<div class="list">' + hist.map((x) => '<div class="row"><span class="sw ladder" style="display:flex;width:40px;height:12px;border:1px solid var(--line);border-radius:2px;overflow:hidden">' + beltSwatch(beltDef(x.track || track, x.belt)) + '</span><div class="txt"><b>' + esc(beltDef(x.track || track, x.belt).n) + (x.stripes ? ", " + x.stripes + " stripes" : "") + "</b><small>" + fmtLong(x.d) + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + delBtn("h:" + x.id, "del-promo", 'data-id="' + x.id + '"') + "</div>").join("") + "</div>" : '<p class="empty">No promotions logged.</p>') + "</div>";
+  h += '<div class="card"><h3>Promotion history</h3>' + (hist.length ? '<div class="list">' + hist.map((x) => '<button class="row" data-act="edit-promo" data-id="' + x.id + '"><span class="sw ladder" style="display:flex;width:40px;height:12px;border:1px solid var(--line);border-radius:2px;overflow:hidden">' + beltSwatch(beltDef(x.track || track, x.belt)) + '</span><div class="txt"><b>' + esc(beltDef(x.track || track, x.belt).n) + (x.stripes ? ", " + x.stripes + " stripes" : "") + "</b><small>" + fmtLong(x.d) + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div>" : '<p class="empty">No promotions logged.</p>') + "</div>";
   return h;
 };
+function promoSheet(id) {
+  const x = S.belt.history.find((h) => h.id === id); if (!x) return;
+  openSheet("Promotion", field("f-d", "Date", inp("f-d", x.d, "date", 'max="' + todayIso() + '"')) + field("f-note", "Note", inp("f-note", x.note || "", "text")), {
+    onSave() { x.d = sv("f-d") || x.d; x.note = sv("f-note").trim(); save("belt"); render(); return true; },
+    onDelete() { S.belt.history = S.belt.history.filter((h) => h.id !== x.id); save("belt"); render(); return true; },
+  });
+}
 function beltSheet(promo) {
   const track = S.belt.track; const ladder = SEED.belts[track];
   const b = () => '<div class="field"><span class="lbl">Ladder</span>' + chips("track", [["kids", "Kids"], ["adult", "Adult"]], pickVal("track", track)) + "</div>" +
@@ -866,10 +897,17 @@ VIEWS.weight = function () {
   }
   h += '<div class="card"><h3>Competition weight class</h3>' + field("w-cls", "Category", '<select id="w-cls" data-act-change="w-cls">' + Object.entries(SEED.weightClasses).map(([k, v]) => '<option value="' + k + '"' + (k === S.weight.cls ? " selected" : "") + ">" + esc(v.n) + "</option>").join("") + "</select>") +
     '<div class="list">' + cls.c.map((c) => '<button class="row" data-act="w-target" data-v="' + esc(c[0]) + '"><span class="check' + (S.weight.target === c[0] ? " on" : "") + '">' + CHECK + '</span><div class="txt"><b>' + esc(c[0]) + "</b></div><span class=\"num\">" + (c[1] == null ? "no limit" : c[1] + " kg limit") + "</span></button>").join("") + "</div>" +
-    '<p class="muted small">IBJJF weighs you in the gi, which adds about 1–1.5 kg. No-gi divisions weigh in shorts and rashguard. Kids divisions differ per event, ask your coach.</p></div>';
-  if (items.length) h += '<div class="card"><h3>Log</h3><div class="list">' + items.slice().reverse().slice(0, 30).map((x) => '<div class="row"><div class="txt"><b>' + x.kg + ' kg</b><small>' + fmtLong(x.d) + "</small></div>" + delBtn("w:" + x.id, "del-weight", 'data-id="' + x.id + '"') + "</div>").join("") + "</div></div>";
+    '<p class="muted small">IBJJF weighs you in the gi (about 1–1.5 kg extra). Kids divisions differ per event.</p></div>';
+  if (items.length) h += '<div class="card"><h3>Log</h3><div class="list">' + items.slice().reverse().slice(0, 30).map((x) => '<button class="row" data-act="edit-weight" data-id="' + x.id + '"><div class="txt"><b>' + x.kg + ' kg</b><small>' + fmtLong(x.d) + "</small></div>" + CHEV + "</button>").join("") + "</div></div>";
   return h;
 };
+function weightSheet(id) {
+  const x = S.weight.items.find((w) => w.id === id); if (!x) return;
+  openSheet("Weight entry", '<div class="grid2">' + field("f-kg", "Weight, kg", inp("f-kg", x.kg, "number", 'inputmode="decimal" step="0.1"')) + field("f-d", "Date", inp("f-d", x.d, "date", 'max="' + todayIso() + '"')) + "</div>", {
+    onSave() { const kg = +sv("f-kg"); if (!kg) return false; x.kg = kg; x.d = sv("f-d") || x.d; save("weight"); render(); return true; },
+    onDelete() { S.weight.items = S.weight.items.filter((w) => w.id !== x.id); save("weight"); render(); return true; },
+  });
+}
 function weightChart(items, lim) {
   if (items.length < 2) return '<p class="muted small">The chart appears after two or more entries.</p>';
   const W = 320, H = 160, px = 28, py = 14; const vals = items.map((x) => +x.kg); let lo = Math.min(...vals, lim == null ? Infinity : lim), hi = Math.max(...vals, lim == null ? -Infinity : lim); if (hi - lo < 2) { lo -= 1; hi += 1; } lo = Math.floor(lo - 0.5); hi = Math.ceil(hi + 0.5);
@@ -888,16 +926,16 @@ const RES = [["w", "Win"], ["l", "Loss"], ["d", "Draw"]];
 const HOW = [["sub", "Submission"], ["pts", "Points"], ["adv", "Advantage"], ["ref", "Referee decision"], ["dq", "DQ"], ["wo", "Walkover"]];
 const HNAME = Object.fromEntries(HOW);
 const MEDALS = [["", "No medal"], ["gold", "Gold"], ["silver", "Silver"], ["bronze", "Bronze"]];
-const MNAME = { gold: "🥇 Gold", silver: "🥈 Silver", bronze: "🥉 Bronze" };
+const MNAME = { gold: "Gold", silver: "Silver", bronze: "Bronze" };
 VIEWS.comp = function () {
   if (UI.comp.id) { const ev = S.comp.events.find((e) => e.id === UI.comp.id); if (ev) return vEvent(ev); UI.comp.id = null; }
   const today = todayIso(); const evs = S.comp.events.slice().sort((a, b) => (a.d < b.d ? 1 : -1));
   const all = evs.flatMap((e) => e.matches || []); const w = all.filter((m) => m.res === "w").length, l = all.filter((m) => m.res === "l").length, subs = all.filter((m) => m.res === "w" && m.how === "sub").length;
   const medals = evs.filter((e) => e.medal).length;
-  let h = '<div class="card"><div class="summary four"><div class="stat"><b>' + w + '</b><span>wins</span></div><div class="stat"><b>' + l + '</b><span>losses</span></div><div class="stat"><b>' + subs + '</b><span>by submission</span></div><div class="stat"><b>' + medals + '</b><span>medals</span></div></div></div>';
+  let h = '<div class="card"><div class="summary four"><div class="stat"><b>' + w + '</b><span>wins</span></div><div class="stat"><b>' + l + '</b><span>losses</span></div><div class="stat"><b>' + subs + '</b><span>by sub</span></div><div class="stat"><b>' + medals + '</b><span>medals</span></div></div></div>';
   h += '<button class="btn big wide" data-act="add-event">+ Add competition</button>';
   const up = evs.filter((e) => e.d >= today).reverse(), past = evs.filter((e) => e.d < today);
-  const row = (e) => { const ms = e.matches || []; const ww = ms.filter((m) => m.res === "w").length; const dd = daysBetween(today, e.d); return '<button class="row" data-act="open-event" data-id="' + e.id + '"><div class="txt"><b>' + esc(e.n) + (e.medal ? " " + MNAME[e.medal] : "") + "</b><small>" + fmtLong(e.d) + (e.div ? " · " + esc(e.div) : "") + (e.d >= today ? ' · <span class="pill ok">' + (dd === 0 ? "today" : dd + " days left") + "</span>" : ms.length ? " · " + ww + "–" + (ms.length - ww) : "") + "</small></div>" + CHEV + "</button>"; };
+  const row = (e) => { const ms = e.matches || []; const ww = ms.filter((m) => m.res === "w").length; const dd = daysBetween(today, e.d); return '<button class="row" data-act="open-event" data-id="' + e.id + '"><div class="txt"><b>' + esc(e.n) + (e.medal ? ' <span class="pill ' + (e.medal === "gold" ? "warn" : "na") + '">' + MNAME[e.medal] + "</span>" : "") + "</b><small>" + fmtLong(e.d) + (e.div ? " · " + esc(e.div) : "") + (e.d >= today ? ' · <span class="pill ok">' + (dd === 0 ? "today" : dd + " days left") + "</span>" : ms.length ? " · " + ww + "–" + (ms.length - ww) : "") + "</small></div>" + CHEV + "</button>"; };
   if (up.length) h += '<div class="card"><h3>Upcoming</h3><div class="list">' + up.map(row).join("") + "</div></div>";
   h += '<div class="card"><h3>Past competitions</h3>' + (past.length ? '<div class="list">' + past.map(row).join("") + "</div>" : '<p class="empty">No competitions logged.</p>') + "</div>";
   return h;
@@ -910,7 +948,7 @@ function vEvent(e) {
   if (e.d >= today) { const dd = daysBetween(today, e.d); const lw = S.weight.items.slice().sort((a, b) => (a.d < b.d ? 1 : -1))[0]; h += '<div class="tip">' + (dd === 0 ? "Today!" : dd + " days to go.") + (e.target && lw ? " Last weight " + lw.kg + " kg, " + (e.target - lw.kg).toFixed(1) + " kg to the limit." : "") + "</div>"; }
   if (e.plan && S.plans.items.find((p) => p.id === e.plan)) { const p = S.plans.items.find((x) => x.id === e.plan); h += '<p class="small"><b>Game plan:</b> ' + esc(p.n) + " — " + esc(p.x) + "</p>"; }
   h += '<div class="field"><span class="lbl">Result</span>' + chips("medal", MEDALS, e.medal || "") + "</div>";
-  h += '<div class="actions"><button class="btn ghost" data-act="edit-event" data-id="' + e.id + '">Edit</button>' + delBtn("e:" + e.id, "del-event", 'data-id="' + e.id + '"') + "</div></div>";
+  h += '<div class="actions"><button class="btn ghost" data-act="edit-event" data-id="' + e.id + '">Edit</button></div></div>';
   h += '<div class="card"><div class="card-head"><h3>Matches</h3>' + (ms.length ? '<span class="muted small">' + ww + " wins · " + (ms.length - ww) + " losses</span>" : "") + "</div>";
   h += ms.length ? '<div class="list">' + ms.map((m, i) => '<button class="row" data-act="edit-match" data-id="' + e.id + '" data-i="' + i + '"><span class="pill ' + (m.res === "w" ? "ok" : m.res === "l" ? "bad" : "na") + '">' + (m.res === "w" ? "Win" : m.res === "l" ? "Loss" : "Draw") + '</span><div class="txt"><b>' + (i + 1) + ". " + esc(m.opp || "Opponent") + "</b><small>" + [HNAME[m.how], m.tech, m.score].filter(Boolean).map(esc).join(" · ") + (m.note ? " · " + esc(m.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div>" : '<p class="empty">One row per match. Write what won and what lost.</p>';
   h += '<button class="btn ghost wide" data-act="add-match" data-id="' + e.id + '">+ Add match</button></div>';
@@ -925,6 +963,7 @@ function eventSheet(id) {
   openSheet(e ? "Edit competition" : "New competition", b, {
     state: { picks: { gi: e && e.gi === false ? "0" : "1" } },
     onSave() { const n = sv("f-n").trim(); if (!n) { $("f-n").focus(); return false; } const rec = e || { id: uid(), matches: [], medal: "" }; rec.n = n; rec.d = sv("f-d") || todayIso(); rec.org = sv("f-org").trim(); rec.place = sv("f-place").trim(); rec.div = sv("f-div").trim(); rec.gi = pickVal("gi", "1") === "1"; rec.target = +sv("f-target") || ""; rec.plan = sv("f-plan"); if (!e) { S.comp.events.push(rec); UI.comp.id = rec.id; } save("comp"); render(); return true; },
+    onDelete: e ? () => { S.comp.events = S.comp.events.filter((x) => x.id !== e.id); UI.comp.id = null; save("comp"); go("enter-r"); return true; } : null,
   });
 }
 function matchSheet(eid, i) {
@@ -1007,6 +1046,8 @@ document.addEventListener("click", (e) => {
     case "del-routine": if (armConfirm(ds.key)) { S.body.routines = S.body.routines.filter((r) => r.id !== ds.id); save("body"); render(); } break;
     case "belttrack": S.belt.track = ds.v; if (!SEED.belts[ds.v].some((b) => b.id === S.belt.belt)) S.belt.belt = "white"; save("belt"); render(); break;
     case "add-promo": beltSheet(true); break;
+    case "edit-promo": promoSheet(ds.id); break;
+    case "edit-weight": weightSheet(ds.id); break;
     case "edit-belt": beltSheet(false); break;
     case "del-promo": if (armConfirm(ds.key)) { S.belt.history = S.belt.history.filter((x) => x.id !== ds.id); save("belt"); render(); } break;
     case "goal-toggle": { const g = (S.belt.goals[S.belt.belt] || []).find((x) => x.id === ds.id); if (g) { g.done = !g.done; save("belt"); render(); } break; }
