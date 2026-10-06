@@ -29,7 +29,7 @@ const ico = (n, cls) => '<svg class="ic' + (cls ? " " + cls : "") + '" aria-hidd
 const sv = (id) => { const el = $(id); return el ? el.value : ""; };
 const fmtN = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, "\u2009");
 function mmss(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) + ":" + pad(s % 60); }
-function why(list, cls) { if (!list || !list.length) return ""; return '<div class="why' + (cls ? " " + cls : "") + '">' + list.map((w) => "<span>" + ico("info") + esc(w) + "</span>").join("") + "</div>"; }
+function why(list, cls, max) { if (!list || !list.length) return ""; max = max || 3; const chip = (w) => "<span>" + ico("info") + esc(w) + "</span>"; const head = list.slice(0, max).map(chip).join(""); const tail = list.slice(max); return '<div class="why' + (cls ? " " + cls : "") + '">' + head + (tail.length ? '<button type="button" class="why-more" data-act="whymore" aria-expanded="false">+' + tail.length + ' шалтгаан</button><span class="why-rest" hidden>' + tail.map(chip).join("") + "</span>" : "") + "</div>"; }
 function get(o, path) { return path.split(".").reduce((a, k) => (a == null ? a : a[k]), o); }
 function set(o, path, v) { const ks = path.split("."); let c = o; for (let i = 0; i < ks.length - 1; i++) { if (c[ks[i]] == null || typeof c[ks[i]] !== "object") c[ks[i]] = {}; c = c[ks[i]]; } c[ks[ks.length - 1]] = v; }
 
@@ -653,6 +653,7 @@ document.addEventListener("click", (e) => {
     case "parq": { const arr = P().parq.slice(); arr[+ds.i] = ds.v === "1"; setField("parq", arr); render(); break; }
     case "test-timer": testTimerToggle(ds.id); break;
     case "retest": UI.retest = true; UI.ob = { step: obSteps().findIndex((s) => s.id === "tests"), returnTo: UI.tab, retest: true }; go("enter-l"); break;
+    case "whymore": { const b = e.target.closest(".why-more"); const r = b && b.nextElementSibling; if (r) { r.hidden = false; r.style.display = "contents"; b.remove(); } break; }
     case "day": UI.openDay = UI.openDay === +ds.v ? null : +ds.v; render(); break;
     case "play": play(ds.id); break;
     case "next-week": nextWeek(); break;
