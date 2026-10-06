@@ -12,6 +12,10 @@
     {
       "source": "/pattern-lab/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    },
+    {
+      "source": "/bjj/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
   ]
 }
