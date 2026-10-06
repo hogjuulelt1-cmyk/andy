@@ -990,14 +990,22 @@ window.BJJ_SEED = (function () {
     sc_b: 'On top, chest on chest, pinning your far arm', mt_b: 'Sitting on your hips, posting or attacking',
     bk_b: 'Behind you, hooks in, hunting the choke', tt_b: 'Over you, sprawled or attacking the back',
   };
+  // Where you land when they escape a submission from this position (bottom: they pass; top: they recover).
+  const ESC_TO = { st: 'sc_b', cg_b: 'sc_b', hg_b: 'sc_b', dlr_b: 'sc_b', sp_b: 'sc_b', bf_b: 'sc_b', xg_b: 'sc_b', slx_b: 'sc_b', hg_t: 'og_t', sc_t: 'og_t', kob_t: 'og_t', mt_t: 'hg_t', bk_t: 'og_t', tt_t: 'og_t' };
   const RANKS = { st: 0, cg_b: 0, hg_b: -1, dlr_b: 0, sp_b: 0, bf_b: 0, xg_b: 1, slx_b: 1, cg_t: 0, og_t: 0, hg_t: 1, sc_t: 1, kob_t: 2, mt_t: 2, bk_t: 2, tt_t: 1, sc_b: -1, mt_b: -2, bk_b: -2, tt_b: -1 };
   // Per-node annotations (gi/no-gi, belt, points, energy, situation, outcomes, traps, rules). Keyed by path id.
   const META = window.BJJ_META || {};
   // Flatten to a list with stable, path-based ids
   function flatten() {
     const out = [];
-    function walk(node, parent, kind, path) {
-      const id = node.id || path;
+    function walk(node, parent, kind, path, root) {
+      const id = node.id || path; root = root || id;
+      // A submission never ends the roll by itself: without written defenses it gets the generic ones.
+      if (kind === 'mv' && node.t === 'sub' && !(node.c || []).length) {
+        const pn = (POS.find((p) => p.id === root) || {}).n || 'the position';
+        node.c = [{ id: id + '.dfx', n: 'They defend it, back to ' + pn, f: 'common', to: root, x: 'The finish is not there. Keep the position and attack again.' }];
+        if (ESC_TO[root]) node.c.push({ id: id + '.esc', n: 'They escape and improve', f: 'rare', to: ESC_TO[root], x: 'They slip the attack and get a better spot.' });
+      }
       const rec = { id, k: kind, p: parent, n: node.n, en: node.en || '', t: node.t || '', s: node.s || [], x: node.x || '', to: node.to || '', cat: node.cat || '' };
       const m = META[id] || {};
       if (kind === 'pos') { rec.rank = m.rank != null ? m.rank : (RANKS[id] != null ? RANKS[id] : 0); rec.them = m.them || node.them || THEM[id] || ''; }
@@ -1009,11 +1017,11 @@ window.BJJ_SEED = (function () {
       }
       if (kind === 'df') { rec.f = m.f || node.f || 'common'; rec.bait = m.bait || node.bait || ''; }
       out.push(rec);
-      (node.c || []).forEach((ch, i) => walk(ch, id, kind === 'mv' ? 'df' : 'mv', id + '.' + (i + 1)));
+      (node.c || []).forEach((ch, i) => walk(ch, id, kind === 'mv' ? 'df' : 'mv', id + '.' + (i + 1), root));
     }
     POS.forEach((p) => walk(p, null, 'pos', p.id));
     return out;
   }
 
-  return { version: 4, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
+  return { version: 5, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
 })();

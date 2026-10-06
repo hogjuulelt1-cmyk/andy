@@ -58,7 +58,7 @@ const SB = {
 function blank() {
   return {
     tree: { nodes: [] },
-    plans: { items: [] },
+    plans: { items: [], setups: [] },
     log: { items: [] },
     body: { routines: [], items: [] },
     belt: { track: "kids", belt: "white", stripes: 0, since: "", history: [], goals: {} },
@@ -295,8 +295,10 @@ VIEWS.tech = function () {
   if (UI.tech.id && node(UI.tech.id)) return vNode(node(UI.tech.id));
   let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="tq" type="search" placeholder="Search positions, techniques…" value="' + esc(UI.tech.q) + '" autocomplete="off"></div>';
   if (UI.tech.q.trim().length >= 2) return h + vSearch(UI.tech.q.trim().toLowerCase());
-  if (!["pos", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
-  h += seg([["pos", "Roll"], ["plans", "Game plans"], ["rolls", "History"]], UI.tech.view, "techview");
+  if (UI.setupEd) return vSetupEdit();
+  if (!["pos", "setups", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
+  h += seg([["pos", "Roll"], ["setups", "Setups"], ["plans", "Game plans"], ["rolls", "History"]], UI.tech.view, "techview");
+  if (UI.tech.view === "setups") return h + vSetups();
   if (UI.tech.view === "plans") return h + vPlans();
   if (UI.tech.view === "rolls") return h + vRolls();
   const R = UI.roll;
@@ -307,7 +309,8 @@ VIEWS.tech = function () {
     if (UI.walkCat) h += '<div class="jump"><p class="muted small">I ended up in…</p><div class="chips">' + positions().filter((p) => p.cat === UI.walkCat).map((p) => '<button class="chip pchip" data-act="walk-pos" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div></div>";
   } else h += '<div class="card-head"><h3>Where are you?</h3><span class="muted small">tap a position to start</span></div>';
   h += rollGraphSvg();
-  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> " + (cur.k === "pos" ? metaBadges(cur) : "") + " · " + q + "</p>" + (cur.k === "pos" ? themLine(cur) : ""); }
+  if (R) { const cur = R.cur === "finish" ? FINISH : node(R.cur); const q = cur.k === "pos" ? "What do you do?" : cur.k === "mv" ? "What does the opponent do?" : "What do you do now?"; h += '<p class="qline"><b>' + esc(cur.n) + "</b> " + (cur.k === "pos" ? metaBadges(cur) : "") + " · " + q + "</p>" + (cur.k === "pos" ? themLine(cur) : "");
+    if (R.plan) { const sp = setupById(R.plan); if (sp) { const on = R.steps.every((s, i) => sp.steps[i] && sp.steps[i].id === s.id); const nx = on && sp.steps[R.steps.length]; h += '<p class="small plan-line">★ <b>' + esc(sp.n) + "</b> · " + (nx ? "next: " + esc(nx.n) : on ? "done, finish it" : "off the setup, improvise") + "</p>"; } } }
   else h += '<div class="legend">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + '</div><p class="muted small">Jump node to node. It only ends with a submission or points.</p>';
   h += "</div>";
   const all = positions();
@@ -327,6 +330,7 @@ function vNode(n) {
   { const mb = metaBadges(n, true); if (mb) h += '<div class="meta">' + mb + "</div>"; }
   if (n.k === "pos" && n.them) h += '<p class="small"><span class="muted">Them:</span> ' + esc(n.them) + "</p>";
   if (n.k === "mv" && n.when) h += '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>";
+  if (n.k === "df" && n.to && node(n.to)) h += '<p class="small"><span class="muted">They end up in:</span> <button class="to-link sm" data-act="open" data-id="' + n.to + '">' + esc(node(n.to).n) + "</button></p>";
   if (n.bait) h += '<div class="tip"><b>' + (n.k === "df" ? "Their trap" : "Trap") + ":</b> " + esc(n.bait) + "</div>";
   if (n.k === "mv" && n.oc && n.oc.length) h += '<p class="small"><span class="muted">Lands in:</span> ' + n.oc.filter((o) => node(o.to)).map((o) => '<button class="to-link sm" data-act="open" data-id="' + o.to + '">' + esc(node(o.to).n) + (o.f === "rare" ? " · rare" : "") + "</button>").join(" ") + "</p>";
   if (n.legal) h += '<p class="muted small">Rules: ' + esc(n.legal) + "</p>";
@@ -338,7 +342,9 @@ function vNode(n) {
   h += "</div>";
   if (n.k === "pos") {
     const en = entriesTo(n.id); const cnt = en.reduce((a, g) => a + g.items.length, 0);
-    h += '<div class="card"><div class="card-head"><h3>Setup · how you get here</h3><span class="muted small">' + (cnt ? cnt + " entr" + (cnt > 1 ? "ies" : "y") : "none yet") + "</span></div>";
+    const sps = S.plans.setups.filter((x) => x.steps[0] && x.steps[0].id === n.id);
+    h += '<div class="card"><div class="card-head"><h3>Setups from here</h3><span class="muted small">my paths to a submission</span></div>' + (sps.length ? '<div class="list">' + sps.map(setupRow).join("") + "</div>" : '<p class="empty">No setup yet. Build the chain you want to land from here.</p>') + '<button class="btn ghost wide" data-act="add-setup" data-pos="' + n.id + '">+ New setup</button></div>';
+    h += '<div class="card"><div class="card-head"><h3>Ways in · how you get here</h3><span class="muted small">' + (cnt ? cnt + " entr" + (cnt > 1 ? "ies" : "y") : "none yet") + "</span></div>";
     if (cnt) h += '<div class="list">' + en.map((g) => '<div class="group-label" style="color:' + CAT_COLOR[g.from.cat] + '">from ' + esc(g.from.n) + "</div>" + g.items.map((e) => '<button class="node-row" data-act="open" data-id="' + e.m.id + '"><span class="pict" style="color:' + nodeColor(e.m) + '">' + iconFor(e.m) + '</span><div class="txt"><b>' + esc(e.m.n) + "</b>" + (e.m.when ? "<small>" + esc(e.m.when) + "</small>" : "") + "</div>" + (e.f === "rare" ? '<span class="pill na">rare</span>' : "") + tbadge(e.m) + CHEV + "</button>").join("")).join("") + "</div>";
     else h += '<p class="empty">No move leads here yet. Add how you pull, sweep or pass into it.</p>';
     h += '<button class="btn ghost wide" data-act="add-entry" data-id="' + n.id + '">+ Add an entry</button></div>';
@@ -413,7 +419,7 @@ function canvasHtml(id, svgInner, bounds, legend, roll) {
   const bar = roll && R ? '<div class="fbar"><button type="button" class="pillb" data-act="roll-undo"' + (R.steps.length < 2 ? " disabled" : "") + '>↶ Undo</button><button type="button" class="pillb" data-act="roll-other">Elsewhere…</button><button type="button" class="pillb strong" data-act="roll-end">End roll</button></div>' : "";
   return '<div class="canvas' + (roll ? " rollcv" : "") + '" data-graph="' + id + '" data-x0="' + bounds.x + '" data-y0="' + bounds.y + '" data-w="' + bounds.w + '" data-h="' + bounds.h + '"><svg class="g" aria-label="Technique graph"><defs><pattern id="dots-' + sid + '" width="22" height="22" patternUnits="userSpaceOnUse"><circle class="g-dots" cx="1" cy="1" r="1"/></pattern><marker id="arr-' + sid + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="context-stroke"/></marker></defs><rect class="bgp" x="-5000" y="-5000" width="10000" height="10000" fill="url(#dots-' + sid + ')"/><g class="vp">' + svgInner + "</g></svg>" +
     '<div class="ctl"><button type="button" data-g="in" aria-label="Zoom in">+</button><button type="button" data-g="out" aria-label="Zoom out">−</button><button type="button" data-g="fit" aria-label="Fit to screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>' +
-    '<div class="hint">' + (roll ? (R ? "tap the next step" : "tap a position") : "drag · pinch · tap") + '</div><div class="gchip"></div>' + bar + "</div>" + (legend || "");
+    '<div class="hint">' + (roll ? (R ? "tap the next step" : "tap a position") : "drag · pinch · tap") + "</div>" + (roll && R && node(R.cur) && node(R.cur).k === "pos" ? '<div class="gtog" role="tablist"><button type="button" class="' + (R.by === "when" ? "" : "on") + '" data-act="roll-by" data-v="type">My moves</button><button type="button" class="' + (R.by === "when" ? "on" : "") + '" data-act="roll-by" data-v="when">Their situation</button></div>' : "") + '<div class="gchip"></div>' + bar + "</div>" + (legend || "");
 }
 
 /* --- roll graph ("second brain" view): the node you are in sits in the middle, every legal next step
@@ -428,20 +434,23 @@ function nextOf(n) {
     for (const o of oc) out.push({ n: node(o.to), how: "works", f: o.f || "common", label: o.n || "" });
     if (n.t === "sub") out.push({ n: FINISH, how: "tap" });
   }
+  if (n.k === "df" && n.to && node(n.to)) out.push({ n: node(n.to), how: "lands", f: n.f || "common" });
   return out;
 }
 function gNode(n, x, y, r, role, attrs, badge, sub) {
   const col = n.k === "fin" ? "var(--ok)" : n.k === "grp" ? (n.t ? typeColor(n.t) : "var(--accent)") : nodeColor(n); const inner = n.k === "fin" ? PICT.finish : n.k === "pos" ? PICT[n.cat] || PICT.guard : n.k === "df" ? TICON.df : n.k === "grp" && !n.t ? TICON.sit : TICON[n.t] || TICON.trans;
   const ir = Math.round(r * 1.2); const fs = role === "cur" ? 12 : 10.5; const r2 = role.indexOf("ring2") === 0, ans = role.indexOf("ans") > 0; const ls = r2 && !ans ? [n.n.length > 14 ? n.n.slice(0, 13).trim() + "…" : n.n] : wrapText(n.n, role === "cur" ? 20 : ans ? 13 : 15);
+  const trap = n.bait && role !== "cur" ? '<g class="g-trap"><circle cx="' + (-r * 0.8) + '" cy="' + (-r * 0.8) + '" r="8"/><svg x="' + (-r * 0.8 - 5) + '" y="' + (-r * 0.8 - 5) + '" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + TICON.bait + "</svg></g>" : "";
+  const star = role.indexOf("planned") > 0 ? '<text class="star" y="' + (-r - 6) + '" text-anchor="middle">★</text>' : "";
   return '<g class="g-node rn ' + n.k + " " + role + '" data-id="' + n.id + '" data-role="' + role + '" ' + (attrs || "") + ' data-x="' + x.toFixed(1) + '" data-y="' + y.toFixed(1) + '" style="transform:translate(' + x.toFixed(1) + "px," + y.toFixed(1) + 'px);color:' + col + '">' +
     '<circle class="hit" r="' + (r + 12) + '"/><circle class="b" r="' + r + '"/>' +
     '<svg class="ic" x="' + (-ir / 2) + '" y="' + (-ir / 2) + '" width="' + ir + '" height="' + ir + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + inner + "</svg>" +
-    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (r2 ? (ans ? 9.5 : 9) : fs) + 'px">' + esc(l) + "</text>").join("") + (sub ? '<text class="lb sub" y="' + (r + 12 + ls.length * (fs + 2)) + '" text-anchor="middle">' + esc(sub.length > 24 ? sub.slice(0, 23).trim() + "…" : sub) + "</text>" : "") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + "</g>";
+    ls.map((l, i) => '<text class="lb" y="' + (r + 12 + i * (fs + 2)) + '" text-anchor="middle" style="font-size:' + (r2 ? (ans ? 9.5 : 9) : fs) + 'px">' + esc(l) + "</text>").join("") + (sub ? '<text class="lb sub" y="' + (r + 12 + ls.length * (fs + 2)) + '" text-anchor="middle">' + esc(sub.length > 24 ? sub.slice(0, 23).trim() + "…" : sub) + "</text>" : "") + (badge ? '<g class="g-badge"><circle cx="' + (r * 0.75) + '" cy="' + (-r * 0.75) + '" r="9"/><text x="' + (r * 0.75) + '" y="' + (-r * 0.75 + 3.3) + '" text-anchor="middle">' + badge + "</text></g>" : "") + trap + star + "</g>";
 }
 function gEdge(ka, a, kb, b, cls, color) { return '<line class="g-edge ' + cls + '" data-a="' + ka + '" data-b="' + kb + '" x1="' + a[0].toFixed(1) + '" y1="' + a[1].toFixed(1) + '" x2="' + b[0].toFixed(1) + '" y2="' + b[1].toFixed(1) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>"; }
 function rollGraphSvg() {
-  const R = UI.roll; let nodesOut = "", edges = ""; const P = {}; let minX = -40, maxX = 40, minY = -40, maxY = 40;
-  const put = (key, n, x, y, r, role, attrs, badge, sub) => { P[key] = [x, y]; nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || ""), badge, sub); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
+  const R = UI.roll; let nodesOut = "", edges = ""; const P = {}; const groupItems = {}; let planned = null; let minX = -40, maxX = 40, minY = -40, maxY = 40;
+  const put = (key, n, x, y, r, role, attrs, badge, sub) => { P[key] = [x, y]; if (R && R.plan) { const pid = R.plan && planned; if (pid && (n.id === pid || (n.k === "grp" && (groupItems[key] || []).some((it) => it.n.id === pid)))) role += " planned"; } nodesOut += gNode(n, x, y, r, role, 'data-k="' + key + '" ' + (attrs || ""), badge, sub); minX = Math.min(minX, x - 60); maxX = Math.max(maxX, x + 60); minY = Math.min(minY, y - 40); maxY = Math.max(maxY, y + 40); };
   if (!R) {
     const CR = 150; CATS.forEach(([cat], i) => { const a = (-90 + i * 72) * Math.PI / 180; const cx = Math.cos(a) * CR, cy = Math.sin(a) * CR; const ps = positions().filter((p) => p.cat === cat); const rr = ps.length > 1 ? 30 + ps.length * 7 : 0; ps.forEach((p, j) => { const b = a + (j / ps.length) * 2 * Math.PI; put("s:" + p.id, p, cx + Math.cos(b) * rr, cy + Math.sin(b) * rr, 15, "start"); }); });
     const seen = {}; for (const m of nodes()) if (m.k === "mv" && m.to && P["s:" + m.to]) { const from = posOf(m.id).id; const k = from + ">" + m.to; if (from === m.to || !P["s:" + from] || seen[k]) continue; seen[k] = 1; edges += gEdge("s:" + from, P["s:" + from], "s:" + m.to, P["s:" + m.to], "faint", CAT_COLOR[node(from).cat]); }
@@ -453,11 +462,16 @@ function rollGraphSvg() {
   for (let i = 0; i < Math.min(4, prev.length); i++) { const st = prev[prev.length - 1 - i]; const n = node(st.id); if (!n) break; const key = "t" + i; const x = -(i + 1) * 78, y = i % 2 ? 18 : -18; put(key, n, x, y, 11, "trail", 'data-i="' + (prev.length - 1 - i) + '"'); edges += gEdge(key, [x, y], lastKey, lastKey === "c" ? [0, 0] : P[lastKey], "trail"); lastKey = key; }
   // next steps on the right; many options are bundled by type into hubs
   const all = nextOf(cur); let next = all, hubs = null;
-  if (cur.k === "pos" && all.length > 6) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
+  const whens = cur.k === "pos" ? [...new Set(all.map((e) => e.n.when || ""))] : [];
+  const plan = R.plan ? setupById(R.plan) : null; planned = plan && plan.steps.length > R.steps.length && R.steps.every((s, i) => plan.steps[i] && plan.steps[i].id === s.id) ? plan.steps[R.steps.length].id : null;
+  if (cur.k === "pos" && R.by === "when" && whens.length > 1 && all.length > 5) { hubs = {}; for (const e of all) (hubs[e.n.when || ""] = hubs[e.n.when || ""] || []).push(e);
+    { const ks = Object.keys(hubs).filter((k) => k).sort((a, b) => hubs[b].length - hubs[a].length); if (ks.length > 7) { const rest = ks.slice(6); hubs["Other situations"] = hubs["Other situations"] || []; for (const k of rest) { hubs["Other situations"].push(...hubs[k]); delete hubs[k]; } } }
+    next = Object.keys(hubs).sort((a, b) => (a === "" ? -1 : b === "" ? 1 : 0)).map((w) => ({ n: { id: "g:" + (w || "any"), k: "grp", n: w || "Any time", t: "", cat: "", when: w }, how: "group", items: hubs[w] })); }
+  else if (cur.k === "pos" && all.length > 6) { hubs = {}; for (const e of all) (hubs[e.n.t || "trans"] = hubs[e.n.t || "trans"] || []).push(e); const order = TYPES.map((t) => t[0]); next = Object.keys(hubs).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map((t) => ({ n: { id: "g:" + t, k: "grp", n: TNAME[t] + (hubs[t].length > 1 ? "s" : ""), t, cat: "" }, how: "group", items: hubs[t] })); }
   const n1 = next.length; const r1 = Math.min(170, Math.max(112, 96 + n1 * 9)); const span = n1 > 1 ? Math.min(200, 60 + n1 * 28) : 0;
   next.forEach((e, k) => {
     if (e.how === "group") {
-      const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const gk = e.n.t || e.n.id; const key = "h:" + gk; const open = R.grp === gk;
+      const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const gk = e.n.t || e.n.id; const key = "h:" + gk; const open = R.grp === gk; groupItems[key] = e.items;
       put(key, e.n, x, y, open ? 19 : 16, "group" + (open ? " open" : ""), 'data-t="' + esc(gk) + '"', e.items.length);
       edges += gEdge("c", [0, 0], key, [x, y], "step" + (open ? "" : " faint"), e.n.t ? typeColor(e.n.t) : "var(--accent)");
       if (open) { const m = e.items.length; const sector = Math.min(170, 30 + m * 22); const two = m > 6; e.items.forEach((it, j) => { const d2 = deg + (m > 1 ? -sector / 2 + (sector / (m - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const rr = r1 + 96 + (two && j % 2 ? 78 : 0); const x2 = Math.cos(a2) * rr, y2 = Math.sin(a2) * rr; const k2 = "n:" + it.n.id; put(k2, it.n, x2, y2, 16, "next" + (it.f === "rare" ? " rare" : ""), 'data-how="' + it.how + '"', "", it.n.when); edges += gEdge(key, [x, y], k2, [x2, y2], "step", nodeColor(it.n));
@@ -467,7 +481,7 @@ function rollGraphSvg() {
     }
     const deg = n1 > 1 ? -span / 2 + (span / (n1 - 1)) * k : 0; const a = deg * Math.PI / 180; const x = Math.cos(a) * r1, y = Math.sin(a) * r1; const key = "n:" + e.n.id;
     put(key, e.n, x, y, e.f === "rare" ? 14 : 17, "next" + (e.f === "rare" ? " rare" : "") + (e.how === "works" ? " works" : ""), 'data-how="' + e.how + '"');
-    edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : nodeColor(e.n));
+    edges += gEdge("c", [0, 0], key, [x, y], "step " + e.how + (e.n.k === "df" || e.how === "lands" ? " df" : ""), e.n.k === "fin" ? "var(--ok)" : e.how === "works" ? "var(--ok)" : e.how === "lands" ? "var(--df-ink)" : nodeColor(e.n));
     const isDf = e.n.k === "df"; const next2 = nextOf(e.n).slice(0, isDf ? 4 : 3); const sector = n1 > 1 ? Math.min(isDf ? 56 : 44, span / (n1 - 1) * 0.9) : 60;
     next2.forEach((e2, j) => { const d2 = deg + (next2.length > 1 ? -sector / 2 + (sector / (next2.length - 1)) * j : 0); const a2 = d2 * Math.PI / 180; const rr = r1 + (isDf ? 98 : 92); const x2 = Math.cos(a2) * rr, y2 = Math.sin(a2) * rr; const key2 = "n2:" + e.n.id + ":" + e2.n.id; put(key2, e2.n, x2, y2, isDf ? 12 : 10, isDf ? "ring2 ans" : "ring2", 'data-p="' + e.n.id + '"'); edges += gEdge(key, [x, y], key2, [x2, y2], "faint" + (e2.n.k === "df" ? " df" : e2.how === "works" ? " works" : ""), e2.n.k === "fin" || e2.how === "works" ? "var(--ok)" : nodeColor(e2.n)); });
     if (nextOf(e.n).length > next2.length) { const a3 = (deg + sector / 2 + 10) * Math.PI / 180; nodesOut += '<text class="more" x="' + (Math.cos(a3) * (r1 + 92)).toFixed(1) + '" y="' + (Math.sin(a3) * (r1 + 92) + 4).toFixed(1) + '" text-anchor="middle">+' + (nextOf(e.n).length - next2.length) + "</text>"; }
@@ -555,7 +569,7 @@ function initGraphs() {
     else { if (!st.s) home(); else apply(); updateChip(id, el.querySelector(".gchip")); }
     if (st.focus) { centerOn(st.focus); st.focus = null; }
     const ptrs = new Map(); let moved = false, down = null, lastT = 0, vx = 0, vy = 0, raf = 0, pinch0 = null;
-    el.addEventListener("pointerdown", (e) => { if (e.target.closest(".ctl,.gchip,.fbar")) return; cancelAnimationFrame(raf); el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 1) { down = { x: e.clientX, y: e.clientY, t: Date.now(), target: e.target }; moved = false; vx = vy = 0; lastT = performance.now(); } else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), s: st.s }; } });
+    el.addEventListener("pointerdown", (e) => { if (e.target.closest(".ctl,.gchip,.fbar,.gtog")) return; cancelAnimationFrame(raf); el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 1) { down = { x: e.clientX, y: e.clientY, t: Date.now(), target: e.target }; moved = false; vx = vy = 0; lastT = performance.now(); } else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), s: st.s }; } });
     el.addEventListener("pointermove", (e) => {
       if (!ptrs.has(e.pointerId)) return; const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (ptrs.size === 1) { const dx = e.clientX - prev.x, dy = e.clientY - prev.y; if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) moved = true; if (moved) { st.tx += dx; st.ty += dy; const now = performance.now(), dt = Math.max(1, now - lastT); vx = dx / dt; vy = dy / dt; lastT = now; apply(); } }
@@ -610,6 +624,7 @@ function rollPick(nid) {
   const R = UI.roll, n = node(nid); if (!R || !n) return;
   R.steps.push({ id: n.id, k: n.k, n: n.n, t: n.t || "" }); R.cur = n.id; R.grp = null;
   if (n.k === "mv" && !kids(n.id).length) { if (n.to && node(n.to)) { rollGoto(n.to, "auto"); return; } if (n.t === "sub") { R.cur = n.id; } }
+  if (n.k === "df" && !kids(n.id).length && n.to && node(n.to)) { rollGoto(n.to, "they"); return; }
   render();
 }
 function rollOtherSheet() {
@@ -618,8 +633,8 @@ function rollOtherSheet() {
 }
 function rollEndSheet(finished) {
   const R = UI.roll; if (!R) return;
-  const b = '<div class="field"><span class="lbl">How did it end?</span>' + chips("res", [["sub", "I finished a sub"], ["points", "Won on points"], ["tapped", "I got tapped"], ["time", "Time ran out"], ["drill", "Just drilling"]], finished ? "sub" : "time") + "</div>" + field("f-note", "Note", ta("f-note", "", "What worked, what to fix…")) + '<div class="field"><span class="lbl">Date</span>' + inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"') + "</div>";
-  openSheet("End roll", b, { state: { picks: { res: finished ? "sub" : "time" } }, saveLabel: "Save roll", delLabel: "Discard", onDelete() { UI.roll = null; render(); return true; }, onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), res: pickVal("res", "time"), note: sv("f-note").trim(), steps: R.steps, sec: Math.round((Date.now() - R.t0) / 1000) }; S.rolls.items.push(rec); save("rolls"); UI.roll = null; UI.tech.view = "rolls"; UI.rollId = rec.id; render(); toast("Roll saved"); return true; } });
+  const b = '<div class="field"><span class="lbl">How did it end?</span>' + chips("res", [["sub", "I finished a sub"], ["points", "Won on points"], ["tapped", "I got tapped"], ["time", "Time ran out"], ["drill", "Just drilling"]], finished ? "sub" : "time") + "</div>" + field("f-note", "Note", ta("f-note", "", "What worked, what to fix…")) + '<div class="field"><span class="lbl">Date</span>' + inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"') + "</div>" + (R.steps.length >= 2 ? '<div class="field"><span class="lbl">Keep this path as a setup</span>' + chips("mk", [["no", "No"], ["yes", "Yes"]], "no") + "</div>" : "");
+  openSheet("End roll", b, { state: { picks: { res: finished ? "sub" : "time", mk: "no" } }, saveLabel: "Save roll", delLabel: "Discard", onDelete() { UI.roll = null; render(); return true; }, onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), res: pickVal("res", "time"), note: sv("f-note").trim(), steps: R.steps, sec: Math.round((Date.now() - R.t0) / 1000) }; S.rolls.items.push(rec); save("rolls"); if (pickVal("mk", "no") === "yes") { const st = R.steps.filter((s) => s.id !== "finish"); S.plans.setups.push({ id: uid(), n: setupName(st), steps: st.map((s) => ({ id: s.id, k: s.k, n: s.n, t: s.t || "" })), x: "" }); save("plans"); } UI.roll = null; UI.tech.view = "rolls"; UI.rollId = rec.id; render(); toast("Roll saved"); return true; } });
 }
 function rollStatsFor(nid) { let used = 0; for (const r of S.rolls.items) if (r.steps.some((s) => s.id === nid)) used++; return { used }; }
 const RES_NAME = { sub: "Finished with a submission", points: "Won on points", tapped: "Got tapped", time: "Time ran out", drill: "Drilling" };
@@ -689,7 +704,7 @@ function nodeSheet(id, parentId) {
     '<div class="grid2">' + field("f-pts", "IBJJF points", inp("f-pts", n ? n.pts || 0 : 0, "number", 'inputmode="numeric" min="0" max="4"')) + '<div class="field"><span class="lbl">Energy (1–3)</span>' + scale("energy", n ? n.energy || 2 : 2, 1, 3) + "</div></div>" +
     field("f-bait", "Trap (what you offer, what you want them to do)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="Leave the arm loose so they reach…"')) +
     '<div class="field"><span class="lbl">Kids rules</span>' + chips("kids", [["ok", "Allowed"], ["no", "Not for kids"]], n && n.kids === false ? "no" : "ok") + "</div>";
-  if (kind === "df") b += '<div class="field"><span class="lbl">How common</span>' + chips("f", [["common", "Common"], ["rare", "Rare"]], n ? n.f || "common" : "common") + "</div>" + field("f-bait", "Their trap (what they bait with)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="They offer the underhook to…"'));
+  if (kind === "df") b += field("f-dto", "They end up in (position, optional)", '<select id="f-dto"><option value="">— I answer from here</option>' + positions().map((p) => '<option value="' + p.id + '"' + (n && n.to === p.id ? " selected" : "") + ">" + esc(p.n) + "</option>").join("") + "</select>") + '<div class="field"><span class="lbl">How common</span>' + chips("f", [["common", "Common"], ["rare", "Rare"]], n ? n.f || "common" : "common") + "</div>" + field("f-bait", "Their trap (what they bait with)", inp("f-bait", n ? n.bait : "", "text", 'placeholder="They offer the underhook to…"'));
   if (kind === "pos") b += field("f-them", "Them (where the opponent is)", inp("f-them", n ? n.them || "" : "", "text", 'placeholder="On top, inside your locked legs…"'));
   if (kind === "pos") b += '<div class="field"><span class="lbl">Position quality</span>' + chips("rank", [["-2", "Hard"], ["-1", "Tough"], ["0", "Neutral"], ["1", "Good"], ["2", "Dominant"]], n ? String(n.rank || 0) : "0") + "</div>";
   openSheet(title, () => b + (kind === "mv" ? picker("oc", "Can also land in (tap + to mark rare)", "pos", { ph: "Position…", counts: true }) : ""), {
@@ -700,13 +715,54 @@ function nodeSheet(id, parentId) {
       rec.n = name; rec.en = sv("f-en").trim(); rec.x = sv("f-x").trim();
       if (kind === "pos") { rec.cat = pickVal("cat", "guard"); rec.rank = +pickVal("rank", "0"); rec.them = sv("f-them").trim(); }
       if (kind === "mv") { rec.t = pickVal("t", "sub"); rec.to = sv("f-to"); rec.when = sv("f-when").trim(); rec.gi = pickVal("gi", "both"); rec.belt = pickVal("belt", "white"); rec.pts = +sv("f-pts") || 0; rec.energy = pickVal("energy", 2); rec.bait = sv("f-bait").trim(); rec.kids = pickVal("kids", "ok") === "no" ? false : true; rec.oc = (UI.sheet.pk.oc || []).filter((x) => x.id).map((x) => ({ to: x.id, f: x.c >= 2 ? "rare" : "common" })); if (!rec.to && rec.oc.length) rec.to = rec.oc[0].to; }
-      if (kind === "df") { rec.f = pickVal("f", "common"); rec.bait = sv("f-bait").trim(); }
+      if (kind === "df") { rec.f = pickVal("f", "common"); rec.bait = sv("f-bait").trim(); rec.to = sv("f-dto"); }
       if (kind !== "df") rec.s = lines(sv("f-s"));
       if (!n) { nodes().push(rec); if (kind === "pos") UI.tech.id = null; else UI.tech.id = parentId; }
       save("tree"); toast(n ? "Saved" : "Added"); render(); return true;
     },
     onDelete: n ? () => { const ids = subtreeIds(n.id); S.tree.nodes = nodes().filter((x) => !ids.includes(x.id)); UI.tech.id = n.p || null; save("tree"); toast("Deleted"); go("enter-r"); return true; } : null,
   });
+}
+/* ======================= SETUPS (my own chain to a submission) ======================= */
+function setupById(id) { return S.plans.setups.find((x) => x.id === id); }
+function setupName(steps) { const last = steps[steps.length - 1]; const first = steps[0]; return (first ? first.n : "Setup") + " → " + (last ? last.n : "…"); }
+function setupHasTrap(sp) { return sp.steps.some((s) => { const n = node(s.id); return n && n.bait; }); }
+function setupEnds(sp) { const last = sp.steps[sp.steps.length - 1]; return last && last.k === "mv" && last.t === "sub"; }
+function setupPath(sp) { return sp.steps.map((s, i) => '<span class="sp ' + s.k + '">' + (s.k === "df" ? "they: " : "") + esc(s.n) + "</span>").join('<span class="sep">›</span>'); }
+function setupRow(sp) {
+  return '<div class="plan"><button class="row" data-act="edit-setup" data-id="' + sp.id + '"><div class="txt"><b>' + esc(sp.n) + '</b><small class="spath">' + setupPath(sp) + "</small></div>" + CHEV + '</button><div class="refs">' +
+    (setupEnds(sp) ? '<span class="pill ok">ends in a sub</span>' : '<span class="pill warn">no finish yet</span>') + (setupHasTrap(sp) ? '<span class="pill na">trap</span>' : "") + '<button class="chip" data-act="setup-roll" data-id="' + sp.id + '">Roll it</button></div></div>';
+}
+function vSetups() {
+  let h = '<div class="card"><div class="card-head"><h3>Setups</h3><span class="muted small">my paths to a submission</span></div>';
+  if (!S.plans.setups.length) h += '<p class="empty">A setup is the chain you choose yourself: position → my move → their likely reaction → my answer … → submission. Build one, then roll it and the next planned step is starred on the graph.</p>';
+  else h += '<div class="list">' + S.plans.setups.map(setupRow).join("") + "</div>";
+  h += '<button class="btn ghost wide" data-act="add-setup">+ New setup</button></div>';
+  return h;
+}
+function setupEdit(id, posId) {
+  const sp = id ? setupById(id) : null;
+  UI.setupEd = sp ? { id: sp.id, n: sp.n, x: sp.x || "", steps: sp.steps.slice() } : { id: null, n: "", x: "", steps: posId && node(posId) ? [{ id: posId, k: "pos", n: node(posId).n, t: "" }] : [] };
+  UI.tech.id = null; UI.tech.q = ""; render();
+}
+function vSetupEdit() {
+  const E = UI.setupEd; const last = E.steps[E.steps.length - 1]; const lastN = last ? node(last.id) : null;
+  let h = '<button class="back" data-act="setup-cancel"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>Setups</button>';
+  h += '<div class="card"><h2>' + (E.id ? "Edit setup" : "New setup") + '</h2>' + field("f-sn", "Name", inp("f-sn", E.n, "text", 'placeholder="' + esc(setupName(E.steps)) + '"'));
+  h += '<div class="path">' + E.steps.map((s, i) => '<div class="pn ' + s.k + (i === E.steps.length - 1 ? " cur" : "") + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + (s.k === "pos" ? (i ? "now in" : "start") : s.k === "df" ? "they" : TNAME[s.t] || "me") + '</span><span class="nm">' + esc(s.n) + "</span></span></div>").join("") + "</div>";
+  if (!E.steps.length) h += '<p class="muted small">Where does it start?</p><div class="chips">' + positions().map((p) => '<button class="chip pchip" data-act="setup-step" data-id="' + p.id + '" style="color:' + CAT_COLOR[p.cat] + '">' + iconFor(p) + "<span>" + esc(p.n) + "</span></button>").join("") + "</div>";
+  else {
+    const opts = nextOf(lastN).filter((e) => e.n.k !== "fin"); const me = opts.filter((e) => e.n.k === "mv"), they = opts.filter((e) => e.n.k === "df"), land = opts.filter((e) => e.n.k === "pos");
+    const chip = (e) => '<button class="chip pchip' + (e.f === "rare" ? " rare" : "") + '" data-act="setup-step" data-id="' + e.n.id + '" style="color:' + nodeColor(e.n) + '">' + iconFor(e.n) + "<span>" + esc(e.n.n) + "</span>" + (e.n.bait ? ' <span class="pill na">trap</span>' : "") + "</button>";
+    if (setupEnds(E)) h += '<div class="tip"><b>Ends in ' + esc(last.n) + '.</b> Save it, or keep going with how they defend it.</div>';
+    if (me.length) h += '<p class="muted small">' + (lastN.k === "df" ? "My answer" : "My move") + '</p><div class="chips">' + me.map(chip).join("") + "</div>";
+    if (they.length) h += '<p class="muted small">Their likely reaction</p><div class="chips">' + they.map(chip).join("") + "</div>";
+    if (land.length) h += '<p class="muted small">Lands in</p><div class="chips">' + land.map(chip).join("") + "</div>";
+    if (!opts.length) h += '<p class="empty">Nothing written after this step yet. Add it on the technique page first.</p>';
+  }
+  h += field("f-sx", "Note (why this works, the trap)", ta("f-sx", E.x, ""));
+  h += '<div class="actions">' + (E.id ? delBtn("setup:" + E.id, "setup-del") : "") + '<button class="btn ghost" data-act="setup-undo"' + (E.steps.length ? "" : " disabled") + '>↶ Undo</button><button class="btn" data-act="setup-save" style="flex:1">Save setup</button></div></div>';
+  return h;
 }
 function vPlans() {
   let h = '<div class="card"><div class="card-head"><h3>Game plans by opponent</h3></div>';
@@ -1065,6 +1121,15 @@ document.addEventListener("click", (e) => {
     case "settings": settingsSheet(); break;
     case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); break;
     case "roll-start": rollStart(ds.pos); break;
+    case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
+    case "add-setup": setupEdit(null, ds.pos || null); break;
+    case "edit-setup": setupEdit(ds.id); break;
+    case "setup-roll": { const sp = setupById(ds.id); if (sp && sp.steps[0]) { rollStart(sp.steps[0].id); UI.roll.plan = sp.id; render(); } break; }
+    case "setup-step": { const E = UI.setupEd; if (!E) break; E.n = sv("f-sn"); E.x = sv("f-sx"); const n = node(ds.id); if (n) E.steps.push({ id: n.id, k: n.k, n: n.n, t: n.t || "" }); render(); break; }
+    case "setup-undo": { const E = UI.setupEd; if (!E) break; E.n = sv("f-sn"); E.x = sv("f-sx"); E.steps.pop(); render(); break; }
+    case "setup-cancel": UI.setupEd = null; render(); break;
+    case "setup-del": { const E = UI.setupEd; if (E && E.id && armConfirm("setup:" + E.id)) { S.plans.setups = S.plans.setups.filter((x) => x.id !== E.id); save("plans"); UI.setupEd = null; toast("Deleted"); } render(); break; }
+    case "setup-save": { const E = UI.setupEd; if (!E) break; E.n = sv("f-sn").trim(); E.x = sv("f-sx").trim(); if (E.steps.length < 2) { toast("Add at least one move"); break; } const rec = { id: E.id || uid(), n: E.n || setupName(E.steps), steps: E.steps, x: E.x }; const i = S.plans.setups.findIndex((x) => x.id === rec.id); if (i >= 0) S.plans.setups[i] = rec; else S.plans.setups.push(rec); save("plans"); UI.setupEd = null; UI.tech.view = "setups"; toast("Setup saved"); render(); break; }
     case "walk-phase": UI.walkCat = UI.walkCat === ds.cat && !UI.roll ? null : ds.cat; render(); break;
     case "walk-pos": if (UI.roll) rollGoto(ds.id, "gap"); else rollStart(ds.id); break;
     case "roll-pick": rollPick(ds.id); break;
