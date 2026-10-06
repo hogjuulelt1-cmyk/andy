@@ -305,7 +305,7 @@ button.row.agenda{width:100%;background:none;border-left:0;border-right:0;border
         <h1 id="who-name">Тамирчин</h1>
         <div class="belt" id="belt" aria-label="Бүс"></div>
       </div>
-      <div style="display:flex;gap:8px;flex:none"><a class="icon-btn" href="/bjj/" style="text-decoration:none;display:inline-flex;align-items:center">Жиу-житсу</a><button class="icon-btn" data-act="tab" data-v="settings">Тохиргоо</button></div>
+      <div style="display:flex;gap:8px;flex:none"><a class="icon-btn" id="bjj-link" href="https://bjj-app.vercel.app" style="text-decoration:none;display:inline-flex;align-items:center">Жиу-житсу</a><button class="icon-btn" data-act="tab" data-v="settings">Тохиргоо</button></div>
     </div>
     <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Холбогдож байна…</span></div>
   </header>
@@ -474,6 +474,7 @@ function applySnap(path,data,exists){
 }
 /* ---------- Supabase backend (plain REST, no SDK) ---------- */
 const CFG=window.APP_CONFIG||{};
+{const a=document.getElementById("bjj-link");if(a){if(CFG.bjjUrl)a.href=CFG.bjjUrl;else if(CFG.bjjUrl===false)a.hidden=true;}}
 const SB={
   url:(CFG.supabaseUrl||"").replace(/\/$/,""),key:CFG.supabaseAnonKey||"",session:null,
   configured(){return !!(this.url&&this.key);},
