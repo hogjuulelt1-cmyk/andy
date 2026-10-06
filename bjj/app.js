@@ -214,7 +214,7 @@ function render(anim) {
   renderBelt(); renderTabs();
   const m = $("main"); const fn = VIEWS[UI.tab] || VIEWS.tech;
   m.className = ""; m.innerHTML = fn(); if (anim) { void m.offsetWidth; m.className = anim; }
-  renderTimer();
+  renderTimer(); initGraphs();
 }
 function go(anim) { render(anim); window.scrollTo({ top: 0, behavior: "instant" }); }
 let toastT;
@@ -280,8 +280,9 @@ VIEWS.tech = function () {
   if (UI.tech.id && node(UI.tech.id)) return vNode(node(UI.tech.id));
   let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="tq" type="search" placeholder="Search positions, techniques…" value="' + esc(UI.tech.q) + '" autocomplete="off"></div>';
   if (UI.tech.q.trim().length >= 2) return h + vSearch(UI.tech.q.trim().toLowerCase());
-  h += seg([["pos", "Position"], ["plans", "Game plans"]], UI.tech.view, "techview");
+  h += seg([["pos", "Positions"], ["map", "Map"], ["plans", "Game plans"]], UI.tech.view, "techview");
   if (UI.tech.view === "plans") return h + vPlans();
+  if (UI.tech.view === "map") return h + '<div class="card"><div class="card-head"><h3>Position map</h3><span class="muted small">arrows = where a move takes you</span></div>' + posMapSvg() + '<p class="muted small">Position before submission: every arrow is one of your moves that ends in another position. Tap a position to light up its paths, then Open.</p></div>';
   const all = positions();
   for (const [cat, label] of CATS) {
     const ps = all.filter((p) => p.cat === cat); if (!ps.length) continue;
@@ -308,7 +309,7 @@ function vNode(n) {
   if (n.k === "mv") { const st = logStats(n.id); const bits = []; if (st.drilled) bits.push(st.drilled + " sessions drilled"); if (st.given) bits.push(st.given + " times finished"); if (st.got) bits.push(st.got + " times caught"); if (bits.length) h += '<p class="muted small">' + bits.join(" · ") + "</p>"; }
   h += "</div>";
   h += '<div class="card"><div class="card-head"><h3>' + childHeading(n) + "</h3>" + seg([["map", "Map"], ["list", "List"]], UI.tech.map ? "map" : "list", "techmap") + "</div>";
-  if (UI.tech.map && ch.length) h += mapSvg(n) + '<div class="legend"><span><i style="background:var(--ink)"></i>Position</span><span><i style="background:var(--accent)"></i>Me</span><span><i style="background:var(--df-ink)"></i>Opponent</span></div><p class="muted small">Tap a box to open it and see the next step.</p>';
+  if (UI.tech.map && ch.length) h += mindMapSvg(n) + '<p class="muted small">Tap a branch to see its next step, then Open to drill in. Dashed boxes are the opponent\u2019s defenses.</p>';
   else if (ch.length) h += '<div class="list">' + ch.map((c) => '<button class="node-row' + (c.k === "df" ? " df" : "") + '" data-act="open" data-id="' + c.id + '"><div class="txt"><b>' + esc(c.n) + "</b>" + (c.en ? "<small>" + esc(c.en) + "</small>" : "") + "</div>" + (c.k === "df" ? '<span class="cnt">' + kids(c.id).length + " answers</span>" : tbadge(c)) + (c.k !== "df" && kids(c.id).length ? '<span class="cnt">' + kids(c.id).length + "</span>" : "") + CHEV + "</button>").join("") + "</div>";
   else h += '<p class="empty">' + (n.k === "mv" ? "Write how the opponent defends, then add your answer." : "Nothing here yet. Add your first option.") + "</p>";
   h += '<button class="btn ghost wide" data-act="add-node" data-p="' + n.id + '">+ ' + (n.k === "mv" ? "Add a defense" : "Add an option") + "</button></div>";
@@ -320,34 +321,141 @@ function vNode(n) {
   }
   return h;
 }
-/* mindmap: root as a vertical bar on the left, then two columns (my options → their defenses). Fits the phone width. */
-function mapSvg(root) {
-  const avail = Math.min(760, window.innerWidth) - 48, PAD = 4, ROOTW = 30, GAPX = 18, ROWH = 40, BOXH = 32, DEPTH = 2;
-  const COLW = Math.floor((avail - PAD * 2 - ROOTW - GAPX * 2) / 2), MAXC = Math.max(10, Math.floor((COLW - 18) / 6.6));
-  const items = [], edges = []; let leaf = 0;
-  function layout(n, depth) {
-    const ch = depth < DEPTH ? kids(n.id) : []; let y;
-    if (!ch.length) { y = leaf * ROWH + ROWH / 2; leaf++; }
-    else { const ys = ch.map((c) => layout(c, depth + 1)); y = (ys[0] + ys[ys.length - 1]) / 2; ch.forEach((c, i) => edges.push([depth, y, depth + 1, ys[i]])); }
-    if (depth) items.push({ n, depth, y }); return y;
-  }
-  layout(root, 0);
-  const W = PAD * 2 + ROOTW + GAPX * 2 + COLW * 2, H = Math.max(leaf * ROWH, 60) + PAD * 2;
-  const x = (d) => (d === 0 ? PAD : PAD + ROOTW + GAPX + (d - 1) * (COLW + GAPX));
-  const xr = (d) => (d === 0 ? PAD + ROOTW : x(d) + COLW);
-  const trunc = (t, m) => (t.length > m ? t.slice(0, m - 1) + "…" : t);
-  const wrap = (t, m) => { if (t.length <= m) return [t]; const i = t.lastIndexOf(" ", m); const a = i > 3 ? t.slice(0, i) : t.slice(0, m); return [a, trunc(t.slice(a.length).trim(), m)]; };
-  let h = '<div class="map"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Technique map">';
-  for (const e of edges) { const x1 = xr(e[0]), x2 = x(e[2]), y1 = (e[0] === 0 ? H / 2 : e[1] + PAD), y2 = e[3] + PAD; h += '<path class="e" d="M' + x1 + " " + y1 + " C" + (x1 + GAPX / 2) + " " + y1 + "," + (x2 - GAPX / 2) + " " + y2 + "," + x2 + " " + y2 + '"/>'; }
-  h += '<g class="' + root.k + ' root" data-act="open" data-id="' + root.id + '"><rect class="b" x="' + PAD + '" y="' + PAD + '" width="' + ROOTW + '" height="' + (H - PAD * 2) + '" rx="8"/><text transform="translate(' + (PAD + ROOTW / 2 + 4) + " " + (H / 2) + ') rotate(-90)" text-anchor="middle">' + esc(trunc(root.n, Math.floor((H - 20) / 6.6))) + "</text></g>";
-  for (const it of items) {
-    const n = it.n, bx = x(it.depth), by = it.y + PAD - BOXH / 2; const col = n.k === "mv" && n.t ? "var(--t-" + n.t + ")" : ""; const more = it.depth >= DEPTH ? kids(n.id).length : 0;
-    h += '<g class="' + n.k + '" data-act="open" data-id="' + n.id + '" tabindex="0"><rect class="b" x="' + bx + '" y="' + by + '" width="' + COLW + '" height="' + BOXH + '" rx="8"/>' +
-      (col ? '<rect x="' + bx + '" y="' + by + '" width="4" height="' + BOXH + '" rx="2" fill="' + col + '"/>' : "") +
-      (function () { const ls = wrap(n.n, more ? MAXC - 3 : MAXC); return ls.length === 1 ? '<text x="' + (bx + 10) + '" y="' + (by + BOXH / 2 + 4) + '">' + esc(ls[0]) + "</text>" : '<text class="two" x="' + (bx + 10) + '" y="' + (by + BOXH / 2 - 2) + '">' + esc(ls[0]) + '</text><text class="two" x="' + (bx + 10) + '" y="' + (by + BOXH / 2 + 10) + '">' + esc(ls[1]) + "</text>"; })() + (more ? '<text class="more" x="' + (bx + COLW - 6) + '" y="' + (by + BOXH / 2 + 4) + '" text-anchor="end">+' + more + "</text>" : "") + "</g>";
-  }
-  return h + "</svg></div>";
+/* ======================= GRAPHS ======================= */
+/* Shared pan / pinch-zoom canvas. State per graph id lives in UI.graph[id] = {tx,ty,s,sel,open}. */
+UI.graph = {};
+const TW = (t, fs) => t.length * (fs || 12) * 0.56; // rough text width
+function gState(id) { return (UI.graph[id] = UI.graph[id] || { tx: 0, ty: 0, s: 0, sel: null, open: {} }); }
+function typeColor(t) { return t ? "var(--t-" + t + ")" : "var(--t-trans)"; }
+function wrapText(t, max) { if (t.length <= max) return [t]; const i = t.lastIndexOf(" ", max); const a = i > 3 ? t.slice(0, i) : t.slice(0, max); let b = t.slice(a.length).trim(); if (b.length > max) b = b.slice(0, max - 1) + "…"; return [a, b]; }
+function nodeBox(n, isRoot) {
+  const fs = isRoot ? 14 : 12, max = isRoot ? 26 : 20; const ls = wrapText(n.n, max);
+  const w = Math.max(isRoot ? 90 : 64, Math.ceil(Math.max(...ls.map((l) => TW(l, fs))) + (isRoot ? 32 : 30)));
+  return { w, h: ls.length > 1 ? (isRoot ? 52 : 44) : (isRoot ? 42 : 34), ls, fs };
 }
+function nodeSvg(n, x, y, box, cls, color, extra) {
+  const { w, h, ls, fs } = box; const cy = y + h / 2; const tx = x + w / 2 + (color && cls.indexOf("df") < 0 && cls.indexOf("root") < 0 ? 6 : 0);
+  let t = "";
+  if (ls.length === 1) t = '<text x="' + tx + '" y="' + (cy + fs * 0.36) + '" text-anchor="middle">' + esc(ls[0]) + "</text>";
+  else t = '<text x="' + tx + '" y="' + (cy - 2) + '" text-anchor="middle">' + esc(ls[0]) + '</text><text x="' + tx + '" y="' + (cy + fs + 1) + '" text-anchor="middle">' + esc(ls[1]) + "</text>";
+  return '<g class="g-node ' + cls + '" data-id="' + n.id + '"><rect class="b" x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + (h > 36 ? 14 : h / 2) + '"' + (color ? ' style="stroke:' + color + '"' : "") + "/>" + (color && cls.indexOf("df") < 0 && cls.indexOf("root") < 0 ? '<circle cx="' + (x + 13) + '" cy="' + cy + '" r="4.5" fill="' + color + '"/>' : "") + t + (extra || "") + "</g>";
+}
+function canvasHtml(id, svgInner, bounds, legend) {
+  const sid = id.replace(/[^a-z0-9]/gi, "_");
+  return '<div class="canvas" data-graph="' + id + '" data-x0="' + bounds.x + '" data-y0="' + bounds.y + '" data-w="' + bounds.w + '" data-h="' + bounds.h + '"><svg class="g" aria-label="Technique graph"><defs><pattern id="dots-' + sid + '" width="22" height="22" patternUnits="userSpaceOnUse"><circle class="g-dots" cx="1" cy="1" r="1"/></pattern><marker id="arr-' + sid + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1L9 5L0 9z" fill="context-stroke"/></marker></defs><rect class="bgp" x="-5000" y="-5000" width="10000" height="10000" fill="url(#dots-' + sid + ')"/><g class="vp">' + svgInner + "</g></svg>" +
+    '<div class="ctl"><button type="button" data-g="in" aria-label="Zoom in">+</button><button type="button" data-g="out" aria-label="Zoom out">−</button><button type="button" data-g="fit" aria-label="Fit to screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button></div>' +
+    '<div class="hint">drag · pinch · tap</div><div class="gchip"></div></div>' + (legend || "");
+}
+
+/* --- mind map: root on the left, branches to the right (2 levels, tap a +N badge for more) --- */
+function mindMapSvg(root) {
+  const gid = "n:" + root.id, st = gState(gid); const GAPX = 36, GAPY = 10, DEPTH = 2;
+  const rb = nodeBox(root, true);
+  function build(n, depth) { const all = kids(n.id); const ch = depth < DEPTH || st.open[n.id] ? all : []; const node = { n, box: nodeBox(n), ch: ch.map((c) => build(c, depth + 1)), hidden: ch.length ? 0 : all.length }; node.inner = node.ch.reduce((a, c) => a + c.height, 0) + GAPY * Math.max(0, node.ch.length - 1); node.height = Math.max(node.box.h, node.inner); return node; }
+  const top = kids(root.id).map((c) => build(c, 1)); const total = top.reduce((a, c) => a + c.height, 0) + GAPY * Math.max(0, top.length - 1);
+  let edges = "", nodesOut = "", minX = 0, maxX = rb.w, minY = -rb.h / 2, maxY = rb.h / 2;
+  function place(list, x0, yTop, color, px, py) {
+    let y = yTop;
+    for (const nd of list) {
+      const cy = y + nd.height / 2, w = nd.box.w, h = nd.box.h, x = x0;
+      const col = nd.n.k === "df" ? "var(--df-ink)" : color || typeColor(nd.n.t);
+      edges += '<path class="g-edge' + (nd.n.k === "df" ? " df" : "") + '" style="stroke:' + col + '" d="M' + px + " " + py + " C" + (px + GAPX * 0.6) + " " + py + "," + (x - GAPX * 0.6) + " " + cy + "," + x + " " + cy + '"/>';
+      let extra = "";
+      if (nd.hidden) extra = '<g class="g-badge"><circle cx="' + (x + w - 2) + '" cy="' + (cy - h / 2 + 3) + '" r="9"/><text x="' + (x + w - 2) + '" y="' + (cy - h / 2 + 6.5) + '" text-anchor="middle">+' + nd.hidden + "</text></g>";
+      nodesOut += nodeSvg(nd.n, x, cy - h / 2, nd.box, nd.n.k + (st.sel === nd.n.id ? " sel" : ""), col, extra);
+      maxX = Math.max(maxX, x + w + 14); minY = Math.min(minY, cy - h / 2 - 14); maxY = Math.max(maxY, cy + h / 2 + 14);
+      if (nd.ch.length) place(nd.ch, x + w + GAPX, cy - nd.inner / 2, col, x + w, cy);
+      y += nd.height + GAPY;
+    }
+  }
+  place(top, rb.w + GAPX, -total / 2, null, rb.w, 0);
+  const rootSvg = nodeSvg(root, 0, -rb.h / 2, rb, "root" + (st.sel === root.id ? " sel" : ""), "");
+  const legend = '<div class="legend" style="padding-top:10px"><span><i style="background:var(--ink)"></i>Position</span><span><i style="background:var(--t-sub)"></i>Submission</span><span><i style="background:var(--t-sweep)"></i>Sweep</span><span><i style="background:var(--t-pass)"></i>Pass</span><span><i style="background:var(--t-td)"></i>Takedown</span><span><i style="background:var(--t-esc)"></i>Escape</span><span><i class="dash"></i>Their defense</span></div>';
+  return canvasHtml(gid, edges + nodesOut + rootSvg, { x: minX - 10, y: minY, w: maxX - minX + 10, h: maxY - minY }, legend);
+}
+
+/* --- position map: positions in category bands, arrows = transitions --- */
+function posMapSvg() {
+  const st = gState("pos"); const BW = 124, BH = 36, GX = 14, GY = 14, COLS = 3, BAND = 34, PADB = 12;
+  const all = positions(); const pos = {}; let y = 0, bands = "", nodesOut = ""; const maxW = COLS * BW + (COLS - 1) * GX + PADB * 2;
+  for (const [cat, label] of CATS) {
+    const ps = all.filter((p) => p.cat === cat); if (!ps.length) continue;
+    const rows = Math.ceil(ps.length / COLS); const bh = BAND + rows * (BH + GY) - GY + PADB; const cols = Math.min(COLS, ps.length);
+    bands += '<g class="g-band"><rect x="0" y="' + y + '" width="' + maxW + '" height="' + bh + '" rx="16"/><text x="' + PADB + '" y="' + (y + 21) + '">' + esc(label) + "</text></g>";
+    const x0 = (maxW - (cols * BW + (cols - 1) * GX)) / 2;
+    ps.forEach((p, i) => { const r = Math.floor(i / COLS), c = i % COLS; const n = ps.length - r * COLS; const xo = r === rows - 1 && n < COLS ? (maxW - (n * BW + (n - 1) * GX)) / 2 : x0; pos[p.id] = { x: xo + c * (BW + GX), y: y + BAND + r * (BH + GY), cat }; });
+    y += bh + 16;
+  }
+  const agg = {};
+  for (const m of nodes()) if (m.k === "mv" && m.to && pos[m.to]) { const from = posOf(m.id).id; if (from === m.to || !pos[from]) continue; const k = from + ">" + m.to; agg[k] = agg[k] || { from, to: m.to, n: 0, names: [], t: m.t }; agg[k].n++; agg[k].names.push(m.n); }
+  let edges = ""; const sel = st.sel; const conn = new Set();
+  for (const e of Object.values(agg)) {
+    const a = pos[e.from], b = pos[e.to]; const hl = sel && (e.from === sel || e.to === sel); if (hl) { conn.add(e.from); conn.add(e.to); }
+    const down = b.y > a.y, same = a.y === b.y; let d;
+    if (same) { const l = a.x < b.x; d = "M" + (l ? a.x + BW : a.x) + " " + (a.y + BH / 2) + " L" + (l ? b.x - 2 : b.x + BW + 2) + " " + (b.y + BH / 2); }
+    else { const x1 = a.x + BW / 2 + (down ? 0 : -18), y1 = down ? a.y + BH : a.y, x2 = b.x + BW / 2 + (down ? 0 : -18), y2 = down ? b.y - 2 : b.y + BH + 2, my = (y1 + y2) / 2; d = "M" + x1 + " " + y1 + " C" + x1 + " " + my + "," + x2 + " " + my + "," + x2 + " " + y2; }
+    edges += '<path class="g-edge' + (sel ? (hl ? " hl" : " dim") : "") + '" style="stroke-width:' + (1.5 + Math.min(e.n, 4) * 0.5) + ";stroke:" + (hl ? typeColor(e.t) : CAT_COLOR[a.cat]) + (hl ? "" : ";opacity:" + (sel ? 0.12 : 0.35)) + '" marker-end="url(#arr-pos)" d="' + d + '"><title>' + esc(e.names.join(", ")) + "</title></path>";
+  }
+  for (const p of all) { const q = pos[p.id]; if (!q) continue; const box = { w: BW, h: BH, ls: wrapText(p.n, 17), fs: 12 }; nodesOut += nodeSvg(p, q.x, q.y, box, "pos" + (sel === p.id ? " sel" : sel && !conn.has(p.id) ? " dim" : ""), CAT_COLOR[q.cat]); }
+  const legend = '<div class="legend" style="padding-top:10px">' + CATS.map((c) => '<span><i style="background:' + CAT_COLOR[c[0]] + '"></i>' + c[1] + "</span>").join("") + "</div>";
+  return canvasHtml("pos", bands + edges + nodesOut, { x: -8, y: -8, w: maxW + 16, h: y + 8 }, legend);
+}
+
+/* --- canvas behaviour: pan, pinch, wheel, tap, momentum --- */
+function initGraphs() {
+  document.querySelectorAll(".canvas[data-graph]").forEach((el) => {
+    if (el.dataset.ready) return; el.dataset.ready = "1";
+    const id = el.dataset.graph, st = gState(id), vp = el.querySelector(".vp"), bgp = el.querySelector(".bgp");
+    const bx = +el.dataset.x0, by = +el.dataset.y0, bw = +el.dataset.w, bh = +el.dataset.h; const S0 = 0.95;
+    if (id !== "pos") el.style.height = Math.min(460, Math.max(240, Math.round(bh * S0 + 70))) + "px";
+    const W = el.clientWidth || 358, H = el.clientHeight || 440;
+    const apply = () => { vp.setAttribute("transform", "translate(" + st.tx + " " + st.ty + ") scale(" + st.s + ")"); bgp.setAttribute("transform", "translate(" + (st.tx % (22 * st.s)) + " " + (st.ty % (22 * st.s)) + ") scale(" + st.s + ")"); };
+    const fit = () => { const s = Math.min(1.2, Math.max(0.5, Math.min((W - 24) / bw, (H - 24) / bh))); st.s = s; st.tx = (W - bw * s) / 2 - bx * s; st.ty = bh * s > H - 24 ? 12 - by * s : (H - bh * s) / 2 - by * s; apply(); };
+    const zoomAt = (f, cx, cy) => { const ns = Math.min(3, Math.max(0.35, st.s * f)); const k = ns / st.s; st.tx = cx - (cx - st.tx) * k; st.ty = cy - (cy - st.ty) * k; st.s = ns; apply(); };
+    const home = () => { if (id === "pos") return fit(); st.s = S0; st.tx = bw * S0 <= W - 24 ? (W - bw * S0) / 2 - bx * S0 : 12 - bx * S0; st.ty = bh * S0 <= H - 24 ? (H - bh * S0) / 2 - by * S0 : H / 2; apply(); };
+    if (!st.s) home(); else apply();
+    updateChip(id, el.querySelector(".gchip"));
+    const ptrs = new Map(); let moved = false, down = null, lastT = 0, vx = 0, vy = 0, raf = 0, pinch0 = null;
+    el.addEventListener("pointerdown", (e) => { if (e.target.closest(".ctl,.gchip")) return; cancelAnimationFrame(raf); el.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 1) { down = { x: e.clientX, y: e.clientY, t: Date.now(), target: e.target }; moved = false; vx = vy = 0; lastT = performance.now(); } else if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), s: st.s }; } });
+    el.addEventListener("pointermove", (e) => {
+      if (!ptrs.has(e.pointerId)) return; const prev = ptrs.get(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ptrs.size === 1) { const dx = e.clientX - prev.x, dy = e.clientY - prev.y; if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) moved = true; if (moved) { st.tx += dx; st.ty += dy; const now = performance.now(), dt = Math.max(1, now - lastT); vx = dx / dt; vy = dy / dt; lastT = now; apply(); } }
+      else if (ptrs.size === 2 && pinch0) { moved = true; const [a, b] = [...ptrs.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y); const r = el.getBoundingClientRect(); zoomAt((pinch0.s * d / pinch0.d) / st.s, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top); }
+    });
+    const up = (e) => {
+      if (!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch0 = null;
+      if (ptrs.size === 0 && down) {
+        if (!moved && Date.now() - down.t < 600) { const g = down.target.closest ? down.target.closest(".g-node") : null; tapNode(id, g ? g.dataset.id : null, el); }
+        else if (moved && Math.hypot(vx, vy) > 0.08 && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) { let last = performance.now(); const step = (t) => { const dt = Math.min(40, t - last); last = t; st.tx += vx * dt; st.ty += vy * dt; const k = Math.pow(0.93, dt / 16); vx *= k; vy *= k; apply(); if (Math.hypot(vx, vy) > 0.01) raf = requestAnimationFrame(step); }; raf = requestAnimationFrame(step); }
+        down = null;
+      }
+    };
+    el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+    el.addEventListener("wheel", (e) => { e.preventDefault(); const r = el.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.15 : 0.87, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    el.querySelectorAll(".ctl button").forEach((b) => b.addEventListener("click", () => { if (b.dataset.g === "fit") fit(); else zoomAt(b.dataset.g === "in" ? 1.25 : 0.8, W / 2, H / 2); }));
+  });
+}
+function tapNode(gid, nid, el) {
+  const st = gState(gid);
+  if (!nid) { if (st.sel) { st.sel = null; refreshGraph(gid, el); } return; }
+  if (gid !== "pos") { const g = el.querySelector('.g-node[data-id="' + nid + '"] .g-badge'); if (g) st.open[nid] = true; else if (st.sel === nid && kids(nid).length) st.open[nid] = !st.open[nid]; }
+  st.sel = nid; refreshGraph(gid, el);
+}
+function refreshGraph(gid, el) {
+  const html = gid === "pos" ? posMapSvg() : mindMapSvg(node(gid.slice(2)));
+  const tmp = document.createElement("div"); tmp.innerHTML = html; const fresh = tmp.querySelector(".canvas");
+  el.replaceWith(fresh); initGraphs();
+}
+function updateChip(gid, chip) {
+  const st = gState(gid); const n = st.sel ? node(st.sel) : null;
+  if (!n) { chip.classList.remove("on"); chip.innerHTML = ""; return; }
+  let sub = "";
+  if (gid === "pos") { let outN = 0, inN = 0; for (const m of nodes()) if (m.k === "mv" && m.to) { if (posOf(m.id).id === n.id && m.to !== n.id) outN++; if (m.to === n.id && posOf(m.id).id !== n.id) inN++; } sub = kids(n.id).length + " options · " + outN + " paths out · " + inN + " in"; }
+  else sub = (n.k === "df" ? "Their defense" : n.k === "pos" ? "Position" : TNAME[n.t] || "Option") + (kids(n.id).length ? " · " + kids(n.id).length + (n.k === "mv" ? " defenses" : " answers") : "") + (n.to && node(n.to) ? " · → " + node(n.to).n : "");
+  chip.innerHTML = '<div class="txt"><b>' + esc(n.n) + "</b><small>" + esc(sub) + '</small></div><button class="btn" data-act="open" data-id="' + n.id + '">Open</button>';
+  chip.classList.add("on");
+}
+
 function nodeSheet(id, parentId) {
   const n = id ? node(id) : null; const parent = parentId ? node(parentId) : null;
   const kind = n ? n.k : parent ? (parent.k === "mv" ? "df" : "mv") : "pos";
@@ -712,7 +820,7 @@ document.addEventListener("click", (e) => {
     case "settings": settingsSheet(); break;
     case "techview": UI.tech.view = ds.v; render(); break;
     case "techmap": UI.tech.map = ds.v === "map"; try { localStorage.setItem("bjj-map", UI.tech.map ? "1" : "0"); } catch (x) {} render(); break;
-    case "open": UI.tab = "tech"; UI.tech.id = ds.id; UI.tech.q = ""; go("enter-l"); break;
+    case "open": UI.tab = "tech"; UI.tech.id = ds.id; UI.tech.q = ""; { const g = UI.graph["n:" + ds.id]; if (g) g.sel = null; } go("enter-l"); break;
     case "back": UI.tech.id = ds.id || null; go("enter-r"); break;
     case "add-node": nodeSheet(null, ds.p || null); break;
     case "edit-node": nodeSheet(ds.id); break;
