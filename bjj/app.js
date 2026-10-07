@@ -100,7 +100,7 @@ function blank() {
 let S = blank();
 let mode = "local";
 const UI = { tab: "home", tech: { id: null, q: "", view: "pos", map: false }, body: { cat: "warm", open: null }, comp: { id: null }, confirm: null, sheet: null, anim: "" };
-UI.seg = { me: "log" }; UI.clubSeg = "today"; UI.memF = "all"; UI.attDate = "";
+UI.seg = { me: "prog" }; UI.clubSeg = "today"; UI.memF = "all"; UI.attDate = "";
 try { const t = localStorage.getItem("bjj-tab"); if (t) { if (TAB_ALIAS[t]) { UI.tab = TAB_ALIAS[t]; if (t !== "train") UI.seg[UI.tab] = t; } else UI.tab = t; } if (localStorage.getItem("bjj-map") === "1") UI.tech.map = true; } catch (e) {}
 
 function seedAll(force) {
@@ -331,11 +331,11 @@ function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = 
 const TABS = [
   ["home", "Home", '<path d="M3 11l9-8 9 8"/><path d="M5 10v11h5v-6h4v6h5V10"/>'],
   ["tech", "Technique", '<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9"/>'],
-  ["rec", "Check in", '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/>'],
+  ["rec", "Check-in", '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/>'],
   ["club", "Club", '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/>'],
   ["me", "You", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
 ];
-const SEGS = { me: [["log", "Log"], ["drills", "Drills"], ["body", "Body"], ["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
+const SEGS = { me: [["prog", "Progress"], ["log", "Log"], ["drills", "Drills"], ["body", "Body"], ["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
 function renderTabs() {
   $("tabs").innerHTML = TABS.map((t) => t[0] === "rec" ? '<button class="rec" data-act="record" aria-label="Check in"><span><svg viewBox="0 0 24 24">' + t[2] + "</svg></span>" + t[1] + "</button>" : '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
 }
@@ -412,8 +412,10 @@ VIEWS.tech = function () {
   let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="tq" type="search" placeholder="Search positions, techniques…" value="' + esc(UI.tech.q) + '" autocomplete="off"></div>';
   if (UI.tech.q.trim().length >= 2) return h + vSearch(UI.tech.q.trim().toLowerCase());
   if (UI.setupEd) return vSetupEdit();
-  if (!["pos", "setups", "learn", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
-  h += seg([["pos", "Roll"], ["setups", "Setups"], ["learn", "Learn"], ["plans", "Plans"], ["rolls", "History"]], UI.tech.view, "techview");
+  if (!["pos", "mine", "disc", "setups", "learn", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
+  h += seg([["pos", "Roll"], ["mine", "Mine (" + mineIds().length + ")"], ["disc", "Discover"], ["setups", "Setups"], ["learn", "Learn"], ["plans", "Plans"], ["rolls", "History"]], UI.tech.view, "techview", true);
+  if (UI.tech.view === "mine") return h + vMine();
+  if (UI.tech.view === "disc") return h + vDiscover();
   if (["setups", "learn", "plans", "rolls"].includes(UI.tech.view) && !unlocked()) { if (clubNeeds() && !CLUB.busy) clubLoad(); return h + lockCard({ setups: "Setups", learn: "Learn", plans: "Game plans", rolls: "Roll history" }[UI.tech.view]); }
   if (UI.tech.view === "setups") return h + vSetups();
   if (UI.tech.view === "learn") return h + vLearn();
@@ -440,11 +442,52 @@ function vSearch(q) {
   if (!res.length) return '<div class="card"><p class="empty">Nothing found. Try another word.</p></div>';
   return '<div class="card"><div class="list">' + res.map((n) => { const a = ancestors(n.id); const crumb = a.slice(0, -1).map((x) => x.n).join(" › "); return '<button class="node-row' + (n.k === "df" ? " df" : "") + '" data-act="open" data-id="' + n.id + '"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + '</span><div class="txt"><b>' + esc(n.n) + "</b><small>" + esc(crumb || n.en || kindLabel(n)) + "</small></div>" + tbadge(n) + CHEV + "</button>"; }).join("") + "</div></div>";
 }
+/* Mine / Discover: a FlowRoll-style technique list. S.settings.mine holds node ids; Discover groups distinct names. */
+const DISC_CATS = [["sub", "Submission"], ["sweep", "Sweep"], ["td", "Takedown"], ["pass", "Guard pass"], ["esc", "Escape"], ["trans", "Transition"], ["ctl", "Control"], ["grip", "Grip"], ["pos:guard", "Guard positions"], ["pos:top", "Top positions"]];
+const DISC_LABEL = Object.fromEntries(DISC_CATS.concat(CATS.map(([c, l]) => ["pos:" + c, l])));
+function discColor(key) { return key.startsWith("pos:") ? CAT_COLOR[key.slice(4)] || "var(--ink)" : typeColor(key); }
+function discCatOf(n) { return n.k === "pos" ? "pos:" + (n.cat || "guard") : n.k === "mv" ? n.t || "trans" : null; }
+function mineIds() { const st = S.settings; if (!Array.isArray(st.mine)) st.mine = []; return st.mine; }
+function mineHas(ids) { const m = mineIds(); return ids.every((id) => m.includes(id)); }
+function mineToggle(ids, on) { const m = mineIds(); for (const id of ids) { const i = m.indexOf(id); if (on && i < 0) m.push(id); if (!on && i >= 0) m.splice(i, 1); } save("settings"); }
+/* distinct names per category: { key: [{ n, en, ids, pos }] } */
+function discGroups(list) {
+  const g = {};
+  for (const n of list || nodes()) { const key = discCatOf(n); if (!key) continue; const k = n.n.trim().toLowerCase(); const byName = (g[key] = g[key] || {}); const e = byName[k] || (byName[k] = { n: n.n, en: n.en || "", ids: [], pos: [] }); e.ids.push(n.id); if (n.k === "mv") { const p = posOf(n.id); if (p && !e.pos.includes(p.n)) e.pos.push(p.n); } }
+  const out = {}; for (const k in g) out[k] = Object.values(g[k]).sort((a, b) => a.n.localeCompare(b.n)); return out;
+}
+function plusBtn(ids) { const on = mineHas(ids); return '<button type="button" class="plus' + (on ? " on" : "") + '" data-act="mine-toggle" data-ids="' + ids.join(",") + '" data-on="' + (on ? 0 : 1) + '" aria-label="' + (on ? "Remove from mine" : "Add to mine") + '">' + (on ? "✓" : "+") + "</button>"; }
+function mineRow(r, key, remove) {
+  const first = node(r.ids[0]); const sub = key.startsWith("pos:") ? "" : r.pos.length > 1 ? (remove ? r.pos.join(" · ") : "from " + r.pos.length + " positions") : r.pos[0] || "";
+  return '<div class="mrow"><button type="button" class="mrow-t" data-act="open" data-id="' + r.ids[0] + '"><span class="pict" style="color:' + discColor(key) + '">' + iconFor(first) + '</span><div class="txt"><b>' + esc(r.n) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</div></button>" + (remove ? '<button type="button" class="x" data-act="mine-rm" data-ids="' + r.ids.join(",") + '" aria-label="Remove from mine">✕</button>' : plusBtn(r.ids)) + "</div>";
+}
+function vDiscover() {
+  const q = (UI.discQ || "").trim().toLowerCase(); const G = discGroups(); const open = (UI.discOpen = UI.discOpen || new Set());
+  let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="dq" type="search" placeholder="Search techniques…" value="' + esc(UI.discQ || "") + '" autocomplete="off"></div>';
+  h += '<div class="card disc">'; let any = false;
+  for (const [key, label] of DISC_CATS) {
+    let rows = G[key] || []; if (q) rows = rows.filter((r) => r.n.toLowerCase().includes(q) || r.en.toLowerCase().includes(q));
+    if (!rows.length) continue; any = true; const on = q ? true : open.has(key);
+    h += '<button type="button" class="disc-cat' + (on ? " open" : "") + '" data-act="disc-cat" data-v="' + key + '" aria-expanded="' + on + '"><i style="background:' + discColor(key) + '"></i><b>' + label + '</b><span class="cnt">' + rows.length + "</span>" + CHEV + "</button>";
+    if (on) h += '<div class="disc-rows">' + rows.map((r) => mineRow(r, key)).join("") + "</div>";
+  }
+  if (!any) h += '<p class="empty">Nothing found. Try another word.</p>';
+  return h + "</div>";
+}
+function vMine() {
+  const list = mineIds().map(node).filter(Boolean);
+  if (!list.length) return '<div class="card mine-empty"><span class="pict big" style="color:var(--accent)">' + svgIcon(TICON.sub) + '</span><h3>My techniques</h3><p class="small muted">Pick the techniques you are working on. They show up here, and Learn can quiz you on them.</p><button class="btn" data-act="techview" data-v="disc">Go to Discover</button></div>';
+  const G = discGroups(list); const keys = DISC_CATS.map((c) => c[0]).concat(Object.keys(G).filter((k) => !DISC_CATS.some((c) => c[0] === k)));
+  let h = '<div class="card"><div class="card-head"><h3>My techniques</h3><span class="muted small">' + list.length + " techniques</span></div><div class=\"list\">";
+  for (const key of keys) { const rows = G[key]; if (!rows || !rows.length) continue; h += '<div class="group-label" style="color:' + discColor(key) + '">' + (DISC_LABEL[key] || key) + " · " + rows.length + "</div>" + rows.map((r) => mineRow(r, key, true)).join(""); }
+  h += '</div><button class="btn wide" data-act="mine-learn">Quiz these in Learn</button><button class="btn ghost wide" data-act="techview" data-v="disc">+ Add more from Discover</button></div>';
+  return h;
+}
 function vNode(n) {
   const path = ancestors(n.id); const ch = kids(n.id); const back = n.p ? n.p : "";
   let h = '<button class="back" data-act="back" data-id="' + back + '"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>' + (n.p ? esc(node(n.p).n) : "Positions") + "</button>";
   h += '<div class="card"><div class="path">' + path.map((x, i) => '<button class="pn ' + x.k + (i === path.length - 1 ? " cur" : "") + '" data-act="open" data-id="' + x.id + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + kindLabel(x) + '</span><span class="nm">' + esc(x.n) + "</span></span></button>").join("") + "</div>";
-  h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1"></span>') + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
+  h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1 1 0"></span>') + (n.k !== "df" ? '<button class="btn ghost minepill' + (mineHas([n.id]) ? " on" : "") + '" data-act="mine-toggle" data-ids="' + n.id + '" data-on="' + (mineHas([n.id]) ? 0 : 1) + '">' + (mineHas([n.id]) ? "✓ In my list" : "+ Add to mine") + "</button>" : "") + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
   { const mb = metaBadges(n, true); if (mb) h += '<div class="meta">' + mb + "</div>"; }
   if (n.k === "pos" && n.them) h += '<p class="small"><span class="muted">Them:</span> ' + esc(n.them) + "</p>";
   if (n.k === "mv" && n.when) h += '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>";
@@ -1054,8 +1097,8 @@ async function shareSend(save) {
   const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const name = "jiu-jitsu-" + s.d + ".png";
   const blob = await new Promise((res) => cv.toBlob(res, "image/png")); if (!blob) return;
   const file = new File([blob], name, { type: "image/png" });
-  if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Jiu-jitsu", text: fmtLong(s.d) + " · " + (s.min || 0) + " min" }); return; } catch (e) { if (e.name === "AbortError") return; } }
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved");
+  if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Jiu-jitsu", text: fmtLong(s.d) + " · " + (s.min || 0) + " min" }); shareMark(); return; } catch (e) { if (e.name === "AbortError") return; } }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved"); shareMark();
 }
 function sessionsSorted() { return S.log.items.slice().sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : 0)); }
 VIEWS.log = function () {
@@ -1432,15 +1475,86 @@ function drillDone(id) {
 }
 function initials(n) { const w = String(n || "").trim().split(/\s+/).filter(Boolean); return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : (w[0] || "?").slice(0, 2)).toUpperCase(); }
 function hoursFmt(min) { return (min / 60).toFixed(min >= 600 ? 0 : 1); }
+/* ======================= PROGRESS (XP, calendar, analytics, weekly challenges, achievements) ======================= */
+/* Nothing here is stored: XP, levels and achievements are recomputed from the log, drills, rolls, check-ins and Mine. */
+const XP_LEVEL = 300;
+function mineList() { return Array.isArray(S.settings.mine) ? S.settings.mine : []; }
+function checkinDays() { if (!CLUB.id) return []; const me = myUid(); const out = new Set(attDays(CLUB.attMonth, me)); if (CLUB.att && CLUB.att.doc && CLUB.att.doc !== CLUB.attMonth) for (const d of attDays(CLUB.att.doc, me)) out.add(d); return [...out]; }
+function ymShift(ym, n) { const d = new Date(+ym.slice(0, 4), +ym.slice(5) - 1 + n, 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+function monthTitle(ym) { return MON[+ym.slice(5) - 1] + " " + ym.slice(0, 4); }
+function progCounts() {
+  const sess = S.log.items; const subs = sess.reduce((a, s) => a + ((s.subs || []).length), 0);
+  return { sess: sess.length, drills: S.body.items.filter((x) => x.cat === "drill").length, checkins: checkinDays().length, rolls: S.rolls.items.length, mine: mineList().length, subs, weeks: streaks().weeks, shared: S.settings.shared || S.settings.sharedWk ? 1 : 0 };
+}
+/* [id, icon, title, requirement, xp, counter, target] */
+const ACHIEVEMENTS = [
+  ["s1", "🥋", "First session", "Log your first training", 20, "sess", 1], ["s10", "📘", "10 sessions", "Log 10 trainings", 50, "sess", 10], ["s50", "📗", "50 sessions", "Log 50 trainings", 150, "sess", 50], ["s100", "🏆", "100 sessions", "Log 100 trainings", 300, "sess", 100],
+  ["w4", "🔥", "4-week streak", "Train 4 weeks in a row", 80, "weeks", 4], ["w12", "🌋", "12-week streak", "Train 12 weeks in a row", 200, "weeks", 12],
+  ["m10", "⭐", "10 in Mine", "Keep 10 techniques in Mine", 40, "mine", 10], ["m25", "🌟", "25 in Mine", "Keep 25 techniques in Mine", 80, "mine", 25], ["m50", "💫", "50 in Mine", "Keep 50 techniques in Mine", 150, "mine", 50],
+  ["r10", "🔄", "10 rolls", "Log 10 rolls", 40, "rolls", 10], ["r50", "🌀", "50 rolls", "Log 50 rolls", 120, "rolls", 50],
+  ["sub25", "🎯", "25 submissions", "Finish 25 submissions in training", 100, "subs", 25],
+  ["d20", "🔁", "20 drills", "Do 20 drills", 60, "drills", 20], ["c10", "✅", "10 check-ins", "Check in to 10 classes", 60, "checkins", 10],
+  ["sh1", "📸", "First share", "Share a session", 20, "shared", 1],
+];
+function achievements(c) { c = c || progCounts(); return ACHIEVEMENTS.map((a) => ({ id: a[0], ic: a[1], t: a[2], req: a[3], xp: a[4], have: c[a[5]] || 0, n: a[6], on: (c[a[5]] || 0) >= a[6] })); }
+/* [id, icon, title, subtitle, target, xp, counter(wk, weekEnd) · the first three can be scored for past weeks too, the rest only for the current week] */
+const CHALLENGES = [
+  ["train", "🥋", "Train 3 times", "Sessions this week", 3, 30, (wk, we) => S.log.items.filter((s) => s.d >= wk && s.d < we).length],
+  ["rounds", "⏱️", "10 sparring rounds", "Rounds across your sessions", 10, 30, (wk, we) => S.log.items.filter((s) => s.d >= wk && s.d < we).reduce((a, s) => a + (+s.rolls || 0), 0)],
+  ["drills", "🔁", "Do 2 drills", "Any drill from the library", 2, 20, (wk, we) => S.body.items.filter((x) => x.cat === "drill" && x.d >= wk && x.d < we).length],
+  ["checkin", "✅", "Check in to 2 classes", "Scan the club QR at the door", 2, 20, (wk, we) => checkinDays().filter((d) => d >= wk && d < we).length, "club"],
+  ["mine", "⭐", "Add 3 techniques to Mine", "Save moves you want to keep", 3, 15, (wk) => { const m = S.settings.mineWeek; if (!m || m.wk !== wk) { S.settings.mineWeek = { wk, n: mineList().length }; save("settings"); } return Math.max(0, mineList().length - S.settings.mineWeek.n); }],
+  ["share", "📸", "Share a session", "Post your training card", 1, 15, (wk) => (S.settings.sharedWk === wk ? 1 : 0)],
+];
+function weekChallenges(wk) { const we = addDays(wk, 7); return CHALLENGES.filter((c) => c[7] !== "club" || CLUB.id).map((c) => { const have = Math.min(c[4], c[6](wk, we)); return { id: c[0], ic: c[1], t: c[2], s: c[3], n: c[4], xp: c[5], have, on: have >= c[4] }; }); }
+function challengeXp() {
+  const wk = mondayOf(todayIso()); let xp = weekChallenges(wk).filter((c) => c.on).reduce((a, c) => a + c.xp, 0);
+  const days = S.log.items.map((s) => s.d).concat(S.body.items.filter((x) => x.cat === "drill").map((x) => x.d)).filter(Boolean); if (!days.length) return xp;
+  let w = mondayOf(days.reduce((a, d) => (d < a ? d : a))); for (let i = 0; i < 520 && w < wk; i++, w = addDays(w, 7)) { const we = addDays(w, 7); for (const c of CHALLENGES.slice(0, 3)) if (c[6](w, we) >= c[4]) xp += c[5]; }
+  return xp;
+}
+function shareMark() { S.settings.sharedWk = mondayOf(todayIso()); S.settings.shared = 1; save("settings"); }
+function xpTotal(c) { c = c || progCounts(); return c.sess * 20 + c.drills * 10 + c.checkins * 10 + c.rolls * 5 + c.mine * 5 + achievements(c).filter((a) => a.on).reduce((s, a) => s + a.xp, 0) + challengeXp(); }
+function levelOf(xp) { return Math.floor(xp / XP_LEVEL) + 1; }
+function xpCard() { const xp = xpTotal(); const lv = levelOf(xp); const into = xp - (lv - 1) * XP_LEVEL; return '<div class="xp"><div class="xprow"><b>Level ' + lv + '</b><span>' + xp + ' XP</span></div><div class="pbar"><i style="width:' + Math.round((into / XP_LEVEL) * 100) + '%"></i></div><p class="muted small">' + (XP_LEVEL - into) + " XP to level " + (lv + 1) + "</p></div>"; }
+function pbar(have, n) { return '<div class="pbar"><i style="width:' + Math.round((Math.min(have, n) / Math.max(1, n)) * 100) + '%"></i></div>'; }
+function progCalendar(ym) {
+  const days = trainedDays(); const today = todayIso(); const y = +ym.slice(0, 4), mo = +ym.slice(5); const lead = (new Date(y, mo - 1, 1).getDay() + 6) % 7; const dim = new Date(y, mo, 0).getDate();
+  let cells = ""; for (let i = 0; i < lead; i++) cells += "<i></i>"; let n = 0;
+  for (let d = 1; d <= dim; d++) { const iso = ym + "-" + pad(d); const on = days.has(iso); if (on) n++; cells += '<b class="' + (on ? "on" : "") + (iso === today ? " today" : "") + '">' + d + "</b>"; }
+  return { html: '<div class="cal"><div class="dow">' + DAYS.map((x) => "<span>" + x[0] + "</span>").join("") + '</div><div class="grid">' + cells + "</div></div>", n, dim };
+}
+VIEWS.prog = function () {
+  const today = todayIso(); const wk = mondayOf(today); let h = "";
+  // training calendar
+  const ym = UI.calYm || today.slice(0, 7); const cal = progCalendar(ym);
+  h += '<div class="card"><div class="card-head"><h3>Training calendar</h3></div><div class="calnav"><button class="icon-btn" data-act="cal-nav" data-v="-1" aria-label="Previous month">‹</button><b>' + monthTitle(ym) + '</b><button class="icon-btn" data-act="cal-nav" data-v="1" aria-label="Next month"' + (ym >= today.slice(0, 7) ? " disabled" : "") + ">›</button></div>" + cal.html + '<p class="muted small">Trained ' + cal.n + " out of " + cal.dim + " days</p></div>";
+  // analytics
+  const r = UI.anaRange || "month"; const from = r === "month" ? today.slice(0, 7) + "-01" : r === "30" ? addDays(today, -29) : "";
+  const sess = S.log.items.filter((s) => s.d >= from); const subs = sess.reduce((a, s) => a + (s.subs || []).length, 0), taps = sess.reduce((a, s) => a + (s.taps || []).length, 0), min = sess.reduce((a, s) => a + (+s.min || 0), 0), rounds = sess.reduce((a, s) => a + (+s.rolls || 0), 0);
+  const tech = new Set(); for (const s of sess) for (const t of s.tech || []) tech.add(t.n || t.id || t);
+  h += '<div class="card"><h3>Analytics</h3>' + seg([["month", "This month"], ["30", "Last 30 days"], ["all", "All time"]], r, "anarange") +
+    '<div class="summary four"><div class="stat"><b>' + subs + '</b><span>submissions</span></div><div class="stat"><b>' + taps + '</b><span>taps</span></div><div class="stat"><b>' + sess.length + '</b><span>sessions</span></div><div class="stat"><b>' + tech.size + '</b><span>techniques</span></div></div>' +
+    '<div class="summary two"><div class="stat"><b>' + hoursFmt(min) + '</b><span>hours trained</span></div><div class="stat"><b>' + rounds + '</b><span>rounds</span></div></div></div>';
+  // weekly challenges
+  const ch = weekChallenges(wk); const done = ch.filter((c) => c.on).length;
+  h += '<div class="card"><div class="card-head"><h3>Weekly challenges</h3><span class="muted small"><span>' + done + " / " + ch.length + " completed</span> · <span>" + Math.round((done / Math.max(1, ch.length)) * 100) + "%</span></span></div><div class=\"chals\">" +
+    ch.map((c) => '<div class="chal' + (c.on ? " done" : "") + '"><div class="chrow"><span class="chic">' + c.ic + '</span><span class="chxp">+' + c.xp + ' XP</span></div><b>' + c.t + "</b><small>" + c.s + "</small>" + pbar(c.have, c.n) + '<div class="chfoot"><span>' + c.have + " / " + c.n + "</span>" + (c.on ? '<span class="pill ok">Done</span>' : "") + "</div></div>").join("") + "</div></div>";
+  // achievements
+  const ac = achievements(); const got = ac.filter((a) => a.on).length;
+  h += '<div class="card"><div class="card-head"><h3>Achievements</h3><span class="muted small"><span>' + got + " / " + ac.length + " unlocked</span> · <span>" + Math.round((got / ac.length) * 100) + '%</span></span></div><div class="list">' +
+    ac.map((a) => '<div class="row ach' + (a.on ? "" : " locked") + '"><span class="achic">' + a.ic + '</span><div class="txt"><b>' + a.t + "</b><small>" + a.req + "</small></div><span class=\"pill " + (a.on ? "ok" : "na") + '">+' + a.xp + " XP</span></div>").join("") + "</div></div>";
+  return h;
+};
 /* You: profile header (avatar, club, belt, membership) + totals, then the personal sections. */
 function profileHead() {
   const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const items = S.log.items; const totalMin = items.reduce((a, x) => a + (+x.min || 0), 0); const sk = streaks();
   const ms = CLUB.id && !clubNeeds() ? membership(myUid()) : null;
   return '<div class="card profile"><div class="prow"><div class="av">' + esc(initials(name)) + '</div><div class="pinfo"><h2>' + esc(name) + '</h2><p class="muted small">' + (CLUB.profile ? esc(CLUB.profile.n) + " · " : "") + esc(b.n) + " belt" + (S.belt.stripes ? " · " + S.belt.stripes + " stripes" : "") + "</p></div>" +
     (ms && ms.state !== "none" ? '<span class="pill ' + (ms.state === "active" ? "ok" : "bad") + '">' + (ms.state === "active" ? "Active" : "Expired") + "</span>" : "") + "</div>" +
-    '<div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + hoursFmt(totalMin) + '</b><span>hours</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div></div></div>';
+    '<div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + hoursFmt(totalMin) + '</b><span>hours</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div></div>' + xpCard() + "</div>";
 }
-VIEWS.me = function () { const v = UI.seg.me || "log"; const map = { log: VIEWS.log, drills: vDrills, body: VIEWS.body, belt: VIEWS.belt, weight: VIEWS.weight, comp: VIEWS.comp }; return profileHead() + seg(SEGS.me, v, "segview", true) + (map[v] || VIEWS.log)(); };
+VIEWS.me = function () { const v = UI.seg.me || "prog"; const map = { prog: VIEWS.prog, log: VIEWS.log, drills: vDrills, body: VIEWS.body, belt: VIEWS.belt, weight: VIEWS.weight, comp: VIEWS.comp }; return profileHead() + seg(SEGS.me, v, "segview", true) + (map[v] || VIEWS.prog)(); };
 
 /* ======================= HOME (club feed) ======================= */
 /* club/<id>/feed/<yyyy-mm> = { list: [post] } · one post per saved training: who, when, type, minutes, rounds, techniques, roll path, streak, kudos. */
@@ -1846,6 +1960,10 @@ document.addEventListener("click", (e) => {
     case "record": checkinSheet(true); break;
     case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
+    case "mine-toggle": { const on = ds.on === "1"; mineToggle(ds.ids.split(","), on); toast(on ? "Added to my list" : "Removed from my list"); render(); break; }
+    case "mine-rm": mineToggle(ds.ids.split(","), false); render(); break;
+    case "disc-cat": { const o = (UI.discOpen = UI.discOpen || new Set()); if (o.has(ds.v)) o.delete(ds.v); else o.add(ds.v); render(); break; }
+    case "mine-learn": UI.tech.view = "learn"; UI.tech.id = null; UI.rollId = null; go("enter-l"); break;
     case "auth-mode": showLogin("", ds.v === "up"); break;
     case "club-reload": CLUB.loadedFor = null; render(); break;
     case "club-new": clubSheet(false); break;
@@ -1890,6 +2008,8 @@ document.addEventListener("click", (e) => {
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
     case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); break;
     case "segview": UI.seg[UI.tab] = ds.v; render(); break;
+    case "cal-nav": UI.calYm = ymShift(UI.calYm || todayIso().slice(0, 7), +ds.v); render(); break;
+    case "anarange": UI.anaRange = ds.v; render(); break;
     case "clubseg": UI.clubSeg = ds.v; render(); break;
     case "roll-start": rollStart(ds.pos); break;
     case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
@@ -1969,6 +2089,7 @@ function armConfirmSheet(btn) { if (btn.dataset.armed) return true; btn.dataset.
 document.addEventListener("input", (e) => {
   const t = e.target;
   if (t.id === "tq") { UI.tech.q = t.value; const m = $("main"); const h = VIEWS.tech(); m.innerHTML = h; initGraphs(); const q = $("tq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } return; }
+  if (t.id === "dq") { UI.discQ = t.value; const m = $("main"); m.innerHTML = VIEWS.tech(); initGraphs(); const q = $("dq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } return; }
   if (t.dataset.pk) { pkSuggest(t); return; }
   if (t.dataset.tcfg) { const v = +t.value; if (v >= 0) { S.settings.timer[t.dataset.tcfg] = v; save("settings"); if (!T.on && !T.left) renderTimer(); } return; }
 });

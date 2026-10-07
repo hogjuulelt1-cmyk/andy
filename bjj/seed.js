@@ -180,7 +180,7 @@ window.BJJ_SEED = (function () {
               { n: 'Underhook to the back', en: 'Доорх хуки → ар', t: 'trans', to: 'bk_t', s: ['As the knee drops, get under the armpit', 'Walk to the back'] },
             ] },
           ] },
-        { n: 'Deep half', en: 'Дип хаф', t: 'trans',
+        { n: 'Deep half', en: 'Дип хаф', t: 'trans', to: 'dh_b',
           s: ['Go under the leg and hug the thigh', 'Head between their legs', 'Lift the leg and roll'],
           c: [
             { n: 'They free the leg', en: 'Хөлөө сугалж авна', c: [
@@ -370,7 +370,7 @@ window.BJJ_SEED = (function () {
           s: ['Collar and belt grips', 'Knee on the belly, other leg extended'] },
         { n: 'Back take when they turn', en: 'Ар руу (эргэхэд нь)', t: 'trans', to: 'bk_t',
           s: ['When they turn away, insert the hook', 'Seat belt grip'] },
-        { n: 'To north-south', en: 'Норт-саут руу', t: 'trans',
+        { n: 'To north-south', en: 'Норт-саут руу', t: 'trans', to: 'ns_t',
           s: ['Rotate towards the head', 'Chest pressure, control the arms'] },
       ] },
 
@@ -518,6 +518,179 @@ window.BJJ_SEED = (function () {
           ] },
         { n: 'Attack a single leg', en: 'Ганц хөл рүү довтлох', t: 'td', to: 'sc_t',
           s: ['Wrap the near leg', 'Stand up and lift the leg'] },
+      ] },
+
+    // ───────── Library v4: more positions (appended, ids explicit so earlier ids stay stable) ─────────
+    { id: 'rdlr_b', n: 'Reverse De la Riva', en: 'Урвуу де ла Рива', cat: 'guard',
+      x: 'Inside leg hooks behind their knee from the inside, outside foot on the hip. Built against the knee cut passer.',
+      c: [
+        { n: 'Kiss of the dragon → back', en: 'Кисс оф зе драгон → ар', t: 'trans', to: 'bk_t', when: 'They step in for the knee cut',
+          s: ['Hook behind the knee, grab the far ankle', 'Invert under them, shoulder on the mat', 'Come up behind, put in the hooks'] },
+        { n: 'Reverse DLR hook sweep', en: 'Урвуу ДЛР хук свип', t: 'sweep', to: 'sc_t', when: 'They stand tall over your hook',
+          s: ['Hook lifts their knee, foot pushes the far hip', 'Grab the sleeve or ankle on the hook side', 'Lift and push, come up on top'] },
+        { n: 'Invert to single leg X', en: 'Эргэж ганц хөл Х рүү', t: 'trans', to: 'slx_b', when: 'They put weight on the hooked leg',
+          s: ['Swing the outside leg between their legs', 'Hug the trapped leg with your knees', 'Foot on the far hip, sit up'] },
+      ] },
+
+    { id: 'ls_b', n: 'Lasso guard', en: 'Лассо гард', cat: 'guard',
+      x: 'One foot wrapped around their arm from the outside, sleeve gripped. Gi only. Slows every pass, opens omoplata and triangle.',
+      c: [
+        { n: 'Lasso omoplata', en: 'Лассо омоплата', t: 'sub', gi: 'gi', when: 'They pull the lassoed arm back',
+          s: ['Keep the sleeve, deepen the lasso to the shoulder', 'Swing the free leg over the shoulder', 'Sit up to the hip, control the belt'] },
+        { n: 'Lasso sweep', en: 'Лассо свип', t: 'sweep', to: 'mt_t', gi: 'gi', when: 'They kneel and lean forward',
+          s: ['Lasso deep, other foot on the far knee or hip', 'Pull the sleeve, push the knee out', 'Roll them over the lasso side, come to mount'] },
+        { n: 'Lasso triangle', en: 'Лассо трайангл', t: 'sub', gi: 'gi', when: 'The lassoed arm goes down',
+          s: ['Free the lasso leg and shoot it over the shoulder', 'Pull the free arm across', 'Lock the triangle, cut the angle'] },
+      ] },
+
+    { id: 'ff_b', n: '50/50', en: '50/50', cat: 'guard',
+      x: 'Both legs tangled the same way: whoever controls the heel wins. Keep your heel hidden, hunt theirs, or stand up first.',
+      c: [
+        { n: 'Inside heel hook', en: 'Хил хук (дотор)', t: 'sub', kids: false, legal: 'IBJJF: brown/black no-gi only', when: 'Their heel is exposed inside',
+          s: ['Pinch their knee with your knees', 'Elbow catches the heel, hands locked', 'Turn the heel slowly, hips lead'],
+          c: [
+            { n: 'They hide the heel and stand', en: 'Өсгийгөө нууж босно', f: 'common', c: [
+              { n: 'Follow to the top', en: 'Дагаж дээр гарах', t: 'sweep', to: 'og_t', s: ['Keep the leg, come up on the elbow', 'Push the knee, come up on top'] },
+            ] },
+          ] },
+        { n: 'Outside heel hook', en: 'Хил хук (гадна)', t: 'sub', kids: false, legal: 'IBJJF: brown/black no-gi only', when: 'Their heel turns outward',
+          s: ['Catch the heel from the outside, elbow tight', 'Knees squeeze their knee', 'Rotate the heel out, slow'] },
+        { n: 'Clear the knee line', en: 'Өвдгийн шугамыг чөлөөлөх', t: 'esc', to: 'og_t', when: 'They grab your heel',
+          s: ['Hide the heel: toes to their hip', 'Push their knee down, pull your knee out past theirs', 'Stand up on top before they re-tangle'] },
+        { n: 'Come up to top', en: '50/50-оос дээр гарах', t: 'sweep', to: 'og_t', when: 'They lie back, hands off your leg',
+          s: ['Post on the elbow, sit up', 'Push their chest or grab the collar', 'Come up on the knee, keep their leg crossed'] },
+      ] },
+
+    { id: 'dh_b', n: 'Deep half guard', en: 'Дип хаф гард', cat: 'guard',
+      x: 'Under their hips, hugging one thigh, your head safe against their belly. Weight off you, their base gone.',
+      c: [
+        { n: 'Waiter sweep', en: 'Вэйтэр свип', t: 'sweep', to: 'sc_t', when: 'They sit back on your head',
+          s: ['Hook the far foot with your arm, like a tray', 'Lift the leg, turn under them', 'Come up on top, drive forward'] },
+        { n: 'Homer Simpson sweep', en: 'Хомер Симпсон свип', t: 'sweep', to: 'sc_t', when: 'They stand up out of deep half',
+          s: ['Keep the leg hugged, hips under them', 'Spin on the back, shoot the legs through', 'Come up to the knees on top of the leg'] },
+        { n: 'Deep half back take', en: 'Дип хафаас ар авах', t: 'trans', to: 'bk_t', when: 'They turn their hips away',
+          s: ['Push the knee across with the hand', 'Slide out behind, grab the belt', 'Put in the hook, seatbelt'] },
+      ] },
+
+    { id: 'z_b', n: 'Z-guard / knee shield', en: 'Z гард / knee shield', cat: 'guard',
+      x: 'Half guard with the top knee across their chest. The shield makes space; the underhook and the kimura are the attacks.',
+      c: [
+        { n: 'Knee shield sweep', en: 'Knee shield свип', t: 'sweep', to: 'sc_t', when: 'They push into the shield',
+          s: ['Grab the sleeve or wrist of the pushing arm', 'Kick the shield forward, pull the arm across', 'Roll them over, follow to the top'] },
+        { n: 'Underhook to dogfight', en: 'Underhook → догфайт', t: 'trans', to: 'bk_t', oc: [{ to: 'bk_t', f: 'common' }, { to: 'sc_t', f: 'common' }], when: 'They crossface and reach over',
+          s: ['Drop the shield, swim the underhook', 'Come up to the knees, head on their chest', 'Take the back or drive them over'] },
+        { n: 'Kimura from Z-guard', en: 'Z гардаас кимура', t: 'sub', when: 'They post a hand on the mat',
+          s: ['Grab the wrist with the top hand', 'Thread the other arm, figure-four', 'Fall to the side, rotate the hand to the back'] },
+      ] },
+
+    { id: 'rg_b', n: 'Rubber guard', en: 'Раббер гард', cat: 'guard',
+      x: 'Closed guard with one leg over their shoulder, held by your own hand (mission control). Posture is gone; now choose the attack.',
+      c: [
+        { n: 'Gogoplata', en: 'Гогоплата', t: 'sub', when: 'Their head is pinned down by your leg',
+          s: ['Bring the shin across the throat', 'Grab the foot with both hands', 'Pull the foot in, curl the leg'] },
+        { n: 'Omoplata from rubber guard', en: 'Раббер гардаас омоплата', t: 'sub', when: 'They try to posture out',
+          s: ['Swing the leg over the shoulder', 'Push their head down, sit up to the hip', 'Control the hip, rotate the shoulder'] },
+        { n: 'Mission control to back', en: 'Мишн контрол → ар', t: 'trans', to: 'bk_t', when: 'They turn away from the leg',
+          s: ['Keep the leg over the head, hip out', 'Underhook the far side, come up', 'Swing behind, hooks in'] },
+      ] },
+
+    { id: 'wg_b', n: 'Worm guard', en: 'Ворм гард', cat: 'guard',
+      x: 'Their own lapel wrapped under your leg and around their leg. Gi only. Ties their hips to you; they cannot stand away.',
+      c: [
+        { n: 'Worm sweep', en: 'Ворм свип', t: 'sweep', to: 'sc_t', gi: 'gi', when: 'They stand with the lapel wrapped',
+          s: ['Lapel under your shin, tight around their leg', 'Hook the far ankle with the free foot', 'Pull the lapel, push the knee, come up'] },
+        { n: 'Worm guard back take', en: 'Ворм гардаас ар авах', t: 'trans', to: 'bk_t', gi: 'gi', when: 'They turn their hips to pass',
+          s: ['Keep the lapel, invert under the leg', 'Pass the lapel to the other hand behind them', 'Come up behind, hooks in'] },
+      ] },
+
+    { id: 'ashi_b', n: 'Ashi garami / saddle', en: 'Аши гарами / сээдэл', cat: 'guard',
+      x: 'Their leg isolated between yours, your knees pinching their knee. Control the hip line first, then the heel.',
+      c: [
+        { n: 'Inside heel hook from the saddle', en: 'Сээдэлээс хил хук (дотор)', t: 'sub', kids: false, legal: 'IBJJF: brown/black no-gi only', when: 'Their knee is inside your hips',
+          s: ['Knees pinch above their knee, hips tight', 'Catch the heel in the elbow, hands locked', 'Turn with the whole body, slow'],
+          c: [
+            { n: 'They roll with it and free the knee', en: 'Эргэж өвдгөө чөлөөлнө', f: 'common', c: [
+              { n: 'Switch to the kneebar', en: 'Книбар руу', t: 'sub', kids: false, s: ['Keep the leg, extend it', 'Hips to the knee'] },
+            ] },
+          ] },
+        { n: 'Kneebar from the saddle', en: 'Сээдэлээс книбар', t: 'sub', kids: false, legal: 'IBJJF: brown/black only', when: 'Their leg straightens',
+          s: ['Hug the leg to your chest', 'Knee above your hips, hips drive forward', 'Pull the heel slowly'] },
+        { n: 'Leg drag off the saddle', en: 'Сээдэлээс лег драг', t: 'sweep', to: 'sc_t', when: 'They push you away with the free foot',
+          s: ['Pull the leg across your hip', 'Come up to the knees over the dragged leg', 'Drive to side control'] },
+        { n: 'Heel hook defense: turn into the knee', en: 'Хил хукийн хамгаалалт', t: 'esc', to: 'og_t', when: 'They catch your heel',
+          s: ['Turn your knee towards their belly', 'Hide the heel, pull the knee out', 'Stand up and pass'] },
+      ] },
+
+    { id: 'ns_t', n: 'North-south', en: 'Норт-саут', cat: 'top',
+      x: 'Chest on their chest, head over their hips. Their escapes are gone; arms and neck are open.',
+      c: [
+        { n: 'North-south choke', en: 'Норт-саут чок', t: 'sub', when: 'Their arm comes free, chin up',
+          s: ['Arm under the neck, shoulder on the jaw', 'Drop the hip to the mat', 'Walk the hips to the side, squeeze'] },
+        { n: 'Kimura from north-south', en: 'Норт-саутаас кимура', t: 'sub', when: 'They push or reach up with an arm',
+          s: ['Grab the wrist, figure-four', 'Step over the head', 'Rotate the arm up the back'] },
+        { n: 'Spin to mount', en: 'Эргэж маунт', t: 'trans', to: 'mt_t', when: 'They turn towards you',
+          s: ['Knee over the belly as they turn', 'Hip low, swing the leg over', 'Settle in mount'] },
+        { n: 'Back to side control', en: 'Хажуугийн хяналт руу буцах', t: 'trans', to: 'sc_t', when: 'They start to bridge',
+          s: ['Rotate towards the head side', 'Cross-face and underhook', 'Settle chest on chest'] },
+      ] },
+
+    { id: 'fh_t', n: 'Front headlock', en: 'Урд тэврэлт', cat: 'top',
+      x: 'Their head under your chest, arm and head wrapped. From here: the neck, the back or the turtle.',
+      c: [
+        { n: 'Guillotine', en: 'Гилотин', t: 'sub', when: 'Their chin is in your elbow',
+          s: ['Wrist under the chin, other hand clasps', 'Hips back, elbow up', 'Pull guard or finish on the knees'] },
+        { n: 'D’Arce', en: 'Дарс', t: 'sub', when: 'They are on the knees, arm in',
+          s: ['Thread the arm under the neck, over the far arm', 'Grab your own bicep', 'Drive forward and squeeze'] },
+        { n: 'Anaconda', en: 'Анаконда', t: 'sub', when: 'They are on the knees, arm out',
+          s: ['Arm under the armpit and neck', 'Grab your own bicep, sprawl', 'Roll them to the side, walk the hips in'] },
+        { n: 'Go-behind to the back', en: 'Ар руу гарах (гоу бихайнд)', t: 'trans', to: 'bk_t', when: 'They turn away or sit back',
+          s: ['Snap the head down and circle', 'Keep the chin wrap, step behind', 'Seatbelt, put in the hooks'] },
+        { n: 'Snap down to turtle', en: 'Снап даун → мөлхөөн', t: 'trans', to: 'tt_t', when: 'They are standing, head heavy',
+          s: ['Pull the head down, step back', 'Weight on the back of their neck', 'Settle on top of the turtle'] },
+      ] },
+
+    { id: 'cx_t', n: 'Crucifix', en: 'Крусификс', cat: 'top',
+      x: 'One of their arms trapped between your legs, the other in your arm. They cannot defend the neck.',
+      c: [
+        { n: 'Crucifix choke', en: 'Крусификс чок', t: 'sub', when: 'Both arms are trapped',
+          s: ['Fall to the side, arm around the neck', 'Reach the collar or your own shoulder', 'Pull the head back, squeeze'] },
+        { n: 'Crucifix armlock', en: 'Крусификсээс гарын түгжээ', t: 'sub', when: 'The arm between your legs is straight',
+          s: ['Pinch the arm with your legs', 'Lift the hips, elbow stays trapped', 'Extend the leg slowly'] },
+        { n: 'Turn them to the back', en: 'Ар руу шилжих', t: 'trans', to: 'bk_t', when: 'They free the arm',
+          s: ['Let the arm go, keep the hook', 'Chest on their back', 'Seatbelt, second hook'] },
+      ] },
+
+    { id: 'ns_b', n: 'Under north-south', en: 'Норт-саутын доор', cat: 'escape',
+      x: 'Their chest on yours, hips over your head. Protect the neck, turn to the side, never push straight up.',
+      c: [
+        { n: 'Hip escape to guard', en: 'Ташаагаар зайлж гард', t: 'esc', to: 'cg_b', when: 'They are heavy on the chest',
+          s: ['Frame on the hips, turn to the side', 'Shrimp and bring a knee in', 'Face them, close the guard'] },
+        { n: 'Roll to turtle', en: 'Мөлхөөн рүү эргэх', t: 'esc', to: 'tt_b', when: 'They move around to the side',
+          s: ['Turn onto the shoulder, elbows in', 'Knees under, hips up', 'Elbows and knees tight'] },
+        { n: 'Push the hips and spin', en: 'Ташааг нь түлхээд эргэх', t: 'esc', to: 'hg_b', when: 'Their hips lift',
+          s: ['Both hands on their hips', 'Spin under them on the back', 'Catch a leg in half guard'] },
+      ] },
+
+    { id: 'kob_b', n: 'Under knee on belly', en: 'Нип-он-бэллигийн доор', cat: 'escape',
+      x: 'Knee on your belly, their weight on it. Breathe, turn towards them, never push the knee with straight arms.',
+      c: [
+        { n: 'Shrimp and recover guard', en: 'Shrimp хийж гард сэргээх', t: 'esc', to: 'cg_b', when: 'Their weight is on the knee',
+          s: ['Elbow and knee come together on the near side', 'Shrimp away, hip out', 'Knee in, pull guard'] },
+        { n: 'Knee push escape', en: 'Өвдөг түлхэж мултрах', t: 'esc', to: 'hg_b', when: 'Their knee is loose',
+          s: ['Turn towards them, push the knee with the near elbow', 'Bridge and slide the hips out', 'Catch the leg in half guard'] },
+        { n: 'Kimura counter', en: 'Кимура сөрөг довтолгоо', t: 'sub', when: 'They reach for the far collar',
+          s: ['Grab the reaching wrist', 'Figure-four, roll to the side', 'Turn the arm up the back'] },
+      ] },
+
+    { id: 'sh_b', n: 'Under scarf hold', en: 'Кеса гатамегийн доор', cat: 'escape',
+      x: 'Your head under their arm, your near arm trapped. Free the elbow first, then bridge or hook the leg.',
+      c: [
+        { n: 'Bridge and roll', en: 'Бридж хийж эргэх', t: 'esc', to: 'sc_t', when: 'They are high on your chest',
+          s: ['Free the near elbow, hug their waist', 'Bridge over the shoulder, hips high', 'Roll them over, come up on top'] },
+        { n: 'Leg hook escape', en: 'Хөлөөр дэгээдэж мултрах', t: 'esc', to: 'sc_t', when: 'They lean back on your hip',
+          s: ['Hook their head with your far leg', 'Pull them back onto the mat', 'Sit up and come on top'] },
+        { n: 'Frame and recover guard', en: 'Фрэйм тавьж гард сэргээх', t: 'esc', to: 'hg_b', when: 'Their hips come forward',
+          s: ['Frame the near forearm on their hip', 'Shrimp and bring the knee under', 'Catch the leg, half guard'] },
       ] },
   ];
 
@@ -742,7 +915,7 @@ window.BJJ_SEED = (function () {
         s: ['Keep the top hook tight so they cannot turn', 'Chest glued to their back'] },
     ],
     tt_t: [
-      { n: 'Crucifix', en: 'Крусификс', t: 'ctl',
+      { n: 'Crucifix', en: 'Крусификс', t: 'ctl', to: 'cx_t',
         s: ['Trap one arm between your legs', 'Grab the other arm, roll them over', 'Chokes and armlocks open up'] },
       { n: 'Roll them to side control', en: 'Хажуугийн хяналт руу', t: 'trans', to: 'sc_t',
         s: ['Grab the far hip and the near armpit', 'Pull and roll over your shoulder'] },
@@ -907,6 +1080,135 @@ window.BJJ_SEED = (function () {
   };
   for (const p of POS) if (MORE2[p.id]) p.c = (p.c || []).concat(MORE2[p.id]);
 
+  // ───────── Library v4: missing takedowns, submissions and transitions (appended so existing ids stay stable) ─────────
+  const MORE3 = {
+    st: [
+      { n: 'Hip throw (O-goshi)', en: 'О-гоши (ташааны шидэлт)', t: 'td', to: 'sc_t', when: 'They stand close, upright',
+        s: ['Pull the sleeve, step in and turn, hip across their belly', 'Arm around the waist, knees bent, hips lower than theirs', 'Straighten the legs, pull the sleeve and turn them over'] },
+      { n: 'Outside leg trip (Kosoto-gake)', en: 'Косото-гаке (гаднаас дэгээлэх)', t: 'td', to: 'sc_t', when: 'Their weight is on the heels',
+        s: ['Collar and sleeve, push them back onto the heels', 'Hook your foot behind their heel from the outside', 'Drive forward and down, follow into side control'] },
+      { n: 'Inside leg trip (Ouchi-gari)', en: 'Оучи-гари (дотроос хусах)', t: 'td', to: 'sc_t', when: 'They stand wide, legs apart',
+        s: ['Step between their legs, chest to chest', 'Reap the inside of their far leg with your leg', 'Push the collar, drive them back and follow down'] },
+      { n: 'Harai goshi', en: 'Харай-гоши', t: 'td', to: 'sc_t', when: 'They lean on you, chest close',
+        s: ['Pull the sleeve and collar, turn in as for a hip throw', 'Sweep their thigh with the back of your leg', 'Pull the arm down and over, land on top'] },
+      { n: 'Tai otoshi', en: 'Тай-отоши', t: 'td', to: 'sc_t', when: 'They step forward with the lead leg',
+        s: ['Turn in, pull the sleeve across your chest', 'Block their shin with your extended leg', 'Pull them over the leg, rotate and follow'] },
+      { n: 'Tomoe nage', en: 'Томое-наге', t: 'td', to: 'mt_t', oc: [{ to: 'mt_t', f: 'common' }, { to: 'sc_t', f: 'rare' }], when: 'They push into you, upright',
+        s: ['Double grips, step in deep', 'Sit down under them, foot on the hip', 'Throw them over your head, roll up on top'] },
+      { n: 'Kouchi gari', en: 'Коучи-гари', t: 'td', to: 'sc_t', when: 'Their lead foot is light',
+        s: ['Pull them onto the lead foot', 'Scoop the inside of the heel with your foot', 'Push the chest straight back and follow down'] },
+      { n: 'Sasae tsurikomi ashi', en: 'Сасае цурикоми аши', t: 'td', to: 'sc_t', when: 'They step forward',
+        s: ['Lift with the collar grip, pull the sleeve up', 'Block the front of their ankle with your sole', 'Turn the wheel: sleeve down, collar up, step back'] },
+      { n: 'Tani otoshi', en: 'Тани-отоши', t: 'td', to: 'sc_t', when: 'They lean back or defend a throw',
+        s: ['Hug the waist from the side, chest to their back', 'Step your leg behind both of their heels', 'Sit back, drop them over your leg, come up on top'] },
+      { n: 'Fireman’s carry (Kata guruma)', en: 'Ката гурума (мөрөн дээр үүрч шидэх)', t: 'td', to: 'sc_t', when: 'They reach over your shoulder',
+        s: ['Control the arm, level change under it', 'Head under the armpit, other arm between the legs', 'Lift onto the shoulders and tip them over'] },
+      { n: 'High crotch', en: 'Хай кроч', t: 'td', to: 'sc_t', when: 'They reach for a collar tie',
+        s: ['Level change, head to the outside of the near hip', 'Arm deep between the legs, grab the thigh high', 'Stand up with the leg, run the pipe or switch to a double'] },
+      { n: 'Duck under', en: 'Дак андер', t: 'td', to: 'bk_t', when: 'They reach over with a collar tie',
+        s: ['Snap the tie down, change level', 'Duck under the arm, head tight to their back', 'Come up behind and take the body lock'] },
+      { n: 'Low single', en: 'Лоу сингл', t: 'td', to: 'sc_t', when: 'They stand tall with a lead leg',
+        s: ['Drop to the knee, grab behind the ankle', 'Head outside the knee, drive forward', 'Trip the heel and climb up the leg'] },
+      { n: 'Knee tap', en: 'Ни тап (өвдөг түлхэлт)', t: 'td', to: 'sc_t', when: 'You have an underhook standing',
+        s: ['Underhook, step to the outside', 'Tap behind the far knee with the free hand', 'Drive diagonally over the trapped leg'] },
+      { n: 'Lateral drop', en: 'Латерал дроп', t: 'td', to: 'sc_t', when: 'They push in a body lock',
+        s: ['Hug over the shoulder and under the arm', 'Step across, block their leg with yours', 'Arch and twist, fall sideways, land on top'] },
+      { n: 'Slide by', en: 'Слайд бай', t: 'td', to: 'bk_t', when: 'They collar tie and push',
+        s: ['Grip their collar tie arm at the wrist and tricep', 'Pop the arm up and slide past it', 'Hug the back and spin behind'] },
+      { n: 'Sprawl → front headlock', en: 'Спрол → урд тэврэлт', t: 'ctl', to: 'fh_t', when: 'They shoot for your legs',
+        s: ['Hips down and back, legs out', 'Chest on their head, chin on the back', 'Wrap the head and arm, circle to the side'] },
+    ],
+    cg_b: [
+      { n: 'Gogoplata', en: 'Гогоплата', t: 'sub', when: 'Your leg is over their shoulder',
+        s: ['From the leg over the shoulder, bring the shin across the throat', 'Grab the foot with both hands', 'Pull the foot in and curl the leg'],
+        c: [
+          { n: 'They posture and pull the head out', en: 'Босож толгойгоо сугална', f: 'common', c: [
+            { n: 'Switch to omoplata', en: 'Омоплата руу', t: 'sub', s: ['Swing the leg over the shoulder', 'Sit up to the hip'] },
+          ] },
+        ] },
+      { n: 'Wrist lock', en: 'Бугуйн түгжээ', t: 'sub', kids: false, legal: 'IBJJF: adults from blue belt', when: 'Their hand is flat on your chest',
+        s: ['Pin the hand to your chest with both hands', 'Sit up and fold the wrist towards their forearm', 'Slow, they tap fast'] },
+      { n: 'Bicep slicer', en: 'Бицепс слайсер', t: 'sub', kids: false, legal: 'IBJJF: brown/black only', when: 'They bend the arm out of an armbar',
+        s: ['When they bend the arm, hook your leg inside the elbow', 'Triangle the legs over the forearm', 'Pull the wrist down, squeeze'] },
+      { n: 'Tarikoplata', en: 'Тарикоплата', t: 'sub', when: 'You have the kimura grip, they hide the arm',
+        s: ['Keep the kimura grip, swing the leg over the shoulder', 'Trap the wrist with your shin', 'Sit up, rotate the shoulder as in omoplata'] },
+      { n: 'Monoplata', en: 'Моноплата', t: 'sub', when: 'Their arm is trapped under your leg',
+        s: ['Arm trapped by your leg, step over the head', 'Sit up, keep the arm pinned with the hip', 'Lean forward, shoulder lock'] },
+      { n: 'Lumberjack sweep', en: 'Ламбержак свип', t: 'sweep', to: 'mt_t', when: 'They stand up in your closed guard',
+        s: ['Keep the guard closed as they stand', 'Grab both ankles from behind', 'Hips up, pull the ankles, follow to mount'] },
+    ],
+    mt_t: [
+      { n: 'Wrist lock from mount', en: 'Маунтаас бугуйн түгжээ', t: 'sub', kids: false, legal: 'IBJJF: adults from blue belt', when: 'They push your chest with a straight hand',
+        s: ['Pin the hand to your chest', 'Lean forward, keep the elbow tight', 'Fold the wrist slowly'] },
+    ],
+    bk_t: [
+      { n: 'Twister', en: 'Твистер', t: 'sub', kids: false, legal: 'IBJJF: brown/black no-gi only', when: 'They turn away, your hook stays in',
+        s: ['Keep one hook, let them turn to the mat', 'Lock the far arm, reach around the head', 'Pull the head towards the shoulder, spine twist'] },
+      { n: 'Banana split', en: 'Банана сплит', t: 'sub', kids: false, legal: 'Groin stretch: check your division, often brown/black only', when: 'They roll into the truck',
+        s: ['Hook one leg from behind, triangle your legs on it', 'Grab the other leg at the knee', 'Pull the legs apart, slow'] },
+    ],
+    tt_t: [
+      { n: 'Peruvian necktie', en: 'Перувиан нектай', t: 'sub', when: 'They stay in turtle, head low',
+        s: ['Front headlock grip, arm and head', 'Sit to the side, throw a leg over the neck', 'Second leg over the back, pull'] },
+      { n: 'Japanese necktie', en: 'Жапаниз нектай', t: 'sub', when: 'They defend the D’Arce, arm in',
+        s: ['Thread the arm under the neck, grab your own bicep', 'Drop to the hip, step over the head', 'Squeeze and bridge'] },
+      { n: 'Bulldog choke', en: 'Булдог чок', t: 'sub', when: 'They stand up or scramble from turtle',
+        s: ['Grab the head like a headlock, arm across the throat', 'Sprawl your weight on them', 'Crank down with the forearm, grip the wrist'] },
+      { n: 'Calf slicer (truck)', en: 'Калф слайсер (трак)', t: 'sub', kids: false, legal: 'IBJJF: brown/black only', when: 'You are in the truck',
+        s: ['Shin behind their knee', 'Lock the leg, pull the foot towards the hip', 'Squeeze with the hips'] },
+      { n: 'Truck entry', en: 'Трак руу орох', t: 'trans', to: 'bk_t', when: 'They turtle, one leg hooked',
+        s: ['Hook the far leg from behind', 'Roll over the shoulder, keep the hook', 'Lock the leg, sit to the side: back, twister or calf slicer'] },
+    ],
+    hg_t: [
+      { n: 'Kneebar from top half', en: 'Книбар (хагас гард дээрээс)', t: 'sub', kids: false, legal: 'IBJJF: brown/black only', when: 'Their leg is straight and trapped',
+        s: ['Step over the trapped leg, hug it', 'Fall back, knee in line with your hips', 'Pull the heel, hips forward'] },
+      { n: 'Toehold', en: 'Тоухолд', t: 'sub', kids: false, legal: 'IBJJF: brown/black only', when: 'Their foot comes free, toes near your hand',
+        s: ['Grab the toes, other hand under the ankle, figure-four', 'Turn the foot towards the butt', 'Slow, control the knee'] },
+      { n: 'Backstep pass', en: 'Бэкстеп давалт', t: 'pass', to: 'sc_t', when: 'They have the knee shield',
+        s: ['Step the free leg back and over', 'Sit on their leg, hips low', 'Free the trapped leg and settle'] },
+    ],
+    og_t: [
+      { n: 'Estima lock', en: 'Эстима лок', t: 'sub', kids: false, legal: 'IBJJF: brown/black only', when: 'They push with a foot on your hip',
+        s: ['Trap the foot, grip over the toes, elbow under the heel', 'Pin with the chest', 'Twist the foot inward'] },
+      { n: 'Float pass', en: 'Флоат давалт', t: 'pass', to: 'sc_t', when: 'They lift and push with the legs',
+        s: ['Let their legs lift you, stay light', 'Float on the hips, no weight on the hooks', 'Drop past the legs to the side'] },
+      { n: 'Folding pass', en: 'Фолдинг давалт', t: 'pass', to: 'sc_t', when: 'Their knees come to the chest',
+        s: ['Push the knees to the chest and over the head', 'Chest on the shins, hips forward', 'Slide around to the side'] },
+    ],
+    hg_b: [
+      { n: 'Wrestle up', en: 'Рестл ап (босож авах)', t: 'trans', to: 'sc_t', when: 'You have the underhook, head free',
+        s: ['Underhook, come up to the knees', 'Drive into them and grab a single leg', 'Stand up and finish'] },
+    ],
+    dlr_b: [
+      { n: 'Crab ride', en: 'Краб райд → ар', t: 'trans', to: 'bk_t', when: 'They turn away from the hook',
+        s: ['Both feet inside the hips, hook the far leg', 'Pull them onto you, sit up behind', 'Put in the hooks'] },
+    ],
+    sp_b: [
+      { n: 'Balloon sweep', en: 'Баллон свип', t: 'sweep', to: 'mt_t', when: 'They stand and push forward',
+        s: ['Both sleeves, feet on the hips', 'Lift them up with the legs', 'Roll back and over, land in mount'] },
+    ],
+    slx_b: [
+      { n: 'Outside heel hook', en: 'Хил хук (гадна)', t: 'sub', kids: false, legal: 'IBJJF: brown/black no-gi only', when: 'Their heel is exposed, knee outside',
+        s: ['Grip the heel, elbow tight to the body', 'Pinch the knee between your legs', 'Turn the heel slowly'],
+        c: [
+          { n: 'They turn the knee and run', en: 'Өвдгөө эргүүлж зугтана', f: 'common', c: [
+            { n: 'Switch to the sweep', en: 'Свип рүү', t: 'sweep', to: 'sc_t', s: ['Keep the leg, push the far knee', 'Come up on top'] },
+          ] },
+        ] },
+      { n: 'Wrestle up', en: 'Рестл ап (босож авах)', t: 'trans', to: 'sc_t', when: 'They post and lean away',
+        s: ['Post on the elbow, come up', 'Hold the trapped leg', 'Stand and finish the single'] },
+    ],
+    tt_b: [
+      { n: 'Turtle to guard recovery', en: 'Мөлхөөнөөс гард сэргээх', t: 'trans', to: 'cg_b', when: 'They stand or sit behind you',
+        s: ['Hip in, grab the near leg', 'Turn to face them', 'Pull the legs around them, close the guard'] },
+    ],
+    sc_b: [
+      { n: 'Buggy choke', en: 'Багги чок', t: 'sub', when: 'Their head is on your near side',
+        s: ['Reach over the back of their head', 'Grab your own leg behind the knee', 'Pull the leg over the head, squeeze'] },
+    ],
+  };
+  for (const p of POS) if (MORE3[p.id]) p.c = (p.c || []).concat(MORE3[p.id]);
+
   const PLANS = [
     { n: 'Against a big, strong opponent', x: 'Never flat on the bottom. Half guard, knee shield, frames, keep changing angles. Movement over strength. On top, do not settle into side control: knee on belly and a mobile top game.', tags: ['hg_b', 'dlr_b', 'kob_t'] },
     { n: 'Against a tall, long-legged opponent', x: 'Do not pass from far away, get close and pass with pressure (knee cut, stack). On the bottom stay out of the triangle, elbows in. Takedowns: level change, single leg.', tags: ['og_t', 'st'] },
@@ -989,10 +1291,17 @@ window.BJJ_SEED = (function () {
     bk_t: 'In front of you, your hooks in, hand fighting', tt_t: 'On hands and knees, hiding neck and elbows',
     sc_b: 'On top, chest on chest, pinning your far arm', mt_b: 'Sitting on your hips, posting or attacking',
     bk_b: 'Behind you, hooks in, hunting the choke', tt_b: 'Over you, sprawled or attacking the back',
+    rdlr_b: 'Standing, stepping in to knee cut, one knee hooked from the inside', ls_b: 'Kneeling or standing, one arm tied in your lasso',
+    ff_b: 'Tangled leg to leg with you, hunting your heel', dh_b: 'Sitting on your head, one thigh hugged, base gone',
+    z_b: 'On top of your half guard, pushing into the knee shield', rg_b: 'Bent over in your guard, your leg over their shoulder',
+    wg_b: 'Standing, their own lapel tying their leg to you', ashi_b: 'Sitting or standing, one leg caught between your knees',
+    ns_t: 'Flat under you, head between your hips, pushing up', fh_t: 'Head under your chest, on the knees or bent over',
+    cx_t: 'On the side, one arm between your legs, the other held', ns_b: 'Chest on your chest, hips over your head',
+    kob_b: 'Knee on your belly, hands on the collar and hip', sh_b: 'Sitting beside you, head locked under their arm',
   };
   // Where you land when they escape a submission from this position (bottom: they pass; top: they recover).
-  const ESC_TO = { st: 'sc_b', cg_b: 'sc_b', hg_b: 'sc_b', dlr_b: 'sc_b', sp_b: 'sc_b', bf_b: 'sc_b', xg_b: 'sc_b', slx_b: 'sc_b', hg_t: 'og_t', sc_t: 'og_t', kob_t: 'og_t', mt_t: 'hg_t', bk_t: 'og_t', tt_t: 'og_t' };
-  const RANKS = { st: 0, cg_b: 0, hg_b: -1, dlr_b: 0, sp_b: 0, bf_b: 0, xg_b: 1, slx_b: 1, cg_t: 0, og_t: 0, hg_t: 1, sc_t: 1, kob_t: 2, mt_t: 2, bk_t: 2, tt_t: 1, sc_b: -1, mt_b: -2, bk_b: -2, tt_b: -1 };
+  const ESC_TO = { st: 'sc_b', cg_b: 'sc_b', hg_b: 'sc_b', dlr_b: 'sc_b', sp_b: 'sc_b', bf_b: 'sc_b', xg_b: 'sc_b', slx_b: 'sc_b', hg_t: 'og_t', sc_t: 'og_t', kob_t: 'og_t', mt_t: 'hg_t', bk_t: 'og_t', tt_t: 'og_t', rdlr_b: 'sc_b', ls_b: 'sc_b', ff_b: 'sc_b', dh_b: 'sc_b', z_b: 'sc_b', rg_b: 'sc_b', wg_b: 'sc_b', ashi_b: 'sc_b', ns_t: 'og_t', fh_t: 'og_t', cx_t: 'og_t', ns_b: 'mt_b', kob_b: 'mt_b', sh_b: 'mt_b' };
+  const RANKS = { st: 0, cg_b: 0, hg_b: -1, dlr_b: 0, sp_b: 0, bf_b: 0, xg_b: 1, slx_b: 1, cg_t: 0, og_t: 0, hg_t: 1, sc_t: 1, kob_t: 2, mt_t: 2, bk_t: 2, tt_t: 1, sc_b: -1, mt_b: -2, bk_b: -2, tt_b: -1, rdlr_b: 0, ls_b: 0, ff_b: 0, dh_b: -1, z_b: -1, rg_b: 0, wg_b: 0, ashi_b: 1, ns_t: 1, fh_t: 1, cx_t: 2, ns_b: -1, kob_b: -2, sh_b: -1 };
   // Per-node annotations (gi/no-gi, belt, points, energy, situation, outcomes, traps, rules). Keyed by path id.
   const META = window.BJJ_META || {};
   // Flatten to a list with stable, path-based ids
@@ -1104,5 +1413,5 @@ window.BJJ_SEED = (function () {
     { id: 'mjudo', n: 'Mongolian Judo Academy (Jiu Jitsu)', city: 'Ulaanbaatar', addr: 'Sportiin Tuv' },
   ];
 
-  return { version: 5, clubs: CLUBS, drills: DRILLS, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
+  return { version: 6, clubs: CLUBS, drills: DRILLS, nodes: flatten, plans: PLANS, routines: ROUTINES, belts: BELTS, beltGoals: BELT_GOALS, weightClasses: WEIGHT_CLASSES };
 })();

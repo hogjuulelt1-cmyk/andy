@@ -488,10 +488,37 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .qrurl{word-break:break-all;text-align:center}
 .scanbox{display:flex;flex-direction:column;gap:8px;align-items:center} .scanbox video{display:none;width:100%;max-width:340px;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#000;outline:3px solid var(--accent);outline-offset:-3px} .scanbox.on video{display:block} .scanbox.on .btn{display:none} .scan-msg{text-align:center}
 .quick{display:flex;flex-wrap:wrap;gap:8px} .quick button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;font-weight:600;font-size:.86rem}
+/* Mine / Discover (Technique tab) */
+.disc{gap:0;padding-block:4px}
+.disc-cat{display:flex;align-items:center;gap:12px;width:100%;border:0;border-top:1px solid var(--line);background:none;color:inherit;text-align:left;padding:10px 0;min-height:54px}
+.disc-cat:first-child{border-top:0}
+.disc-cat i{width:4px;height:28px;border-radius:2px;flex:none}
+.disc-cat b{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.disc-cat .chev{transition:transform .25s var(--ease)} .disc-cat.open .chev{transform:rotate(90deg)}
+.disc-rows{padding-left:16px;padding-bottom:4px}
+.mrow{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line)}
+.mrow-t{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:8px 0;border:0;background:none;color:inherit;text-align:left;min-height:56px}
+.mrow-t .txt{flex:1;min-width:0} .mrow-t .txt b{display:block;font-weight:600;line-height:1.3} .mrow-t .txt small{display:block;color:var(--muted);font-size:.8rem}
+.plus{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:1.35rem;line-height:1;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:background-color .2s var(--ease),color .2s var(--ease),transform .25s var(--ease)}
+.plus.on{background:var(--accent-soft);color:var(--accent);font-size:1rem}
+.plus:active{transform:scale(.9)}
+.btn.minepill{flex:none;font-size:.78rem;padding:4px 10px;min-height:32px;border-radius:999px;white-space:nowrap}
+.btn.minepill.on{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.mine-empty{align-items:center;text-align:center;padding-block:28px} .mine-empty .pict.big{width:52px;height:52px;background:var(--accent-soft);border-radius:50%} .mine-empty .pict.big svg{width:28px;height:28px} .mine-empty p{max-width:30ch}
+@media (prefers-reduced-motion:reduce){.disc-cat .chev,.plus{transition:none}}
 .reclist{display:flex;flex-direction:column;gap:8px}
 .rec-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;min-height:64px;color:inherit}
 .rec-opt .ric{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
 .rec-opt b{display:block;font-size:1rem} .rec-opt small{display:block;color:var(--muted);font-size:.8rem}
+/* You · Progress: XP bar, training calendar, analytics, weekly challenges, achievements */
+.xp{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px} .xp .xprow{display:flex;justify-content:space-between;align-items:baseline;gap:10px} .xp .xprow b{font-family:var(--display);font-size:1.05rem;font-weight:700} .xp .xprow span{font-size:.84rem;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums} .xp p{margin:0;font-size:.74rem}
+.pbar{height:8px;border-radius:999px;background:var(--sunk);overflow:hidden} .pbar i{display:block;height:100%;width:0;border-radius:999px;background:var(--accent);min-width:0}
+.calnav{display:flex;align-items:center;justify-content:space-between;gap:8px} .calnav b{font-family:var(--display);font-size:1.05rem;font-weight:600;font-variant-numeric:tabular-nums} .calnav .icon-btn{width:36px;padding:0;justify-content:center;font-size:1.3rem;line-height:1} .calnav .icon-btn:disabled{opacity:.35}
+.summary.two{grid-template-columns:repeat(2,1fr);border-top:1px solid var(--line);padding-top:10px} .summary.two .stat b{font-size:1.4rem}
+.chals{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-inline:-16px;padding:2px 16px 4px;scroll-snap-type:x proximity} .chals::-webkit-scrollbar{display:none}
+.chal{flex:none;width:220px;display:flex;flex-direction:column;gap:6px;background:var(--sunk);border:1px solid transparent;border-radius:14px;padding:12px;scroll-snap-align:start} .chal b{font-size:.95rem;line-height:1.25} .chal small{color:var(--muted);font-size:.78rem;line-height:1.3} .chal .pbar{margin-top:auto} .chal .chrow{display:flex;justify-content:space-between;align-items:center} .chal .chic{font-size:1.4rem;line-height:1} .chal .chxp{font-size:.72rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:999px} .chal .chfoot{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;min-height:22px}
+.chal.done{border-color:var(--ok);background:var(--ok-soft)} .chal.done .pbar i{background:var(--ok)} .chal.done .chxp{background:var(--ok);color:#fff}
+.ach .achic{width:40px;height:40px;border-radius:12px;background:var(--sunk);display:grid;place-items:center;font-size:1.3rem;flex:none} .ach.locked{opacity:.5} .ach.locked .achic{filter:grayscale(1)} .ach .pill{flex:none}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;z-index:40;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
@@ -537,9 +564,9 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="lang-mn.js?v=6"></script>
+<script src="lang-mn.js?v=7"></script>
 <script src="meta.js?v=3"></script>
-<script src="seed.js?v=7"></script>
-<script src="app.js?v=24"></script>
+<script src="seed.js?v=8"></script>
+<script src="app.js?v=25"></script>
 </body>
 </html>
