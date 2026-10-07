@@ -24,7 +24,7 @@ function dn(n) { return I18N.lang === "mn" ? (n.en || I18N.tr(n.n)) : n.n; }
 function tr(t) { return I18N.lang === "mn" ? I18N.tr(t) : t; }
 function emailOf(login) { login = String(login || "").trim().toLowerCase(); return login.includes("@") ? login : login.replace(/[^a-z0-9._-]/g, "") + "@" + MEMBER_DOMAIN; }
 function loginName(email) { return String(email || "").replace("@" + MEMBER_DOMAIN, ""); }
-const TAB_ALIAS = { log: "train", body: "train", belt: "me", weight: "me", comp: "me" };
+const TAB_ALIAS = { train: "me", log: "me", drills: "me", body: "me", belt: "me", weight: "me", comp: "me" };
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -99,9 +99,9 @@ function blank() {
 }
 let S = blank();
 let mode = "local";
-const UI = { tab: "tech", tech: { id: null, q: "", view: "pos", map: false }, body: { cat: "warm", open: null }, comp: { id: null }, confirm: null, sheet: null, anim: "" };
-UI.seg = { train: "log", me: "belt" }; UI.clubSeg = "today"; UI.memF = "all"; UI.attDate = "";
-try { const t = localStorage.getItem("bjj-tab"); if (t) { if (TAB_ALIAS[t]) { UI.tab = TAB_ALIAS[t]; UI.seg[UI.tab] = t; } else UI.tab = t; } if (localStorage.getItem("bjj-map") === "1") UI.tech.map = true; } catch (e) {}
+const UI = { tab: "home", tech: { id: null, q: "", view: "pos", map: false }, body: { cat: "warm", open: null }, comp: { id: null }, confirm: null, sheet: null, anim: "" };
+UI.seg = { me: "log" }; UI.clubSeg = "today"; UI.memF = "all"; UI.attDate = "";
+try { const t = localStorage.getItem("bjj-tab"); if (t) { if (TAB_ALIAS[t]) { UI.tab = TAB_ALIAS[t]; if (t !== "train") UI.seg[UI.tab] = t; } else UI.tab = t; } if (localStorage.getItem("bjj-map") === "1") UI.tech.map = true; } catch (e) {}
 
 function seedAll(force) {
   if (force || !S.tree.nodes.length) S.tree.nodes = SEED.nodes();
@@ -248,19 +248,20 @@ function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = 
 
 /* ---------- tabs & render ---------- */
 const TABS = [
+  ["home", "Home", '<path d="M3 11l9-8 9 8"/><path d="M5 10v11h5v-6h4v6h5V10"/>'],
   ["tech", "Technique", '<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9"/>'],
-  ["train", "Train", '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 10h18M8 15h3M13 15h3"/>'],
+  ["rec", "Record", '<path d="M12 5v14M5 12h14"/>'],
   ["club", "Club", '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/>'],
-  ["me", "Me", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
+  ["me", "You", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
 ];
-const SEGS = { train: [["log", "Log"], ["drills", "Drills"], ["body", "Body"]], me: [["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
+const SEGS = { me: [["log", "Log"], ["drills", "Drills"], ["body", "Body"], ["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
 function renderTabs() {
-  $("tabs").innerHTML = TABS.map((t) => '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
+  $("tabs").innerHTML = TABS.map((t) => t[0] === "rec" ? '<button class="rec" data-act="record"><span><svg viewBox="0 0 24 24">' + t[2] + "</svg></span>" + t[1] + "</button>" : '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
 }
 const VIEWS = {};
 function render(anim) {
   renderBelt(); renderTabs();
-  if (TAB_ALIAS[UI.tab]) { UI.seg[TAB_ALIAS[UI.tab]] = UI.tab; UI.tab = TAB_ALIAS[UI.tab]; }
+  if (TAB_ALIAS[UI.tab]) { if (UI.tab !== "train") UI.seg[TAB_ALIAS[UI.tab]] = UI.tab; UI.tab = TAB_ALIAS[UI.tab]; }
   const m = $("main"); const fn = VIEWS[UI.tab] || VIEWS.tech;
   m.className = ""; m.innerHTML = fn(); if (anim) { void m.offsetWidth; m.className = anim; }
   renderTimer(); initGraphs(); const hw = $("hist"); if (hw && hw.parentElement) hw.parentElement.scrollLeft = hw.scrollWidth;
@@ -270,7 +271,7 @@ let toastT;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); }
 function armConfirm(key) { if (UI.confirm === key) { UI.confirm = null; return true; } UI.confirm = key; render(); setTimeout(() => { if (UI.confirm === key) { UI.confirm = null; render(); } }, 3500); return false; }
 function delBtn(key, act, attrs) { const on = UI.confirm === key; return '<button class="x' + (on ? " confirm" : "") + '" data-act="' + act + '" data-key="' + esc(key) + '" ' + (attrs || "") + ' aria-label="Delete">' + (on ? "Delete?" : "✕") + "</button>"; }
-function seg(items, cur, act) { return '<div class="seg" role="tablist">' + items.map((i) => '<button role="tab" data-act="' + act + '" data-v="' + i[0] + '" aria-selected="' + (cur === i[0]) + '">' + i[1] + "</button>").join("") + "</div>"; }
+function seg(items, cur, act, scroll) { return '<div class="seg' + (scroll ? " scroll" : "") + '" role="tablist">' + items.map((i) => '<button role="tab" data-act="' + act + '" data-v="' + i[0] + '" aria-selected="' + (cur === i[0]) + '">' + i[1] + "</button>").join("") + "</div>"; }
 function chips(group, items, cur) { return '<div class="chips" data-group="' + group + '">' + items.map((i) => '<button type="button" class="chip' + (cur === i[0] ? " on" : "") + '" data-act="pick" data-group="' + group + '" data-v="' + esc(i[0]) + '">' + esc(i[1]) + "</button>").join("") + "</div>"; }
 function scale(group, cur, lo, hi) { let h = '<div class="scale" data-group="' + group + '">'; for (let i = lo; i <= hi; i++) h += '<button type="button" data-act="pick" data-group="' + group + '" data-v="' + i + '" class="' + (cur === i ? "on" : "") + '">' + i + "</button>"; return h + "</div>"; }
 function field(id, label, input) { return '<div class="field"><label for="' + id + '">' + label + "</label>" + input + "</div>"; }
@@ -1035,9 +1036,9 @@ function sessSheet(id) {
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
-      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id), 450); return true;
+      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id), 450); return true;
     },
-    onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); toast("Deleted"); render(); return true; } : null,
+    onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); feedRemove(s.id, s.d); toast("Deleted"); render(); return true; } : null,
   });
 }
 
@@ -1301,7 +1302,7 @@ async function importBackup(file) {
 
 
 /* ======================= TRAIN / ME (grouped tabs) ======================= */
-VIEWS.train = function () { const v = UI.seg.train || "log"; return seg(SEGS.train, v, "segview") + (v === "body" ? VIEWS.body() : v === "drills" ? vDrills() : VIEWS.log()); };
+VIEWS.train = function () { return VIEWS.me(); };
 
 /* ======================= DRILLS ======================= */
 const DKIND = [["all", "All"], ["solo", "Solo"], ["partner", "Partner"], ["sub", "Submissions"], ["td", "Takedowns"], ["esc", "Escapes"], ["flow", "Sparring"]];
@@ -1348,7 +1349,73 @@ function drillDone(id) {
   const b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", "", "number", 'inputmode="numeric"')) + "</div>" + field("f-note", "Note", inp("f-note", "", "text", 'placeholder="felt the timing / still slow on the left"'));
   openSheet(dn(d), b, { saveLabel: "Log it", onSave() { const rec = { id: uid(), d: sv("f-d") || todayIso(), cat: "drill", drill: d.id, n: dn(d), min: +sv("f-min") || 0, note: sv("f-note").trim() }; S.body.items.push(rec); save("body"); if (CLUB.id) attMark(rec.d, true); toast("Logged"); render(); return true; } });
 }
-VIEWS.me = function () { const v = UI.seg.me || "belt"; return seg(SEGS.me, v, "segview") + (v === "weight" ? VIEWS.weight() : v === "comp" ? VIEWS.comp() : VIEWS.belt()); };
+function initials(n) { const w = String(n || "").trim().split(/\s+/).filter(Boolean); return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : (w[0] || "?").slice(0, 2)).toUpperCase(); }
+function hoursFmt(min) { return (min / 60).toFixed(min >= 600 ? 0 : 1); }
+/* You: profile header (avatar, club, belt, membership) + totals, then the personal sections. */
+function profileHead() {
+  const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const items = S.log.items; const totalMin = items.reduce((a, x) => a + (+x.min || 0), 0); const sk = streaks();
+  const ms = CLUB.id && !clubNeeds() ? membership(myUid()) : null;
+  return '<div class="card profile"><div class="prow"><div class="av">' + esc(initials(name)) + '</div><div class="pinfo"><h2>' + esc(name) + '</h2><p class="muted small">' + (CLUB.profile ? esc(CLUB.profile.n) + " · " : "") + esc(b.n) + " belt" + (S.belt.stripes ? " · " + S.belt.stripes + " stripes" : "") + "</p></div>" +
+    (ms && ms.state !== "none" ? '<span class="pill ' + (ms.state === "active" ? "ok" : "bad") + '">' + (ms.state === "active" ? "Active" : "Expired") + "</span>" : "") + "</div>" +
+    '<div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + hoursFmt(totalMin) + '</b><span>hours</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div></div></div>';
+}
+VIEWS.me = function () { const v = UI.seg.me || "log"; const map = { log: VIEWS.log, drills: vDrills, body: VIEWS.body, belt: VIEWS.belt, weight: VIEWS.weight, comp: VIEWS.comp }; return profileHead() + seg(SEGS.me, v, "segview", true) + (map[v] || VIEWS.log)(); };
+
+/* ======================= HOME (club feed) ======================= */
+/* club/<id>/feed/<yyyy-mm> = { list: [post] } · one post per saved training: who, when, type, minutes, rounds, techniques, roll path, streak, kudos. */
+function memName(k) { const m = ((CLUB.members && CLUB.members.list) || []).find((x) => attKey(x) === k); return m ? m.n || m.email || "Member" : "Someone"; }
+function feedPostOf(rec) {
+  const roll = S.rolls.items.filter((r) => r.d === rec.d).sort((a, b) => (a.id < b.id ? 1 : -1))[0];
+  return { id: rec.id, uid: myUid(), n: myName(), belt: S.belt.belt, d: rec.d, type: rec.type, min: +rec.min || 0, rounds: +rec.rolls || 0, tech: (rec.tech || []).slice(0, 5).map((t) => t.n || t), subs: (rec.subs || []).length, good: rec.good || "", with: (rec.with || []).map(memName), weeks: streaks().weeks, path: roll ? roll.steps.filter((x) => x.k !== "fin" && x.id !== "finish").map((x) => x.n).slice(0, 8) : [], kudos: [], t: Date.now() };
+}
+function feedMerged() { const out = []; for (const ym in CLUB.feedDocs || {}) out.push(...(CLUB.feedDocs[ym].list || [])); return out.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : (b.t || 0) - (a.t || 0))); }
+function feedCache(ym, doc) { CLUB.feedDocs = CLUB.feedDocs || {}; CLUB.feedDocs[ym] = doc; CLUB.feed = feedMerged(); }
+async function feedPost(rec) {
+  if (!CLUB.id) return; const ym = rec.d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/feed/" + ym)) || { list: [] };
+  const old = doc.list.find((x) => x.id === rec.id); const p = feedPostOf(rec); if (old) { p.kudos = old.kudos || []; p.t = old.t || p.t; }
+  doc.list = doc.list.filter((x) => x.id !== rec.id); doc.list.push(p); if (doc.list.length > 400) doc.list = doc.list.slice(-400);
+  await cset("club/" + CLUB.id + "/feed/" + ym, doc); feedCache(ym, doc); if (UI.tab === "home") render();
+}
+async function feedRemove(id, d) {
+  if (!CLUB.id || !d) return; const ym = d.slice(0, 7); const doc = await cget("club/" + CLUB.id + "/feed/" + ym); if (!doc) return;
+  doc.list = (doc.list || []).filter((x) => x.id !== id); await cset("club/" + CLUB.id + "/feed/" + ym, doc); feedCache(ym, doc);
+}
+async function feedKudos(id, d) {
+  if (!CLUB.id) { toast("Join a club to give kudos"); return; } const ym = d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/feed/" + ym)) || { list: [] }; const p = doc.list.find((x) => x.id === id); if (!p) return;
+  p.kudos = p.kudos || []; const me = myUid(); const i = p.kudos.indexOf(me); if (i >= 0) p.kudos.splice(i, 1); else p.kudos.push(me);
+  await cset("club/" + CLUB.id + "/feed/" + ym, doc); feedCache(ym, doc); render();
+}
+function weekCard() {
+  const today = todayIso(), wk = mondayOf(today); const days = trainedDays(); const items = S.log.items.filter((s) => s.d >= wk); const min = items.reduce((a, s) => a + (+s.min || 0), 0); const sk = streaks();
+  let dots = ""; for (let i = 0; i < 7; i++) { const d = addDays(wk, i); dots += '<span class="' + (days.has(d) ? "on" : "") + (d === today ? " today" : "") + '"><i></i>' + DAYS[i][0] + "</span>"; }
+  return '<div class="card week"><div class="card-head"><h3>Your week</h3>' + (sk.weeks ? '<span class="streak">🔥 ' + sk.weeks + " week streak</span>" : "") + '</div><div class="wdots">' + dots + '</div><div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + min + '</b><span>minutes</span></div><div class="stat"><b>' + items.reduce((a, s) => a + (+s.rolls || 0), 0) + "</b><span>rounds</span></div></div></div>";
+}
+const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
+function feedCard(p) {
+  const me = myUid(); const ks = p.kudos || []; const mine = ks.includes(me); const tn = FEED_TITLE[p.type] || "Training";
+  let h = '<article class="card feed"><div class="prow"><div class="av sm">' + esc(initials(p.n)) + '</div><div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
+  h += "<h3>" + esc(tn) + "</h3>" + (p.good ? '<p class="small">' + esc(p.good) + "</p>" : "");
+  h += '<div class="summary"><div class="stat"><b>' + p.min + '</b><span>minutes</span></div><div class="stat"><b>' + p.rounds + '</b><span>rounds</span></div><div class="stat"><b>' + ((p.tech && p.tech.length) || 0) + "</b><span>techniques</span></div></div>";
+  if (p.path && p.path.length) h += '<div class="fpath">' + p.path.map((n) => "<span>" + esc(n) + "</span>").join("<i>›</i>") + "</div>";
+  if (p.with && p.with.length) h += '<p class="muted small">Rolled with · ' + p.with.map(esc).join(", ") + "</p>";
+  h += '<div class="kudos"><button class="kbtn' + (mine ? " on" : "") + '" data-act="kudos" data-id="' + esc(p.id) + '" data-d="' + esc(p.d) + '"' + (p.uid === me ? " disabled" : "") + '><i>👊</i> ' + (mine ? "Kudos given" : "Give kudos") + '</button><span class="muted small">' + ks.length + " kudos</span></div></article>";
+  return h;
+}
+VIEWS.home = function () {
+  let h = weekCard();
+  if (S.settings.clubId && clubNeeds()) { if (!CLUB.busy) clubLoad(); return h + '<div class="card"><p class="empty">Loading your club…</p></div>'; }
+  const posts = CLUB.id ? CLUB.feed || [] : sessionsSorted().slice(0, 20).map(feedPostOf);
+  if (!posts.length) h += '<div class="card"><p class="empty">' + (CLUB.id ? "No training in the club yet. Log the first one!" : "Join a club to see your teammates' training here.") + "</p>" + (CLUB.id ? '<button class="btn wide" data-act="add-sess">+ Log training</button>' : '<button class="btn wide" data-act="tab" data-v="club">Find my club</button>') + "</div>";
+  else h += posts.slice(0, 40).map(feedCard).join("");
+  return h;
+};
+/* Record: the orange button in the middle of the tab bar. */
+function recordSheet() {
+  const opt = (v, ic, t, sub) => '<button class="rec-opt" data-act="rec-go" data-v="' + v + '"><span class="ric">' + ic + "</span><span><b>" + t + "</b><small>" + sub + "</small></span></button>";
+  const b = '<div class="reclist">' + opt("sess", "📝", "Log training", "Time, rounds, techniques, partners") + opt("roll", "🥋", "Start a roll", "Pick a position and roll on the graph") +
+    (CLUB.id ? opt("att", "✅", "I'm on the mat today", "Check in to the club class") : "") + opt("drill", "🔁", "Do a drill", "Solo and partner drills") + (S.log.items.length ? opt("share", "📸", "Share the last session", "Photo, stats, roll path and streak") : "") + "</div>";
+  openSheet("Record", b, {});
+}
 
 /* ======================= CLUB ======================= */
 /* Shared docs: clubs/index, club/<id>/profile, club/<id>/members, club/<id>/pay/<uid>. Local mode keeps them in localStorage. */
@@ -1381,15 +1448,15 @@ async function clubLoad() {
     if (!idx || !idx.seeded) { idx = idx || { list: [] }; for (const c of SEED.clubs || []) { if (idx.list.some((x) => x.id === c.id)) continue; const prof = Object.assign({ admins: [], schedule: [], status: "approved", seed: true, open: true, code: genCode(6), coachCode: genCode(8), fee: { month: 0, drop: 0 }, created: todayIso() }, c); if (!(await cget("club/" + c.id + "/profile"))) await cset("club/" + c.id + "/profile", prof); idx.list.push({ id: c.id, n: c.n, city: c.city, status: "approved", open: true }); } idx.seeded = true; await cset("clubs/index", idx); }
     CLUB.index = idx;
     if (isSuper()) { CLUB.upgrades = (await cget("app/upgrades")) || { list: [] }; CLUB.pending = []; for (const row of idx.list.filter((x) => x.status === "pending")) { const p = await cget("club/" + row.id + "/profile"); if (p) CLUB.pending.push(p); } }
-    if (!id) { CLUB.id = null; CLUB.profile = null; CLUB.members = null; CLUB.pay = {}; }
+    if (!id) { CLUB.id = null; CLUB.profile = null; CLUB.members = null; CLUB.pay = {}; CLUB.feed = null; CLUB.feedDocs = {}; }
     else {
       CLUB.profile = await cget("club/" + id + "/profile");
       if (!CLUB.profile) { S.settings.clubId = ""; save("settings"); CLUB.id = null; CLUB.index = (await cget("clubs/index")) || { list: [] }; }
       else { CLUB.id = id; CLUB.members = (await cget("club/" + id + "/members")) || { list: [] }; CLUB.pay = {}; const rows = await clist("club/" + id + "/pay/"); for (const r of rows) CLUB.pay[r.path.split("/").pop()] = r.data;
-        CLUB.attMonth = (await cget("club/" + id + "/att/" + thisMonth())) || { days: {} }; CLUB.rolls = (await cget("club/" + id + "/rolls/" + thisMonth())) || { list: [] }; CLUB.att = { ym: thisMonth(), doc: CLUB.attMonth }; CLUB.results = (await cget("club/" + id + "/results")) || { list: [] }; CLUB.notes = (await cget("club/" + id + "/notes")) || { list: [] }; CLUB.events = (await cget("club/" + id + "/events")) || { list: [] }; }
+        CLUB.attMonth = (await cget("club/" + id + "/att/" + thisMonth())) || { days: {} }; CLUB.rolls = (await cget("club/" + id + "/rolls/" + thisMonth())) || { list: [] }; CLUB.att = { ym: thisMonth(), doc: CLUB.attMonth }; CLUB.results = (await cget("club/" + id + "/results")) || { list: [] }; CLUB.notes = (await cget("club/" + id + "/notes")) || { list: [] }; CLUB.events = (await cget("club/" + id + "/events")) || { list: [] }; CLUB.feedDocs = {}; const pm = addDays(thisMonth() + "-01", -1).slice(0, 7); for (const ym of [pm, thisMonth()]) CLUB.feedDocs[ym] = (await cget("club/" + id + "/feed/" + ym)) || { list: [] }; CLUB.feed = feedMerged(); }
     }
   } catch (e) { CLUB.err = "Could not load the club"; console.warn(e); }
-  CLUB.busy = false; CLUB.loadedFor = S.settings.clubId || "-"; if (UI.tab === "club") render();
+  CLUB.busy = false; CLUB.loadedFor = S.settings.clubId || "-"; if (UI.tab === "club" || UI.tab === "home" || UI.tab === "me") render();
 }
 function clubNeeds() { return CLUB.loadedFor !== (S.settings.clubId || "-"); }
 async function clubUpdateMe() {
@@ -1695,6 +1762,9 @@ document.addEventListener("click", (e) => {
   switch (act) {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
+    case "record": recordSheet(); break;
+    case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") { attMark(todayIso(), true).then(() => { toast("Checked in for today"); render(); }); } else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
+    case "kudos": feedKudos(ds.id, ds.d); break;
     case "auth-mode": showLogin("", ds.v === "up"); break;
     case "club-reload": CLUB.loadedFor = null; render(); break;
     case "club-new": clubSheet(false); break;
@@ -1709,7 +1779,7 @@ document.addEventListener("click", (e) => {
     case "with-toggle": if (UI.sheet) { UI.sheet.with = UI.sheet.with || []; const i = UI.sheet.with.indexOf(ds.who); if (i >= 0) UI.sheet.with.splice(i, 1); else UI.sheet.with.push(ds.who); el.classList.toggle("on", i < 0); } break;
     case "belt-page": UI.tab = "me"; UI.seg.me = "belt"; UI.beltPage = ds.v === "open" ? true : !UI.beltPage; go(UI.beltPage ? "enter-l" : "enter-r"); break;
     case "drillf": UI.drillF = ds.v; render(); break;
-    case "drill-open": UI.drillOpen = UI.drillOpen === ds.id ? null : ds.id; if (UI.tab !== "train" || UI.seg.train !== "drills") { UI.tab = "train"; UI.seg.train = "drills"; UI.drillOpen = ds.id; go("enter-l"); } else render(); break;
+    case "drill-open": UI.drillOpen = UI.drillOpen === ds.id ? null : ds.id; if (UI.tab !== "me" || UI.seg.me !== "drills") { UI.tab = "me"; UI.seg.me = "drills"; UI.drillOpen = ds.id; go("enter-l"); } else render(); break;
     case "drill-done": drillDone(ds.id); break;
     case "drill-add": drillSheet(null); break;
     case "drill-edit": drillSheet(ds.id); break;
