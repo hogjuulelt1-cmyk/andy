@@ -486,6 +486,7 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .kbtn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)} .kbtn:disabled{opacity:.55}
 .qrbox{background:#fff;border-radius:16px;padding:6px;border:1px solid var(--line);width:min(100%,320px);margin:0 auto} .qrbox svg{display:block;width:100%;height:auto}
 .qrurl{word-break:break-all;text-align:center}
+.scanbox{display:flex;flex-direction:column;gap:8px} .scanbox video{display:none;width:100%;aspect-ratio:1;object-fit:cover;border-radius:14px;background:#000} .scanbox.on video{display:block} .scanbox.on .btn{display:none}
 .reclist{display:flex;flex-direction:column;gap:8px}
 .rec-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;min-height:64px;color:inherit}
 .rec-opt .ric{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
@@ -535,9 +536,9 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="lang-mn.js?v=3"></script>
+<script src="lang-mn.js?v=4"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=7"></script>
-<script src="app.js?v=21"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>

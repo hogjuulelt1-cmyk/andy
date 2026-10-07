@@ -161,37 +161,75 @@ async function startCloud() {
 async function refresh() {
   try { const rows = await SB.list(NS()); let ch = false; for (const r of rows) { const k = r.path.slice(NS().length); if (KEYS.includes(k) && !dirty[k] && JSON.stringify(S[k]) !== JSON.stringify(r.data)) { S[k] = r.data; ch = true; } } if (ch) { normalize(); render(); } } catch (e) {}
 }
-/* Join by QR: the coach's QR opens <app>?join=<clubId>&c=<club code>. The pair is kept until the person has an account, then they join the club. */
+/* QR codes. Join: <app>?join=<clubId>&c=<club code>. Check-in: <app>?checkin=<clubId>&c=<code>&d=<date>&t=<token>, where the
+   token is derived from the club code and the date, so the coach's QR only counts for that day. The pair waits in localStorage
+   `bjj-join` until the person has an account, then they join the club and, for a check-in, today's attendance is marked. */
+function attToken(code, d) { let h = 7; const str = String(code || "") + "|" + d; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let out = ""; for (let i = 0; i < 4; i++) { out += A[h % 32]; h = Math.floor(h / 32); } return out; }
+function parseJoinParams(q) { const ci = q.get("checkin"), j = q.get("join"); if (!ci && !j) return null; const o = { id: ci || j, code: (q.get("c") || "").trim().toUpperCase() }; if (ci) o.att = { d: q.get("d") || "", t: (q.get("t") || "").trim().toUpperCase() }; return o; }
 function pendingJoin() { try { const j = JSON.parse(localStorage.getItem("bjj-join") || "null"); return j && j.id ? j : null; } catch (e) { return null; } }
-function joinBanner() { const j = pendingJoin(); if (!j) return ""; const c = (SEED.clubs || []).find((x) => x.id === j.id); return '<div class="tip"><span>You are joining</span> <b>' + esc(c ? c.n : "your club") + "</b></div>"; }
+function joinBanner() { const j = pendingJoin(); if (!j) return ""; const c = (SEED.clubs || []).find((x) => x.id === j.id); return '<div class="tip"><span>' + (j.att ? "Checking in at" : "You are joining") + "</span> <b>" + esc(c ? c.n : "your club") + "</b></div>"; }
 async function joinPending() {
   const j = pendingJoin(); if (!j) return; try { localStorage.removeItem("bjj-join"); } catch (e) {}
-  if (S.settings.clubId === j.id) { UI.tab = "home"; render(); return; }
-  if (clubNeeds() && !CLUB.busy) await clubLoad();
-  const doJoin = async () => { if (S.settings.clubId) { await clubLoad(); await clubLeave(); } await clubJoin(j.id, j.code, false); UI.tab = "home"; render(); };
+  while (CLUB.busy) await new Promise((r) => setTimeout(r, 60)); if (clubNeeds()) await clubLoad();
+  const finish = async () => { if (j.att) await checkinWith(j.att.d, j.att.t); else { UI.tab = "home"; render(); } };
+  if (S.settings.clubId === j.id) { await finish(); return; }
+  const doJoin = async () => { if (S.settings.clubId) await clubLeave(); await clubJoin(j.id, j.code, false); if (S.settings.clubId === j.id) await finish(); };
   if (S.settings.clubId) { openSheet("Switch club?", '<p class="small">You are a member of another club. Leave it and join the new one?</p>', { saveLabel: "Join", onSave() { doJoin(); return true; } }); return; }
   await doJoin();
 }
-function joinLink() { return location.origin + location.pathname.replace(/index\.html$/, "") + "?join=" + encodeURIComponent(CLUB.id) + "&c=" + encodeURIComponent((CLUB.profile && CLUB.profile.code) || ""); }
-function qrSheet() {
-  if (!CLUB.profile) return; const url = joinLink(); const svg = window.QR ? QR.svg(url) : "";
-  const b = '<h3>' + esc(CLUB.profile.n) + '</h3><p class="small">Members scan this code with the phone camera. The app opens, they create an account and join the club right away.</p><div class="qrbox" id="qr-box">' + (svg || '<p class="empty">The link is too long for a QR code.</p>') + '</div><p class="muted small qrurl">' + esc(url) + '</p>' +
+async function checkinWith(d, t) {
+  const P = CLUB.profile; if (!P) return; const today = todayIso();
+  if (d !== today) { toast("That QR was for " + d + ". Ask the coach for today's code."); render(); return; }
+  if (t !== attToken(P.code, d)) { toast("Wrong check-in code"); render(); return; }
+  await attMark(today, true); UI.tab = "club"; UI.clubSeg = "today"; render(); toast("Checked in · " + P.n);
+}
+/* member side: scan the coach's QR in the app (BarcodeDetector where the browser has it) or type today's code */
+let SCAN = null;
+function checkinSheet() {
+  if (!CLUB.profile) return; const today = todayIso(); const can = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+  const b = '<p class="small">Scan the QR your coach shows at the door, or type today\'s code from under it.</p>' +
+    (can ? '<div class="scanbox" id="scan-box"><video id="scan-v" playsinline muted></video><button class="btn wide" data-act="scan-start">Scan the QR</button></div>' : '<p class="muted small">Scanning in the app is not available in this browser: open the phone camera and point it at the QR instead.</p>') +
+    field("ci-code", "Today's code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="4" placeholder="4 characters"')) +
+    (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "");
+  openSheet("Check in", b, { saveLabel: "Check in", onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } checkinWith(today, t); return true; } });
+}
+async function scanStart() {
+  const v = $("scan-v"); if (!v) return;
+  try { const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = st; await v.play(); $("scan-box").classList.add("on"); SCAN = { st, det: new BarcodeDetector({ formats: ["qr_code"] }), on: true }; scanLoop(); } catch (e) { toast("Camera not available"); }
+}
+async function scanLoop() {
+  if (!SCAN || !SCAN.on) return; const v = $("scan-v"); if (!v || !v.isConnected) { scanStop(); return; }
+  try { const codes = await SCAN.det.detect(v); const c = codes.find((x) => /[?&](checkin|join)=/.test(x.rawValue)); if (c) { scanStop(); handleScan(c.rawValue); return; } } catch (e) {}
+  setTimeout(scanLoop, 250);
+}
+function scanStop() { if (SCAN) { SCAN.on = false; SCAN.st.getTracks().forEach((t) => t.stop()); SCAN = null; } }
+function handleScan(url) { let j = null; try { j = parseJoinParams(new URL(url, location.href).searchParams); } catch (e) {} if (!j) { toast("Not a club QR"); return; } try { localStorage.setItem("bjj-join", JSON.stringify(j)); } catch (e) {} closeSheet(); joinPending(); }
+function appBase() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
+function joinLink() { return appBase() + "?join=" + encodeURIComponent(CLUB.id) + "&c=" + encodeURIComponent((CLUB.profile && CLUB.profile.code) || ""); }
+function checkinLink(d) { const P = CLUB.profile; return appBase() + "?checkin=" + encodeURIComponent(CLUB.id) + "&c=" + encodeURIComponent(P.code || "") + "&d=" + d + "&t=" + attToken(P.code, d); }
+function qrSheet(kind) {
+  if (!CLUB.profile) return; UI.qrKind = kind || UI.qrKind || "att"; const att = UI.qrKind === "att"; const today = todayIso(); const url = att ? checkinLink(today) : joinLink(); const svg = window.QR ? QR.svg(url) : "";
+  const b = seg([["att", "Check-in today"], ["join", "Join the club"]], UI.qrKind, "qr-kind") + '<h3>' + esc(CLUB.profile.n) + (att ? " · " + fmtLong(today) : "") + "</h3>" +
+    '<p class="small">' + (att ? "Show this at the door. Members scan it in the app (Record → I'm on the mat) or type the code; it only counts today." : "Members scan this code with the phone camera. The app opens, they create an account and join the club right away.") + "</p>" +
+    '<div class="qrbox" id="qr-box">' + (svg || '<p class="empty">The link is too long for a QR code.</p>') + "</div>" +
+    (att ? '<div class="codes big" style="text-align:center"><span>Today\'s code<b>' + attToken(CLUB.profile.code, today) + "</b></span></div>" : '<p class="muted small qrurl">' + esc(url) + "</p>") +
     '<button class="btn wide" data-act="qr-share" data-url="' + esc(url) + '">Share</button><div class="grid2"><button class="btn ghost" data-act="qr-copy" data-url="' + esc(url) + '">Copy link</button><button class="btn ghost" data-act="qr-save">Save image</button></div>';
-  openSheet("Join QR", b, {});
+  openSheet(att ? "Check-in QR" : "Join QR", b, {});
 }
 async function qrImage() {
-  const q = window.QR && QR.matrix(joinLink()); if (!q) return null; const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+  const att = UI.qrKind === "att"; const today = todayIso(); const url = att ? checkinLink(today) : joinLink(); const q = window.QR && QR.matrix(url); if (!q) return null; const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#fc5200"; g.fillRect(0, 0, W, 24); g.fillStyle = "#111"; g.textAlign = "center"; g.font = "700 72px -apple-system, Helvetica, Arial, sans-serif";
   const name = CLUB.profile.n; let fs = 72; while (fs > 36 && g.measureText(name).width > W - 120) { fs -= 4; g.font = "700 " + fs + "px -apple-system, Helvetica, Arial, sans-serif"; } g.fillText(name, W / 2, 150);
-  g.font = "600 44px -apple-system, Helvetica, Arial, sans-serif"; g.fillStyle = "#fc5200"; g.fillText(tr("Scan to join the club"), W / 2, 230);
-  const n = q.length, z = 3, cell = Math.floor(860 / (n + 2 * z)), side = cell * (n + 2 * z), x0 = Math.round((W - side) / 2), y0 = 300; g.fillStyle = "#000";
+  g.font = "600 44px -apple-system, Helvetica, Arial, sans-serif"; g.fillStyle = "#fc5200"; g.fillText(att ? tr("Scan to check in") + " · " + fmtLong(today) : tr("Scan to join the club"), W / 2, 230);
+  const n = q.length, z = 3, cell = Math.floor(820 / (n + 2 * z)), side = cell * (n + 2 * z), x0 = Math.round((W - side) / 2), y0 = 290; g.fillStyle = "#000";
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q[r][c]) g.fillRect(x0 + (c + z) * cell, y0 + (r + z) * cell, cell, cell);
-  g.fillStyle = "#555"; g.font = "500 34px -apple-system, Helvetica, Arial, sans-serif"; g.fillText(tr("Open the phone camera, point it here and tap the link."), W / 2, y0 + side + 90);
+  let y = y0 + side + 80; if (att) { g.fillStyle = "#111"; g.font = "600 36px -apple-system, Helvetica, Arial, sans-serif"; g.fillText(tr("Today's code"), W / 2, y); g.font = "800 96px -apple-system, Helvetica, Arial, sans-serif"; g.fillText(attToken(CLUB.profile.code, today).split("").join(" "), W / 2, y + 110); y += 190; }
+  g.fillStyle = "#555"; g.font = "500 34px -apple-system, Helvetica, Arial, sans-serif"; g.fillText(tr(att ? "In the app: Record → I'm on the mat → Scan the QR." : "Open the phone camera, point it here and tap the link."), W / 2, y);
   return new Promise((res) => cv.toBlob(res, "image/png"));
 }
 async function qrSend(save) {
-  const blob = await qrImage(); if (!blob) return; const file = new File([blob], "join-" + CLUB.id + ".png", { type: "image/png" });
-  if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: CLUB.profile.n, url: joinLink() }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  const blob = await qrImage(); if (!blob) return; const file = new File([blob], (UI.qrKind === "att" ? "checkin-" + todayIso() : "join") + "-" + CLUB.id + ".png", { type: "image/png" });
+  if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: CLUB.profile.n }); return; } catch (e) { if (e.name === "AbortError") return; } }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved");
 }
 function startLocal() {
@@ -321,7 +359,7 @@ function openSheet(title, body, opt) {
   $("sheet").classList.add("open"); $("backdrop").classList.add("open"); $("sheet").scrollTop = 0;
   const f = $("sheet-body").querySelector("input[autofocus]"); if (f) setTimeout(() => f.focus(), 350);
 }
-function closeSheet() { $("sheet").classList.remove("open"); $("backdrop").classList.remove("open"); UI.sheet = null; UI.sheetSave = null; UI.sheetDel = null; setTimeout(() => { if (!UI.sheet) $("sheet-body").innerHTML = ""; }, 400); }
+function closeSheet() { scanStop(); $("sheet").classList.remove("open"); $("backdrop").classList.remove("open"); UI.sheet = null; UI.sheetSave = null; UI.sheetDel = null; setTimeout(() => { if (!UI.sheet) $("sheet-body").innerHTML = ""; }, 400); }
 function pickVal(group, def) { return UI.sheet && UI.sheet.picks[group] != null ? UI.sheet.picks[group] : def; }
 
 /* picker: multi-select with counts (armbar ×2) */
@@ -1447,7 +1485,7 @@ VIEWS.home = function () {
 function recordSheet() {
   const opt = (v, ic, t, sub) => '<button class="rec-opt" data-act="rec-go" data-v="' + v + '"><span class="ric">' + ic + "</span><span><b>" + t + "</b><small>" + sub + "</small></span></button>";
   const b = '<div class="reclist">' + opt("sess", "📝", "Log training", "Time, rounds, techniques, partners") + opt("roll", "🥋", "Start a roll", "Pick a position and roll on the graph") +
-    (CLUB.id ? opt("att", "✅", "I'm on the mat today", "Check in to the club class") : "") + opt("drill", "🔁", "Do a drill", "Solo and partner drills") + (S.log.items.length ? opt("share", "📸", "Share the last session", "Photo, stats, roll path and streak") : "") + "</div>";
+    (CLUB.id ? opt("att", "✅", "I'm on the mat today", "Scan the coach's QR or type today's code") : "") + opt("drill", "🔁", "Do a drill", "Solo and partner drills") + (S.log.items.length ? opt("share", "📸", "Share the last session", "Photo, stats, roll path and streak") : "") + "</div>";
   openSheet("Record", b, {});
 }
 
@@ -1584,7 +1622,7 @@ VIEWS.club = function () {
     '<div class="facts">' + (P.addr ? '<span>' + esc(P.addr) + "</span>" : "") + (P.phone ? '<a href="tel:' + esc(P.phone) + '">' + esc(P.phone) + "</a>" : "") + (P.ig ? '<a href="https://instagram.com/' + esc(P.ig.replace(/^@/, "")) + '" target="_blank" rel="noopener">@' + esc(P.ig.replace(/^@/, "")) + "</a>" : "") + "</div>" +
     (function () { const ms = membership(myUid()); const pend = pendingPay(myUid()).length; const act = (CLUB.members.list || []).filter((m) => membership(m.uid || m.id).state === "active").length; return '<div class="mstat ' + ms.state + '"><span class="pill ' + (ms.state === "active" ? "ok" : ms.state === "expired" ? "bad" : "na") + '">' + (ms.state === "active" ? "Active" : ms.state === "expired" ? "Expired" : "Not a paying member") + "</span><b>" + esc(pend && ms.state !== "active" ? "Waiting for the coach to confirm" : ms.text) + "</b>" + (adm ? '<span class="muted small">' + act + " of " + (CLUB.members.list || []).length + " members active</span>" : "") + "</div>"; })() +
     '<div class="summary"><div class="stat"><b>' + (nom || "—") + '</b><span>next open mat</span></div><div class="stat"><b>' + ((P.schedule || []).length) + '</b><span>classes a week</span></div><div class="stat"><b>' + ((CLUB.members.list || []).length) + '</b><span>members</span></div></div>' +
-    (adm ? '<div class="codes"><span>Club code <b>' + esc(P.code || "—") + '</b></span><span>Coach code <b>' + esc(P.coachCode || "—") + "</b></span></div>" : "") + ((adm || isSuper()) && P.code ? '<button class="btn ghost wide" data-act="club-qr">Join QR for members</button>' : "") + "</div>";
+    (adm ? '<div class="codes"><span>Club code <b>' + esc(P.code || "—") + '</b></span><span>Coach code <b>' + esc(P.coachCode || "—") + "</b></span></div>" : "") + ((adm || isSuper()) && P.code ? '<div class="grid2"><button class="btn ghost" data-act="club-qr" data-v="att">Check-in QR</button><button class="btn ghost" data-act="club-qr" data-v="join">Join QR</button></div>' : "") + "</div>";
   h += seg([["today", "Today"], ["sched", "Schedule"], ["members", "Members"], ["pay", "Pay"]], UI.clubSeg, "clubseg");
   if (UI.clubSeg === "sched") h += vClubSched(P, adm);
   else if (UI.clubSeg === "pay") h += vClubPay(P, adm);
@@ -1797,7 +1835,7 @@ document.addEventListener("click", (e) => {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
     case "record": recordSheet(); break;
-    case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") { attMark(todayIso(), true).then(() => { toast("Checked in for today"); render(); }); } else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
+    case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
     case "auth-mode": showLogin("", ds.v === "up"); break;
     case "club-reload": CLUB.loadedFor = null; render(); break;
@@ -1808,7 +1846,9 @@ document.addEventListener("click", (e) => {
     case "club-paynow": payNowSheet(); break;
     case "w-range": UI.wRange = ds.v; render(); break;
     case "share": shareSheet(ds.id || null); break;
-    case "club-qr": qrSheet(); break;
+    case "club-qr": qrSheet(ds.v); break;
+    case "qr-kind": qrSheet(ds.v); break;
+    case "scan-start": scanStart(); break;
     case "qr-copy": { const u = ds.url; if (navigator.clipboard) navigator.clipboard.writeText(u).then(() => toast("Link copied"), () => toast(u)); else toast(u); break; }
     case "qr-share": if (navigator.share) navigator.share({ title: CLUB.profile.n, url: ds.url }).catch(() => {}); else { navigator.clipboard && navigator.clipboard.writeText(ds.url); toast("Link copied"); } break;
     case "qr-save": qrSend(true); break;
@@ -1941,6 +1981,6 @@ document.addEventListener("keydown", (e) => { if (e.key === "Enter" && UI.sheet 
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}
 try { const l = localStorage.getItem("bjj-lang"); I18N.lang = l === "en" ? "en" : "mn"; } catch (e) { I18N.lang = "mn"; }
 if (I18N.lang === "mn") I18N.start();
-try { const u = new URLSearchParams(location.search); if (u.get("join")) { localStorage.setItem("bjj-join", JSON.stringify({ id: u.get("join"), code: (u.get("c") || "").trim().toUpperCase() })); history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
+try { const u = new URLSearchParams(location.search); const pj = parseJoinParams(u); if (pj) { localStorage.setItem("bjj-join", JSON.stringify(pj)); history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
 if (SB.configured()) { SB.loadSession(); if (SB.session) { setSync("saving", "Loading…"); startCloud(); } else showLogin("", !!pendingJoin()); } else startLocal();
 })();
