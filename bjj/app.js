@@ -181,27 +181,39 @@ async function checkinWith(code) {
   if ((code || "").toUpperCase() !== (P.code || "").toUpperCase()) { toast("Wrong club code"); render(); return; }
   await attMark(today, true); UI.tab = "club"; UI.clubSeg = "today"; render(); toast("Checked in · " + P.n);
 }
-/* member side: scan the coach's QR in the app (BarcodeDetector where the browser has it) or type today's code */
+/* member side: the middle tab button opens the camera and scans the club QR (BarcodeDetector, else jsQR loaded on demand);
+   the club code can be typed instead. Other quick actions sit under the scanner. */
 let SCAN = null;
-function checkinSheet() {
-  if (!CLUB.profile) return; const today = todayIso(); const can = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-  const b = '<p class="small">Scan the club QR at the door, or type the club code printed under it.</p>' +
-    (can ? '<div class="scanbox" id="scan-box"><video id="scan-v" playsinline muted></video><button class="btn wide" data-act="scan-start">Scan the QR</button></div>' : '<p class="muted small">Scanning in the app is not available in this browser: open the phone camera and point it at the QR instead.</p>') +
-    field("ci-code", "Club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) +
-    (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "");
-  openSheet("Check in", b, { saveLabel: "Check in", onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } checkinWith(t); return true; } });
+function canScan() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === "localhost")); }
+function checkinSheet(auto) {
+  const P = CLUB.profile; const today = todayIso(); const inClub = !!(P && !clubNeeds());
+  const b = (canScan() ? '<div class="scanbox" id="scan-box"><video id="scan-v" playsinline muted></video><p class="muted small scan-msg" id="scan-msg">Point the camera at the club QR at the door.</p><button class="btn wide" data-act="scan-start">Open the camera</button></div>' : '<p class="muted small">The camera is not available here: open the phone camera and point it at the QR instead.</p>') +
+    (inClub ? (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "") + field("ci-code", "Or type the club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) : '<p class="small">Not in a club yet? The QR at your club\'s door signs you up too.</p><button class="btn ghost wide" data-act="tab" data-v="club">Find my club</button>') +
+    '<p class="lbl" style="margin-top:6px">More</p><div class="quick"><button data-act="rec-go" data-v="sess">📝 Log training</button><button data-act="rec-go" data-v="roll">🥋 Start a roll</button><button data-act="rec-go" data-v="drill">🔁 Drills</button>' + (S.log.items.length ? '<button data-act="rec-go" data-v="share">📸 Share</button>' : "") + "</div>";
+  openSheet("Check in", b, inClub ? { saveLabel: "Check in", onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } checkinWith(t); return true; } } : {});
+  if (auto && canScan()) scanStart();
 }
+function loadScript(src) { return new Promise((res, rej) => { const e = document.createElement("script"); e.src = src; e.onload = res; e.onerror = rej; document.head.appendChild(e); }); }
 async function scanStart() {
-  const v = $("scan-v"); if (!v) return;
-  try { const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }); v.srcObject = st; await v.play(); $("scan-box").classList.add("on"); SCAN = { st, det: new BarcodeDetector({ formats: ["qr_code"] }), on: true }; scanLoop(); } catch (e) { toast("Camera not available"); }
+  const v = $("scan-v"); if (!v || SCAN) return; const msg = $("scan-msg");
+  try {
+    if (!("BarcodeDetector" in window) && typeof jsQR !== "function") { if (msg) msg.textContent = tr("Loading the scanner…"); await loadScript("vendor/jsQR.js?v=1"); }
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play(); $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
+    SCAN = { st, det: "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null, on: true }; scanLoop();
+  } catch (e) { if (msg) msg.textContent = tr("Camera not available") + ". " + tr("Allow the camera in the browser settings, or type the code."); else toast("Camera not available"); }
 }
 async function scanLoop() {
   if (!SCAN || !SCAN.on) return; const v = $("scan-v"); if (!v || !v.isConnected) { scanStop(); return; }
-  try { const codes = await SCAN.det.detect(v); const c = codes.find((x) => /[?&](checkin|join)=/.test(x.rawValue)); if (c) { scanStop(); handleScan(c.rawValue); return; } } catch (e) {}
-  setTimeout(scanLoop, 250);
+  try {
+    let raw = "";
+    if (SCAN.det) { const codes = await SCAN.det.detect(v); const c = codes.find((x) => x.rawValue); raw = c ? c.rawValue : ""; }
+    else if (v.videoWidth) { const cv = SCAN.cv || (SCAN.cv = document.createElement("canvas")); const w = Math.min(640, v.videoWidth), h = Math.round((w * v.videoHeight) / v.videoWidth); cv.width = w; cv.height = h; const g = cv.getContext("2d", { willReadFrequently: true }); g.drawImage(v, 0, 0, w, h); const im = g.getImageData(0, 0, w, h); const r = jsQR(im.data, w, h, { inversionAttempts: "dontInvert" }); raw = r && r.data || ""; }
+    if (raw) { scanStop(); handleScan(raw); return; }
+  } catch (e) {}
+  setTimeout(scanLoop, 200);
 }
 function scanStop() { if (SCAN) { SCAN.on = false; SCAN.st.getTracks().forEach((t) => t.stop()); SCAN = null; } }
-function handleScan(url) { let j = null; try { j = parseJoinParams(new URL(url, location.href).searchParams); } catch (e) {} if (!j) { toast("Not a club QR"); return; } try { localStorage.setItem("bjj-join", JSON.stringify(j)); } catch (e) {} closeSheet(); joinPending(); }
+function handleScan(url) { let j = null; try { j = parseJoinParams(new URL(url, location.href).searchParams); } catch (e) {} if (!j) { toast("Not a club QR"); const m = $("scan-msg"); if (m) m.textContent = tr("Not a club QR"); setTimeout(() => { if (UI.sheet && $("scan-v")) scanStart(); }, 1200); return; } try { localStorage.setItem("bjj-join", JSON.stringify(j)); } catch (e) {} closeSheet(); joinPending(); }
 function appBase() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
 function checkinLink() { return appBase() + "?checkin=" + encodeURIComponent(CLUB.id) + "&c=" + encodeURIComponent((CLUB.profile && CLUB.profile.code) || ""); }
 function qrSheet() {
@@ -319,13 +331,13 @@ function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = 
 const TABS = [
   ["home", "Home", '<path d="M3 11l9-8 9 8"/><path d="M5 10v11h5v-6h4v6h5V10"/>'],
   ["tech", "Technique", '<path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9"/>'],
-  ["rec", "Record", '<path d="M12 5v14M5 12h14"/>'],
+  ["rec", "Check in", '<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/>'],
   ["club", "Club", '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/>'],
   ["me", "You", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
 ];
 const SEGS = { me: [["log", "Log"], ["drills", "Drills"], ["body", "Body"], ["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
 function renderTabs() {
-  $("tabs").innerHTML = TABS.map((t) => t[0] === "rec" ? '<button class="rec" data-act="record"><span><svg viewBox="0 0 24 24">' + t[2] + "</svg></span>" + t[1] + "</button>" : '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
+  $("tabs").innerHTML = TABS.map((t) => t[0] === "rec" ? '<button class="rec" data-act="record" aria-label="Check in"><span><svg viewBox="0 0 24 24">' + t[2] + "</svg></span>" + t[1] + "</button>" : '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
 }
 const VIEWS = {};
 function render(anim) {
@@ -1482,7 +1494,7 @@ VIEWS.home = function () {
 function recordSheet() {
   const opt = (v, ic, t, sub) => '<button class="rec-opt" data-act="rec-go" data-v="' + v + '"><span class="ric">' + ic + "</span><span><b>" + t + "</b><small>" + sub + "</small></span></button>";
   const b = '<div class="reclist">' + opt("sess", "📝", "Log training", "Time, rounds, techniques, partners") + opt("roll", "🥋", "Start a roll", "Pick a position and roll on the graph") +
-    (CLUB.id ? opt("att", "✅", "I'm on the mat today", "Scan the club QR or type the club code") : "") + opt("drill", "🔁", "Do a drill", "Solo and partner drills") + (S.log.items.length ? opt("share", "📸", "Share the last session", "Photo, stats, roll path and streak") : "") + "</div>";
+    opt("att", "✅", "Check in", "Scan the club QR or type the club code") + opt("drill", "🔁", "Do a drill", "Solo and partner drills") + (S.log.items.length ? opt("share", "📸", "Share the last session", "Photo, stats, roll path and streak") : "") + "</div>";
   openSheet("Record", b, {});
 }
 
@@ -1831,8 +1843,8 @@ document.addEventListener("click", (e) => {
   switch (act) {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
-    case "record": recordSheet(); break;
-    case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
+    case "record": checkinSheet(true); break;
+    case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
     case "auth-mode": showLogin("", ds.v === "up"); break;
     case "club-reload": CLUB.loadedFor = null; render(); break;
