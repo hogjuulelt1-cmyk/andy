@@ -183,13 +183,14 @@ async function checkinWith(code) {
 }
 /* member side: the middle tab button opens the camera and scans the club QR (BarcodeDetector, else jsQR loaded on demand);
    the club code can be typed instead. Other quick actions sit under the scanner. */
-let SCAN = null;
+let SCAN = null; const SCAN_LIB = { p: null };
 function canScan() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === "localhost")); }
 function checkinSheet(auto) {
   const P = CLUB.profile; const today = todayIso(); const inClub = !!(P && !clubNeeds());
   const b = (canScan() ? '<div class="scanbox" id="scan-box"><video id="scan-v" playsinline muted></video><p class="muted small scan-msg" id="scan-msg">Point the camera at the club QR at the door.</p><button class="btn wide" data-act="scan-start">Open the camera</button></div>' : '<p class="muted small">The camera is not available here: open the phone camera and point it at the QR instead.</p>') +
     (inClub ? (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "") + field("ci-code", "Or type the club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) : '<p class="small">Not in a club yet? The QR at your club\'s door signs you up too.</p><button class="btn ghost wide" data-act="tab" data-v="club">Find my club</button>') +
     '<p class="lbl" style="margin-top:6px">More</p><div class="quick"><button data-act="rec-go" data-v="sess">📝 Log training</button><button data-act="rec-go" data-v="roll">🥋 Start a roll</button><button data-act="rec-go" data-v="drill">🔁 Drills</button>' + (S.log.items.length ? '<button data-act="rec-go" data-v="share">📸 Share</button>' : "") + "</div>";
+  if (!("BarcodeDetector" in window) && typeof jsQR !== "function" && !SCAN_LIB.p && canScan()) SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1").catch(() => { SCAN_LIB.p = null; });
   openSheet("Check in", b, inClub ? { saveLabel: "Check in", onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } checkinWith(t); return true; } } : {});
   if (auto && canScan()) scanStart();
 }
@@ -197,8 +198,9 @@ function loadScript(src) { return new Promise((res, rej) => { const e = document
 async function scanStart() {
   const v = $("scan-v"); if (!v || SCAN) return; const msg = $("scan-msg");
   try {
-    if (!("BarcodeDetector" in window) && typeof jsQR !== "function") { if (msg) msg.textContent = tr("Loading the scanner…"); await loadScript("vendor/jsQR.js?v=1"); }
-    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play(); $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
+    const need = !("BarcodeDetector" in window) && typeof jsQR !== "function"; const lib = need ? (SCAN_LIB.p || (SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1"))) : null;
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play();
+    if (lib) { if (msg) msg.textContent = tr("Loading the scanner…"); await lib; } $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
     SCAN = { st, det: "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null, on: true }; scanLoop();
   } catch (e) { if (msg) msg.textContent = tr("Camera not available") + ". " + tr("Allow the camera in the browser settings, or type the code."); else toast("Camera not available"); }
 }
@@ -223,8 +225,9 @@ function qrSheet() {
     '<div class="qrbox" id="qr-box">' + (svg || '<p class="empty">The link is too long for a QR code.</p>') + "</div>" +
     '<div class="codes big" style="text-align:center"><span>Club code<b>' + esc(CLUB.profile.code || "—") + "</b></span></div>" +
     '<button class="btn wide" data-act="qr-save">Save the poster</button><div class="grid2"><button class="btn ghost" data-act="qr-copy" data-url="' + esc(url) + '">Copy link</button><button class="btn ghost" data-act="qr-share" data-url="' + esc(url) + '">Share</button></div>';
-  openSheet("Club QR", b, {});
+  openSheet("Club QR", b, {}); QR_IMG.blob = null; qrImage().then((bl) => { QR_IMG.blob = bl; });
 }
+const QR_IMG = { blob: null };
 async function qrImage() {
   const url = checkinLink(); const q = window.QR && QR.matrix(url); if (!q) return null; const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#fc5200"; g.fillRect(0, 0, W, 24); g.fillStyle = "#111"; g.textAlign = "center"; g.font = "700 72px -apple-system, Helvetica, Arial, sans-serif";
@@ -237,7 +240,7 @@ async function qrImage() {
   return new Promise((res) => cv.toBlob(res, "image/png"));
 }
 async function qrSend(save) {
-  const blob = await qrImage(); if (!blob) return; const file = new File([blob], "club-qr-" + CLUB.id + ".png", { type: "image/png" });
+  const blob = QR_IMG.blob || (await qrImage()); if (!blob) return; const file = new File([blob], "club-qr-" + CLUB.id + ".png", { type: "image/png" });
   if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: CLUB.profile.n }); return; } catch (e) { if (e.name === "AbortError") return; } }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved");
 }
@@ -325,6 +328,7 @@ function beltHtml(big) {
   const bar = b.id === "black" ? "#c62828" : "#111114";
   return '<span class="b-main">' + beltSwatch(b) + '</span><span class="b-bar" style="background:' + bar + '">' + "<i></i>".repeat(st) + "</span>";
 }
+function renderHeader() { const el = $("hdr-av"); if (!el) return; el.textContent = initials(myName()); const t = $("title"); if (t && t.textContent !== "Jiu-jitsu" && I18N.lang === "en") t.textContent = "Jiu-jitsu"; }
 function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = "belt-page"; el.dataset.v = "open"; el.style.cursor = "pointer"; const b = beltDef(S.belt.track, S.belt.belt); el.innerHTML = beltHtml(); el.setAttribute("aria-label", b.n + " belt, " + (S.belt.stripes || 0) + " stripes"); }
 
 /* ---------- tabs & render ---------- */
@@ -341,7 +345,7 @@ function renderTabs() {
 }
 const VIEWS = {};
 function render(anim) {
-  renderBelt(); renderTabs();
+  renderBelt(); renderHeader(); renderTabs();
   if (TAB_ALIAS[UI.tab]) { if (UI.tab !== "train") UI.seg[TAB_ALIAS[UI.tab]] = UI.tab; UI.tab = TAB_ALIAS[UI.tab]; }
   const m = $("main"); const fn = VIEWS[UI.tab] || VIEWS.tech;
   m.className = ""; m.innerHTML = fn(); if (anim) { void m.offsetWidth; m.className = anim; }
@@ -1047,33 +1051,42 @@ function streaks() {
 }
 function streakLine() { const st = streaks(); const bits = []; if (st.weeks) bits.push(st.weeks + " week streak"); if (st.classes) bits.push(st.classes + " classes without a miss"); return bits.length ? '<p class="streak">🔥 ' + bits.join(" · ") + "</p>" : ""; }
 /* Share card: a photo (or the mat) with the session, the roll path and the streak on top, like a run on Strava. */
-const SHARE = { img: null, tpl: "photo", sess: null };
+const SHARE = { img: null, tpl: "photo", sess: null, fmt: "post" }; /* fmt: post = 4:5 1080×1350, story = 9:16 1080×1920 */
+function shareSize() { return SHARE.fmt === "story" ? [1080, 1920] : [1080, 1350]; }
 function shareSheet(sessId) {
   const s = sessId ? S.log.items.find((x) => x.id === sessId) : sessionsSorted()[0]; if (!s) { toast("Log a training first"); return; }
-  SHARE.sess = s; SHARE.img = null; SHARE.tpl = "photo";
+  SHARE.sess = s; SHARE.img = null; SHARE.tpl = "photo"; SHARE.fmt = "post";
   const b = '<p class="small">Add a photo from the mat and share the session with its stats, your roll path and your streak.</p>' +
     '<div class="field"><label for="sh-photo" class="btn ghost" style="display:flex;align-items:center;justify-content:center">Choose a photo<input id="sh-photo" type="file" accept="image/*" capture="environment" hidden></label></div>' +
     '<div class="field"><span class="lbl">Look</span>' + chips("tpl", [["photo", "Photo"], ["mat", "Mat"], ["light", "Light"]], "photo") + "</div>" +
+    '<div class="field"><span class="lbl">Format</span>' + chips("fmt", [["post", "Post 4:5"], ["story", "Story 9:16"]], "post") + "</div>" +
     '<canvas id="sh-cv" width="1080" height="1350" class="sharecv"></canvas>' +
-    '<div class="actions"><button class="btn ghost" data-act="share-save">Save image</button><button class="btn" data-act="share-send">Share</button></div>';
-  openSheet("Share the session", b, { state: { picks: { tpl: "photo" } } });
+    '<div class="actions"><button class="btn ghost" data-act="share-save">Save image</button><button class="btn" data-act="share-send">Share</button></div>' +
+    '<p class="small muted" style="text-align:center;margin:0">Share → Instagram → Story</p>';
+  openSheet("Share the session", b, { state: { picks: { tpl: "photo", fmt: "post" } } });
   const inp0 = $("sh-photo"); inp0.addEventListener("change", () => { const f = inp0.files && inp0.files[0]; if (!f) return; const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { SHARE.img = im; URL.revokeObjectURL(url); drawShare(); }; im.src = url; });
   drawShare();
 }
-function drawShare() {
-  const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const g = cv.getContext("2d"); const W = cv.width, H = cv.height; const tpl = SHARE.tpl; const dark = tpl !== "light";
+function drawShare() { drawShareNow(); const cv = $("sh-cv"); if (cv) { SHARE.blob = null; const tok = (SHARE.tok = (SHARE.tok || 0) + 1); cv.toBlob((b) => { if (tok === SHARE.tok) SHARE.blob = b; }, "image/png"); } }
+function drawShareNow() {
+  const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const g = cv.getContext("2d"); const W = cv.width, H = cv.height; const tpl = SHARE.tpl; const dark = tpl !== "light"; const story = SHARE.fmt === "story";
   g.clearRect(0, 0, W, H);
-  if (SHARE.img && tpl === "photo") { const im = SHARE.img; const r = Math.max(W / im.width, H / im.height); const w = im.width * r, h = im.height * r; g.drawImage(im, (W - w) / 2, (H - h) / 2, w, h); const gr = g.createLinearGradient(0, H * 0.35, 0, H); gr.addColorStop(0, "rgba(10,13,20,0)"); gr.addColorStop(1, "rgba(10,13,20,.92)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); const gt = g.createLinearGradient(0, 0, 0, H * 0.3); gt.addColorStop(0, "rgba(10,13,20,.6)"); gt.addColorStop(1, "rgba(10,13,20,0)"); g.fillStyle = gt; g.fillRect(0, 0, W, H); }
+  if (SHARE.img && tpl === "photo") { const im = SHARE.img; const r = Math.max(W / im.width, H / im.height); const w = im.width * r, h = im.height * r; g.drawImage(im, (W - w) / 2, (H - h) / 2, w, h); const gr = g.createLinearGradient(0, H * (story ? 0.45 : 0.35), 0, H); gr.addColorStop(0, "rgba(10,13,20,0)"); gr.addColorStop(1, "rgba(10,13,20,.92)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); const gt = g.createLinearGradient(0, 0, 0, H * (story ? 0.22 : 0.3)); gt.addColorStop(0, "rgba(10,13,20,.6)"); gt.addColorStop(1, "rgba(10,13,20,0)"); g.fillStyle = gt; g.fillRect(0, 0, W, H); }
   else { g.fillStyle = dark ? "#161b26" : "#eef0f4"; g.fillRect(0, 0, W, H); g.strokeStyle = dark ? "rgba(255,255,255,.035)" : "rgba(15,20,25,.05)"; g.lineWidth = 2; for (let i = -H; i < W + H; i += 44) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + H, H); g.stroke(); g.beginPath(); g.moveTo(i, H); g.lineTo(i + H, 0); g.stroke(); } }
   const ink = dark ? "#f3f5f9" : "#0f1419", mute = dark ? "rgba(243,245,249,.72)" : "rgba(15,20,25,.6)"; const disp = "700 %dpx 'Bricolage Grotesque', system-ui, sans-serif", body = "500 %dpx 'IBM Plex Sans', system-ui, sans-serif";
   const F = (t, px) => t.replace("%d", px); const pad = 64;
-  // header: club / app + date
-  g.fillStyle = mute; g.font = F(body, 34); g.textBaseline = "top"; g.fillText((CLUB.profile ? CLUB.profile.n : "Jiu-jitsu").toUpperCase(), pad, pad);
-  g.fillStyle = ink; g.font = F(disp, 44); g.fillText(s.d, pad, pad + 46);
+  // story (9:16): Instagram's own header and reply bar cover ~220px at the top and ~250px at the bottom, so everything sits inside those
+  const top = story ? 220 : pad, bot = story ? 250 : pad; const clubName = (CLUB.profile ? CLUB.profile.n : "Jiu-jitsu").toUpperCase();
+  // header: club + date (story: the date only, the club name goes to the bottom)
+  g.textBaseline = "top"; let hy = top;
+  if (!story) { g.fillStyle = mute; g.font = F(body, 34); g.fillText(clubName, pad, top); hy = top + 46; }
+  g.fillStyle = ink; g.font = F(disp, story ? 52 : 44); g.fillText(s.d, pad, hy);
   // belt bar top right
-  { const bw = 260, bh = 28, x = W - pad - bw, y = pad + 10; const b = beltDef(S.belt.track, S.belt.belt); g.fillStyle = b.c || "#999"; g.fillRect(x, y, bw, bh); g.fillStyle = "#111"; g.fillRect(x + bw * 0.66, y, bw * 0.34, bh); g.fillStyle = "#fff"; for (let i = 0; i < (S.belt.stripes || 0); i++) g.fillRect(x + bw * 0.66 + 14 + i * 18, y, 8, bh); g.strokeStyle = "rgba(0,0,0,.25)"; g.strokeRect(x, y, bw, bh); }
+  { const bw = 260, bh = 28, x = W - pad - bw, y = top + 10; const b = beltDef(S.belt.track, S.belt.belt); g.fillStyle = b.c || "#999"; g.fillRect(x, y, bw, bh); g.fillStyle = "#111"; g.fillRect(x + bw * 0.66, y, bw * 0.34, bh); g.fillStyle = "#fff"; for (let i = 0; i < (S.belt.stripes || 0); i++) g.fillRect(x + bw * 0.66 + 14 + i * 18, y, 8, bh); g.strokeStyle = "rgba(0,0,0,.25)"; g.strokeRect(x, y, bw, bh); }
+  // roll path baseline; the stats block sits 380px above it (post: 706px from the top, story: 1040px, leaving the photo room)
+  const ry = story ? H - bot - 250 : H - pad - 200;
   // big numbers
-  let y = H - pad - 580;
+  let y = ry - 380;
   const stats = [[String(s.min || 0), "min"], [String(s.rolls || 0), "rounds"], [String((s.tech || []).length + (s.subs || []).reduce((a, x) => a + (x.c || 1), 0)), "moves"]];
   stats.forEach((st, i) => { const x = pad + i * 300; g.fillStyle = ink; g.font = F(disp, 120); g.fillText(st[0], x, y); g.fillStyle = mute; g.font = F(body, 34); g.fillText(tr(st[1]), x + 6, y + 126); });
   // type + what went well
@@ -1081,7 +1094,6 @@ function drawShare() {
   if (s.good) { g.fillStyle = mute; g.font = F(body, 32); const words = s.good.split(" "); let line = "", ly = y + 64; for (const w of words) { const t = line ? line + " " + w : w; if (g.measureText(t).width > W - pad * 2) { g.fillText(line, pad, ly); line = w; ly += 40; if (ly > y + 110) break; } else line = t; } if (line && ly <= y + 110) g.fillText(line, pad, ly); }
   // roll path (the "route"): last saved roll of that day, else the week's dots
   const roll = S.rolls.items.filter((r) => r.d === s.d).sort((a, b) => (a.id < b.id ? 1 : -1))[0] || S.rolls.items.slice().sort((a, b) => (a.d < b.d ? 1 : -1))[0];
-  const ry = H - pad - 200;
   if (roll && roll.steps.length > 1) {
     const st = roll.steps.filter((x) => x.k !== "fin").slice(0, 9); const gap = Math.min(120, (W - pad * 2) / Math.max(1, st.length - 1)); const x0 = pad + 12;
     g.strokeStyle = dark ? "#5b8dff" : "#1f56d9"; g.lineWidth = 6; g.lineCap = "round"; g.beginPath(); st.forEach((x, i) => { const px = x0 + i * gap, py = ry + (i % 2 ? 0 : 34); i ? g.lineTo(px, py) : g.moveTo(px, py); }); g.stroke();
@@ -1090,12 +1102,13 @@ function drawShare() {
   } else { const days = trainedDays(); const wk = mondayOf(s.d); for (let i = 0; i < 7; i++) { const d = addDays(wk, i); const on = days.has(d); g.beginPath(); g.arc(pad + 24 + i * 60, ry + 20, 20, 0, Math.PI * 2); g.fillStyle = on ? (dark ? "#3ddc6a" : "#1f9a48") : (dark ? "rgba(255,255,255,.12)" : "rgba(15,20,25,.1)"); g.fill(); } g.fillStyle = mute; g.font = F(body, 28); g.fillText(tr("This week"), pad, ry + 60); }
   // streak + brand
   const sk = streaks(); const parts = []; if (sk.weeks) parts.push(sk.weeks + " " + tr("week streak")); if (sk.classes) parts.push(sk.classes + " " + tr("classes without a miss"));
-  g.fillStyle = dark ? "#ffa531" : "#c25e00"; g.font = F(disp, 36); g.textBaseline = "bottom"; if (parts.length) g.fillText("🔥 " + parts.join("  ·  "), pad, H - pad + 6);
-  g.fillStyle = mute; g.font = F(body, 28); g.textAlign = "right"; g.fillText("Chinbilig Jiu-jitsu", W - pad, H - pad + 2); g.textAlign = "left"; g.textBaseline = "top";
+  g.fillStyle = dark ? "#ffa531" : "#c25e00"; g.font = F(disp, 36); g.textBaseline = "bottom"; if (parts.length) g.fillText("🔥 " + parts.join("  ·  "), pad, story ? H - bot - 56 : H - pad + 6);
+  g.fillStyle = mute; g.font = F(body, 28); if (story) g.fillText(clubName, pad, H - bot + 2);
+  g.textAlign = "right"; g.fillText("Chinbilig Jiu-jitsu", W - pad, H - bot + 2); g.textAlign = "left"; g.textBaseline = "top";
 }
 async function shareSend(save) {
-  const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const name = "jiu-jitsu-" + s.d + ".png";
-  const blob = await new Promise((res) => cv.toBlob(res, "image/png")); if (!blob) return;
+  const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const name = "jiu-jitsu-" + s.d + (SHARE.fmt === "story" ? "-story" : "") + ".png";
+  const blob = SHARE.blob || (await new Promise((res) => cv.toBlob(res, "image/png"))); if (!blob) return;
   const file = new File([blob], name, { type: "image/png" });
   if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Jiu-jitsu", text: fmtLong(s.d) + " · " + (s.min || 0) + " min" }); shareMark(); return; } catch (e) { if (e.name === "AbortError") return; } }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved"); shareMark();
@@ -1411,12 +1424,49 @@ function matchSheet(eid, i) {
 /* ======================= SETTINGS ======================= */
 function settingsSheet() {
   const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + '<div class="field"><span class="lbl">Language</span>' + chips("lang", [["mn", "Монгол"], ["en", "English"]], I18N.lang) + "</div>" + '<div class="field"><span class="lbl">Theme</span>' + chips("theme", [["system", "Device"], ["light", "Light"], ["dark", "Dark"]], S.settings.theme || "system") + "</div>" +
-    '<div class="field"><span class="lbl">Data</span><div class="actions"><button class="btn ghost" data-act="backup">Download backup (JSON)</button><label class="btn ghost" style="display:flex;align-items:center;justify-content:center">Restore from backup<input id="imp-file" type="file" accept="application/json" hidden></label></div></div>' +
     '<div class="field"><span class="lbl">Ruleset</span>' + chips("rules", [["both", "Gi & no-gi"], ["gi", "Gi only"], ["nogi", "No-gi only"]], S.settings.rules || "both") + '</div><div class="field"><span class="lbl">Belt filter</span>' + chips("beltf", [["0", "Show all"], ["1", "Only up to my belt"]], S.settings.beltFilter ? "1" : "0") + "</div>" +
     '<div class="field"><span class="lbl">Technique library</span><button class="btn ghost' + (UI.confirm === "reset" ? " danger" : "") + '" data-act="reset-seed">' + (UI.confirm === "reset" ? "Really reset? Everything you added will be lost" : "Reload the starter library") + "</button></div>" +
-    '<p class="muted small">' + (mode === "cloud" ? "Signed in: " + esc(loginName((SB.session || {}).email || "")) : "Local mode: data stays on this device only.") + "</p>" + ((isSuper() || isAdmin()) && mode === "cloud" ? '<a class="btn ghost" href="admin.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Open the admin console</a>' : "") +
-    (mode === "cloud" ? '<button class="btn ghost danger" data-act="logout">' + (UI.confirm === "logout" ? "Sign out?" : "Sign out") + "</button>" : "");
+    '<p class="muted small">' + (mode === "cloud" ? "Signed in: " + esc(loginName((SB.session || {}).email || "")) : "Local mode: data stays on this device only.") + "</p>" + ((isSuper() || isAdmin()) && mode === "cloud" ? '<a class="btn ghost" href="admin.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Open the admin console</a>' : "");
   openSheet("Settings", b, { state: { picks: { theme: S.settings.theme || "system", rules: S.settings.rules || "both", beltf: S.settings.beltFilter ? "1" : "0" } }, onSave() { S.settings.name = sv("f-name").trim(); save("settings"); if (CLUB.id) clubUpdateMe(); render(); return true; } });
+}
+/* Menu (☰ in the header): the places that are not a tab, plus settings and sign out. */
+function menuSheet() {
+  const row = (act, ic, t, sub, cls, attrs) => '<button class="mrow' + (cls ? " " + cls : "") + '" data-act="' + act + '"' + (attrs ? " " + attrs : "") + '><span class="mic">' + ic + '</span><span class="txt"><b>' + t + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</span>" + CHEV + "</button>";
+  const b = beltDef(S.belt.track, S.belt.belt); const sk = streaks();
+  let h = '<div class="menu">' + row("profile", "👤", "My profile", esc(myName())) + row("menu-go", "📈", "Progress", "Level " + levelOf(xpTotal()) + (sk.weeks ? " · " + sk.weeks + " week streak" : ""), "", 'data-v="prog"') +
+    row("menu-go", "🏠", "My club", CLUB.profile ? esc(CLUB.profile.n) : "", "", 'data-v="club"') + row("menu-go", "🗺️", "Technique map", "", "", 'data-v="map"') + row("menu-go", "🥋", "Belt and rank", esc(b.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : ""), "", 'data-v="belt"') +
+    (S.log.items.length ? row("menu-share", "📸", "Share the last session") : "") + row("menu-lang", "🌐", "Language", I18N.lang === "mn" ? "Монгол → English" : "English → Монгол") + row("menu-settings", "⚙️", "Settings") +
+    ((isSuper() || isAdmin()) && mode === "cloud" ? '<a class="mrow" href="admin.html" data-act="menu-admin"><span class="mic">🧑‍🏫</span><span class="txt"><b>Coach console</b></span>' + CHEV + "</a>" : "") +
+    (mode === "cloud" ? row("logout", "🚪", UI.confirm === "logout" ? "Sign out?" : "Sign out", esc(loginName((SB.session || {}).email || "")), "danger") : "") + "</div>";
+  openSheet("Menu", h, {});
+}
+/* Social profile: my page (VIEWS.profile, opened from the avatar) and a teammate's sheet (profileSheet). */
+function myHandle() { return mode === "cloud" ? loginName((SB.session || {}).email || "") || "me" : "local"; }
+function kudosFor(uidv) { return (CLUB.feed || []).filter((p) => p.uid === uidv).reduce((a, p) => a + ((p.kudos || []).length), 0); }
+function subCounts() { const c = {}; let n = 0; for (const s of S.log.items) for (const x of s.subs || []) { const nm = x && typeof x === "object" ? x.n : x; if (!nm) continue; const k = +x.c || 1; n += k; c[nm] = (c[nm] || 0) + k; } return { n, top: Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 5) }; }
+VIEWS.profile = function () {
+  const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const sk = streaks(); const lv = levelOf(xpTotal()); const items = sessionsSorted(); const sc = subCounts();
+  let h = '<div class="pf-nav"><button class="icon-btn" data-act="profile-back">‹ Back</button></div>';
+  h += '<div class="card profile pf"><div class="av xl">' + esc(initials(name)) + '</div><div><h2>' + esc(name) + '</h2><p class="handle-name">@' + esc(myHandle()) + '</p></div><span class="pill ok">Level ' + lv + "</span>" +
+    '<div class="pf-row"><span><i>👊</i> ' + kudosFor(myUid()) + " kudos</span><span><i>🔥</i> " + sk.weeks + " week streak</span></div>" +
+    '<div class="belt big" role="img" aria-label="' + esc(b.n) + ' belt">' + beltHtml(true) + '</div><p class="muted small">' + esc(b.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : "") + "</p></div>";
+  h += '<div class="card"><div class="pf-kv"><span class="lbl">Gym / Academy</span><b>' + (CLUB.profile ? esc(CLUB.profile.n) : "—") + '</b></div><div class="pf-kv"><span class="lbl">Bio</span>' + (S.settings.bio ? "<p>" + esc(S.settings.bio) + "</p>" : '<p class="muted">No bio yet</p>') + '</div><button class="btn ghost wide" data-act="profile-edit">Edit</button></div>';
+  h += '<div class="card"><div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + sc.n + '</b><span>submissions</span></div><div class="stat"><b>' + (S.settings.mine || []).length + "</b><span>techniques</span></div></div></div>";
+  h += '<div class="pf-cols"><div class="card"><h3>Recent sessions</h3>' + (items.length ? '<div class="list">' + items.slice(0, 5).map((s) => '<button class="row" data-act="edit-sess" data-id="' + s.id + '"><div class="txt"><b>' + fmtD(s.d) + "</b><small>" + (SNAME[s.type] || s.type) + " · " + (+s.min || 0) + " min</small></div></button>").join("") + "</div>" : '<p class="empty">No sessions yet</p>') + "</div>" +
+    '<div class="card"><h3>Top submissions</h3>' + (sc.top.length ? '<div class="list">' + sc.top.map((x) => '<div class="row"><div class="txt"><b>' + esc(x[0]) + '</b></div><span class="cnt">' + x[1] + "</span></div>").join("") + "</div>" : '<p class="empty">No submissions yet</p>') + "</div></div>";
+  return h;
+};
+function profileEditSheet() {
+  const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + field("f-bio", "Bio", ta("f-bio", S.settings.bio || "", "A few words about you: since when you train, what you like…"));
+  openSheet("Edit profile", b, { onSave() { S.settings.name = sv("f-name").trim(); S.settings.bio = sv("f-bio").trim().slice(0, 300); save("settings"); if (CLUB.id) clubUpdateMe(); render(); return true; } });
+}
+function profileSheet(uidv) {
+  const m = ((CLUB.members && CLUB.members.list) || []).find((x) => x.uid === uidv || x.id === uidv); const posts = (CLUB.feed || []).filter((p) => p.uid === uidv);
+  const name = (m && (m.n || m.email)) || (posts[0] && posts[0].n) || "Member"; const bid = (m && m.belt) || (posts[0] && posts[0].belt); const b = bid ? beltDef((m && m.track) || "adult", bid) : null; const wk = posts.length ? +posts[0].weeks || 0 : 0;
+  let h = '<div class="pf"><div class="prow" style="flex-direction:column;text-align:center;gap:6px"><div class="av xl">' + esc(initials(name)) + '</div><h2 style="font-size:1.3rem">' + esc(name) + "</h2>" + (b ? '<p class="muted small">' + esc(b.n) + " belt" + (m && m.stripes ? ", " + m.stripes + " stripes" : "") + "</p>" : "") +
+    '<div class="pf-row"><span><i>👊</i> ' + kudosFor(uidv) + " kudos</span><span><i>🥋</i> " + posts.length + " sessions</span>" + (wk ? "<span><i>🔥</i> " + wk + " week streak</span>" : "") + "</div></div></div>";
+  h += '<div class="list">' + (posts.length ? posts.slice(0, 3).map((p) => '<div class="row"><div class="txt"><b>' + (FEED_TITLE[p.type] || "Training") + "</b><small>" + fmtLong(p.d) + " · " + (+p.min || 0) + " min" + (p.rounds ? " · " + p.rounds + " rounds" : "") + "</small></div>" + ((p.kudos || []).length ? '<span class="muted small">👊 ' + p.kudos.length + "</span>" : "") + "</div>").join("") : '<p class="empty">No training posted yet</p>') + "</div>";
+  openSheet("Profile", h, {});
 }
 function applyTheme() { const t = S.settings.theme || "system"; if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; try { localStorage.setItem("bjj-theme", t); } catch (e) {} }
 function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
@@ -1588,7 +1638,7 @@ function weekCard() {
 const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
 function feedCard(p) {
   const me = myUid(); const ks = p.kudos || []; const mine = ks.includes(me); const tn = FEED_TITLE[p.type] || "Training";
-  let h = '<article class="card feed"><div class="prow"><div class="av sm">' + esc(initials(p.n)) + '</div><div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
+  let h = '<article class="card feed"><div class="prow"><button class="av sm" data-act="member-profile" data-uid="' + esc(p.uid || "") + '" aria-label="Open profile">' + esc(initials(p.n)) + '</button><div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
   h += "<h3>" + esc(tn) + "</h3>" + (p.good ? '<p class="small">' + esc(p.good) + "</p>" : "");
   h += '<div class="summary"><div class="stat"><b>' + p.min + '</b><span>minutes</span></div><div class="stat"><b>' + p.rounds + '</b><span>rounds</span></div><div class="stat"><b>' + ((p.tech && p.tech.length) || 0) + "</b><span>techniques</span></div></div>";
   if (p.path && p.path.length) h += '<div class="fpath">' + p.path.map((n) => "<span>" + esc(n) + "</span>").join("<i>›</i>") + "</div>";
@@ -1596,9 +1646,40 @@ function feedCard(p) {
   h += '<div class="kudos"><button class="kbtn' + (mine ? " on" : "") + '" data-act="kudos" data-id="' + esc(p.id) + '" data-d="' + esc(p.d) + '"' + (p.uid === me ? " disabled" : "") + '><i>👊</i> ' + (mine ? "Kudos given" : "Give kudos") + '</button><span class="muted small">' + ks.length + " kudos</span></div></article>";
   return h;
 }
+/* Leaderboard: CLUB.feed aggregated per member. UI.leadBy = metric, UI.leadPer = month | all (this and last month, everything loaded). */
+UI.homeSeg = "feed"; UI.leadBy = "sessions"; UI.leadPer = "month";
+const LEAD_BY = [["sessions", "Sessions", "sessions"], ["min", "Minutes", "minutes"], ["rounds", "Rounds", "rounds"], ["subs", "Submissions", "submissions"], ["kudos", "Kudos", "kudos"], ["streak", "Streak", "weeks"]];
+function leadRows() {
+  const by = UI.leadBy, mo = thisMonth(); const posts = (CLUB.feed || []).filter((p) => p.uid && (UI.leadPer === "all" || String(p.d || "").startsWith(mo)));
+  const M = {}; const later = (p, r) => !r.d || p.d > r.d || (p.d === r.d && (p.t || 0) > (r.t || 0));
+  for (const p of posts) {
+    const r = M[p.uid] || (M[p.uid] = { uid: p.uid, n: "", belt: "", v: 0, d: "", t: 0 });
+    if (by === "streak") { if (later(p, r)) r.v = +p.weeks || 0; } else r.v += by === "sessions" ? 1 : by === "kudos" ? (p.kudos || []).length : +p[by] || 0;
+    if (later(p, r)) { r.d = p.d; r.t = p.t || 0; if (p.n) r.n = p.n; if (p.belt) r.belt = p.belt; }
+  }
+  const mem = (CLUB.members && CLUB.members.list) || [];
+  const rows = Object.values(M).map((r) => { const m = mem.find((x) => x.uid === r.uid); if (m) { if (!r.n) r.n = m.n || ""; if (!r.belt) r.belt = m.belt || ""; } r.n = r.n || "Member"; return r; });
+  rows.sort((a, b) => b.v - a.v || a.n.localeCompare(b.n)); let rank = 0;
+  rows.forEach((r, i) => { if (!i || r.v !== rows[i - 1].v) rank = i + 1; r.rank = rank; });
+  return rows;
+}
+function leadRow(r, me, unit) {
+  const b = r.belt ? beltDef("adult", r.belt) : null; const cls = r.rank <= 3 ? " r" + r.rank : "";
+  return '<div class="lrow' + (r.uid === me ? " me" : "") + '"><span class="rank' + cls + '">' + r.rank + '</span><button class="av sm" data-act="member-profile" data-uid="' + esc(r.uid) + '" aria-label="Open profile">' + esc(initials(r.n)) + '</button><div class="txt"><b>' + esc(r.n) + "</b>" + (b ? '<span class="bsw" title="' + esc(b.n) + '">' + beltSwatch(b) + "</span>" : "") + '</div><span class="val"><b>' + r.v + "</b><small>" + unit + "</small></span></div>";
+}
+function vLeaderboard() {
+  if (!CLUB.id) return '<div class="card"><h3>Club leaderboard</h3><p class="small muted">Join your club to see who trains the most: sessions, minutes, rounds, submissions, kudos and streaks.</p><button class="btn wide" data-act="tab" data-v="club">Find my club</button></div>';
+  const rows = leadRows(); const me = myUid(); const mine = rows.find((r) => r.uid === me); const unit = (LEAD_BY.find((x) => x[0] === UI.leadBy) || LEAD_BY[0])[2];
+  let h = '<div class="card lead"><div class="chips">' + LEAD_BY.map((x) => '<button type="button" class="chip' + (UI.leadBy === x[0] ? " on" : "") + '" data-act="leadby" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>" + seg([["month", "This month"], ["all", "2 months"]], UI.leadPer, "leadper") + "</div>";
+  h += '<div class="card yrank"><span class="lbl">Your rank</span>' + (mine ? '<div class="yr"><b class="rk' + (mine.rank <= 3 ? " r" + mine.rank : "") + '">#' + mine.rank + '</b><div class="stat"><b>' + mine.v + "</b><span>" + unit + '</span></div><span class="muted small of">out of ' + rows.length + " teammates</span></div>" : '<p class="muted small" style="margin-top:4px">Not ranked yet · log a training to appear</p>') + "</div>";
+  h += '<div class="card"><h3>' + esc(CLUB.profile ? CLUB.profile.n : "Club") + "</h3>" + (rows.length ? '<div class="llist">' + rows.map((r) => leadRow(r, me, unit)).join("") + "</div>" : '<p class="empty">No training in the club for this period yet.</p>') + "</div>";
+  return h;
+}
 VIEWS.home = function () {
   let h = weekCard();
   if (S.settings.clubId && clubNeeds()) { if (!CLUB.busy) clubLoad(); return h + '<div class="card"><p class="empty">Loading your club…</p></div>'; }
+  h += seg([["feed", "Feed"], ["lead", "Leaderboard"]], UI.homeSeg, "homeseg");
+  if (UI.homeSeg === "lead") return h + vLeaderboard();
   const posts = CLUB.id ? CLUB.feed || [] : sessionsSorted().slice(0, 20).map(feedPostOf);
   if (!posts.length) h += '<div class="card"><p class="empty">' + (CLUB.id ? "No training in the club yet. Log the first one!" : "Join a club to see your teammates' training here.") + "</p>" + (CLUB.id ? '<button class="btn wide" data-act="add-sess">+ Log training</button>' : '<button class="btn wide" data-act="tab" data-v="club">Find my club</button>') + "</div>";
   else h += posts.slice(0, 40).map(feedCard).join("");
@@ -1881,17 +1962,26 @@ function upgradeSheet() {
   const b = '<p class="small">The upgrade opens Setups, routes, Learn, game plans and roll history' + (price ? " for <b>" + fmtMoney(price) + "</b> a month" : "") + ". Club members with a confirmed monthly fee get it included.</p>" + (IAP.available() ? '<button class="btn wide" data-act="iap-buy">Subscribe with ' + IAP.store() + "</button><p class=\"muted small\">Or pay by transfer:</p>" : '<p class="muted small">In the App Store and Google Play version this is a one-tap subscription. On the web, pay by transfer:</p>') + how + field("u-note", "Note (your name on the transfer)", inp("u-note", "", "text"));
   openSheet("Upgrade", b, { saveLabel: "I have paid", async onSave() { if (mode !== "cloud" && !isSuper()) return true; const doc = (await cget("app/upgrades")) || { list: [] }; doc.list.push({ id: uid(), uid: myUid(), n: myName(), email: SB.session ? SB.session.email : "", d: todayIso(), note: sv("u-note").trim(), status: "pending" }); await cset("app/upgrades", doc); CLUB.upgrades = doc; toast("Request sent"); render(); return true; } });
 }
+/* payment status of a roster member, for the coach's list: a payment waiting for confirmation wins, then membership() */
+function payState(m) {
+  const k = attKey(m); const pp = pendingPay(k); if (pp.length) return { k: "pend", cls: "pend", text: "Pending", uid: k, id: pp[0].id };
+  const ms = membership(k); if (ms.state === "none") return { k: "none", cls: "na", text: "No payment" };
+  if (ms.state === "expired") return { k: "over", cls: "bad", text: "Overdue " + (-ms.days) + " day" + (ms.days < -1 ? "s" : "") };
+  if (ms.days <= 7) return { k: "exp", cls: "warn", text: ms.text };
+  return { k: "ok", cls: "ok", text: "Paid · " + ms.days + " day" + (ms.days > 1 ? "s" : "") + " left" };
+}
+function payPill(ps) { return '<span class="pill payp ' + ps.cls + '" role="button" data-act="' + (ps.k === "pend" ? "club-confirm" : "clubseg") + '" ' + (ps.k === "pend" ? 'data-uid="' + esc(ps.uid) + '" data-id="' + esc(ps.id) + '"' : 'data-v="pay"') + ">" + ps.text + "</span>"; }
 function vClubMembers(P, adm) {
   const all = (CLUB.members.list || []); const f = UI.memF || "all"; const today = todayIso();
   const attN = (m) => attDays(CLUB.attMonth, attKey(m)).length;
-  let ms = all.filter((m) => f === "kids" ? m.track === "kids" : f === "adult" ? m.track !== "kids" : f === "comp" ? !!m.comp : f === "due" ? !paidThisMonth(m.uid || m.id) : f === "quiet" ? attN(m) === 0 : f === "new" ? !m.uid : true);
+  let ms = all.filter((m) => f === "kids" ? m.track === "kids" : f === "adult" ? m.track !== "kids" : f === "comp" ? !!m.comp : f === "due" ? !paidThisMonth(m.uid || m.id) : f === "exp" ? payState(m).k === "exp" : f === "over" ? payState(m).k === "over" : f === "quiet" ? attN(m) === 0 : f === "new" ? !m.uid : true);
   ms = ms.slice().sort((a, b) => BELT_ORDER.indexOf((b.belt || "white").split("-")[0]) - BELT_ORDER.indexOf((a.belt || "white").split("-")[0]) || (b.stripes || 0) - (a.stripes || 0) || String(a.n || "").localeCompare(String(b.n || "")));
   let h = '<div class="card"><div class="card-head"><h3>Members</h3><span class="muted small">' + ms.length + " of " + all.length + "</span></div>";
-  if (adm) h += '<div class="chips">' + [["all", "All"], ["kids", "Kids"], ["adult", "Adults"], ["comp", "Comp team"], ["due", "Fee due"], ["quiet", "Not seen this month"], ["new", "No account yet"]].map((i) => '<button type="button" class="chip' + (f === i[0] ? " on" : "") + '" data-act="memf" data-v="' + i[0] + '">' + i[1] + "</button>").join("") + "</div>";
+  if (adm) h += '<div class="chips">' + [["all", "All"], ["kids", "Kids"], ["adult", "Adults"], ["comp", "Comp team"], ["due", "Fee due"], ["exp", "Expiring"], ["over", "Overdue"], ["quiet", "Not seen this month"], ["new", "No account yet"]].map((i) => '<button type="button" class="chip' + (f === i[0] ? " on" : "") + '" data-act="memf" data-v="' + i[0] + '">' + i[1] + "</button>").join("") + "</div>";
   const groups = {}; for (const m of ms) { const b = (m.belt || "white").split("-")[0]; (groups[b] = groups[b] || []).push(m); }
   const order = Object.keys(groups).sort((a, b) => BELT_ORDER.indexOf(b) - BELT_ORDER.indexOf(a));
   if (!ms.length) h += '<p class="empty">Nobody here' + (f !== "all" ? " with this filter" : "") + ".</p>";
-  else h += '<div class="list">' + order.map((b) => '<div class="group-label" style="color:' + (BELT_COLOR[b] || "var(--muted)") + '">' + b + " · " + groups[b].length + "</div>" + groups[b].map((m) => { const isA = (P.admins || []).includes(m.uid); const medals = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.uid === m.uid && r.status === "ok").length; return '<button class="row" data-act="' + (adm ? "club-member" : "none") + '" data-id="' + m.id + '"><span class="bdot" style="background:' + (BELT_COLOR[b] || "#999") + '"></span><div class="txt"><b>' + esc(m.n || m.email || "Member") + (isA ? ' <span class="pill na">coach</span>' : "") + (m.comp ? ' <span class="pill ok">comp</span>' : "") + (!m.uid ? ' <span class="pill warn">no account</span>' : "") + "</b><small>" + (m.track === "kids" ? "kids · " : "") + (m.stripes ? m.stripes + " stripes · " : "") + attN(m) + " days this month" + (medals ? " · " + medals + " medal" + (medals > 1 ? "s" : "") : "") + "</small></div>" + (adm ? CHEV : "") + "</button>"; }).join("")).join("") + "</div>";
+  else h += '<div class="list">' + order.map((b) => '<div class="group-label" style="color:' + (BELT_COLOR[b] || "var(--muted)") + '">' + b + " · " + groups[b].length + "</div>" + groups[b].map((m) => { const isA = (P.admins || []).includes(m.uid); const medals = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.uid === m.uid && r.status === "ok").length; return '<button class="row" data-act="' + (adm ? "club-member" : "none") + '" data-id="' + m.id + '"><span class="bdot" style="background:' + (BELT_COLOR[b] || "#999") + '"></span><div class="txt"><b>' + esc(m.n || m.email || "Member") + (isA ? ' <span class="pill na">coach</span>' : "") + (m.comp ? ' <span class="pill ok">comp</span>' : "") + (!m.uid ? ' <span class="pill warn">no account</span>' : "") + "</b><small>" + (m.track === "kids" ? "kids · " : "") + (m.stripes ? m.stripes + " stripes · " : "") + attN(m) + " days this month" + (medals ? " · " + medals + " medal" + (medals > 1 ? "s" : "") : "") + "</small></div>" + (adm ? payPill(payState(m)) + CHEV : "") + "</button>"; }).join("")).join("") + "</div>";
   if (adm) h += '<button class="btn ghost wide" data-act="club-member">+ Add a member</button>';
   h += "</div>";
   if (adm) {
@@ -1949,7 +2039,7 @@ document.addEventListener("click", (e) => {
   if (act === "sheet-close") { closeSheet(); return; }
   if (act === "sheet-save") { if (UI.sheetSave && UI.sheetSave() !== false) closeSheet(); return; }
   if (act === "sheet-del") { if (armConfirmSheet(el)) { if (UI.sheetDel && UI.sheetDel() !== false) closeSheet(); } return; }
-  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = el.closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "tpl") { SHARE.tpl = ds.v; drawShare(); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
+  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = (el.parentElement || el).closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "tpl") { SHARE.tpl = ds.v; drawShare(); } if (ds.group === "fmt") { SHARE.fmt = ds.v; const cv = $("sh-cv"); if (cv) { const sz = shareSize(); cv.width = sz[0]; cv.height = sz[1]; } drawShare(); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
   if (act === "pk-add") { pkAdd(ds.pk, ds.id, ds.n); return; }
   if (act === "pk-inc") { pkChange(ds.pk, +ds.i, 1); return; }
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
@@ -1957,9 +2047,22 @@ document.addEventListener("click", (e) => {
   switch (act) {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
+    case "menu": menuSheet(); break;
+    case "profile": if (UI.sheet) closeSheet(); if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } break;
+    case "profile-back": UI.tab = UI.prevTab && VIEWS[UI.prevTab] && UI.prevTab !== "profile" ? UI.prevTab : "home"; UI.prevTab = null; go("enter-r"); break;
+    case "profile-edit": profileEditSheet(); break;
+    case "member-profile": if (UI.sheet) closeSheet(); if (!ds.uid || ds.uid === myUid()) { if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } } else profileSheet(ds.uid); break;
+    case "menu-go": closeSheet(); if (ds.v === "prog") { UI.tab = "me"; UI.seg.me = "prog"; } else if (ds.v === "club") UI.tab = "club"; else if (ds.v === "map") { UI.tab = "tech"; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; UI.tech.map = true; if (!(UI.tech.id && node(UI.tech.id))) UI.tech.id = (positions()[0] || {}).id || null; try { localStorage.setItem("bjj-map", "1"); } catch (x) {} } else if (ds.v === "belt") { UI.tab = "me"; UI.seg.me = "belt"; UI.beltPage = true; } try { localStorage.setItem("bjj-tab", UI.tab); } catch (x) {} go("enter"); break;
+    case "menu-share": closeSheet(); shareSheet(null); break;
+    case "menu-lang": { const l = I18N.lang === "mn" ? "en" : "mn"; S.settings.lang = l; save("settings"); I18N.set(l); closeSheet(); render(); break; }
+    case "menu-settings": closeSheet(); settingsSheet(); break;
+    case "menu-admin": closeSheet(); break;
     case "record": checkinSheet(true); break;
     case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
+    case "homeseg": UI.homeSeg = ds.v; render(); break;
+    case "leadby": UI.leadBy = ds.v; render(); break;
+    case "leadper": UI.leadPer = ds.v; render(); break;
     case "mine-toggle": { const on = ds.on === "1"; mineToggle(ds.ids.split(","), on); toast(on ? "Added to my list" : "Removed from my list"); render(); break; }
     case "mine-rm": mineToggle(ds.ids.split(","), false); render(); break;
     case "disc-cat": { const o = (UI.discOpen = UI.discOpen || new Set()); if (o.has(ds.v)) o.delete(ds.v); else o.add(ds.v); render(); break; }
@@ -2082,7 +2185,7 @@ document.addEventListener("click", (e) => {
     case "edit-match": matchSheet(ds.id, +ds.i); break;
     case "backup": download("bjj-backup-" + todayIso() + ".json", JSON.stringify(S, null, 2)); break;
     case "reset-seed": if (UI.confirm === "reset") { UI.confirm = null; seedAll(true); save("tree"); save("plans"); save("body"); UI.tech.id = null; closeSheet(); render(); toast("Starter library loaded"); } else { UI.confirm = "reset"; settingsSheet(); setTimeout(() => { if (UI.confirm === "reset") { UI.confirm = null; if (UI.sheet) settingsSheet(); } }, 3500); } break;
-    case "logout": if (UI.confirm === "logout") { SB.storeSession(null); location.reload(); } else { UI.confirm = "logout"; settingsSheet(); setTimeout(() => { if (UI.confirm === "logout") { UI.confirm = null; if (UI.sheet) settingsSheet(); } }, 3500); } break;
+    case "logout": if (UI.confirm === "logout") { SB.storeSession(null); location.reload(); } else { UI.confirm = "logout"; menuSheet(); setTimeout(() => { if (UI.confirm === "logout") { UI.confirm = null; if (UI.sheet) menuSheet(); } }, 3500); } break;
   }
 });
 function armConfirmSheet(btn) { if (btn.dataset.armed) return true; btn.dataset.armed = "1"; btn.textContent = "Delete?"; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = "Delete"; } }, 3500); return false; }
