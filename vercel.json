@@ -17,5 +17,10 @@
       "source": "/zah/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
     }
+  ],
+  "redirects": [
+    { "source": "/bjj", "destination": "https://arrowbjjapp.vercel.app/", "permanent": true },
+    { "source": "/bjj/", "destination": "https://arrowbjjapp.vercel.app/", "permanent": true },
+    { "source": "/bjj/:path*", "destination": "https://arrowbjjapp.vercel.app/:path*", "permanent": true }
   ]
 }

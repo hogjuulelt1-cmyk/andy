@@ -23,3 +23,5 @@ In the Claude artifact: Тохиргоо → "Нөөц хуулбар татах
 ## Жиу-житсу
 
 Тусдаа апп, тусдаа репо: `hogjuulelt1-cmyk/BJJ-APP`. Дэвтэртэй нэг Supabase төсөл, нэг нэвтрэлт, `docs` хүснэгтийн `bjj/*` замууд. Толгой хэсгийн "Жиу-житсу" холбоос `config.js` дэх `bjjUrl`-ийг заана.
+
+Үндсэн BJJ апп: https://arrowbjjapp.vercel.app/ (`arrow_bjj_app`, production). Хуучин `/bjj/` холбоосууд энэ апп руу шилжинэ; BJJ код энэ repo-д давхар хадгалагдахгүй.
