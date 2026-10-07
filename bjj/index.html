@@ -484,6 +484,8 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .kudos{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding-top:10px}
 .kbtn{border:1px solid var(--line);background:none;color:var(--ink);border-radius:999px;padding:6px 14px;min-height:38px;font-weight:600;font-size:.86rem;display:inline-flex;align-items:center;gap:6px} .kbtn i{font-style:normal}
 .kbtn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)} .kbtn:disabled{opacity:.55}
+.qrbox{background:#fff;border-radius:16px;padding:6px;border:1px solid var(--line);width:min(100%,320px);margin:0 auto} .qrbox svg{display:block;width:100%;height:auto}
+.qrurl{word-break:break-all;text-align:center}
 .reclist{display:flex;flex-direction:column;gap:8px}
 .rec-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;min-height:64px;color:inherit}
 .rec-opt .ric{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
@@ -532,9 +534,10 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="in"><div class="handle"></div><div id="sheet-body"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
-<script src="lang-mn.js?v=2"></script>
+<script src="qr.js?v=1"></script>
+<script src="lang-mn.js?v=3"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=7"></script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body>
 </html>
